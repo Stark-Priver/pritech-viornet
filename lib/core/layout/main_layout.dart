@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../database/database.dart';
+import '../rbac/permissions.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -19,7 +20,20 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
-  final List<NavigationItem> _navigationItems = [
+  List<NavigationItem> _getFilteredNavigationItems() {
+    final authState = ref.watch(authProvider);
+    final userRoles = authState.userRoles;
+
+    if (userRoles.isEmpty) return [];
+
+    final checker = PermissionChecker(userRoles);
+
+    return _allNavigationItems
+        .where((item) => checker.canAccessRoute(item.route))
+        .toList();
+  }
+
+  final List<NavigationItem> _allNavigationItems = [
     NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
     NavigationItem(icon: Icons.people, label: 'Clients', route: '/clients'),
     NavigationItem(
@@ -50,16 +64,16 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     NavigationItem(icon: Icons.settings, label: 'Settings', route: '/settings'),
   ];
 
-  int get _selectedIndex {
-    final index = _navigationItems.indexWhere(
+  int _getSelectedIndex(List<NavigationItem> items) {
+    final index = items.indexWhere(
       (item) => item.route == widget.currentRoute,
     );
     return index >= 0 ? index : 0;
   }
 
-  void _onNavigationTap(int index) {
-    if (index < _navigationItems.length) {
-      context.go(_navigationItems[index].route);
+  void _onNavigationTap(List<NavigationItem> items, int index) {
+    if (index < items.length) {
+      context.go(items[index].route);
     }
   }
 
@@ -75,12 +89,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final navigationItems = _getFilteredNavigationItems();
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final isTablet = MediaQuery.of(context).size.width >= 768;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getPageTitle()),
+        title: Text(_getPageTitle(navigationItems)),
         leading: isDesktop
             ? null
             : (context.canPop()
@@ -128,7 +143,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       user.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    Text(user.role, style: const TextStyle(fontSize: 12)),
+                    Text(
+                      authState.userRoles.join(', '),
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     Text(user.email, style: const TextStyle(fontSize: 12)),
                   ],
                 ),
@@ -178,7 +196,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           const SizedBox(width: 8),
         ],
       ),
-      drawer: isDesktop ? null : _buildDrawer(context, user, isTablet),
+      drawer: isDesktop
+          ? null
+          : _buildDrawer(context, user, navigationItems, isTablet),
       body: Row(
         children: [
           // Desktop Sidebar
@@ -190,7 +210,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   right: BorderSide(color: Colors.grey.shade300),
                 ),
               ),
-              child: _buildNavigationRail(user),
+              child: _buildNavigationRail(user, navigationItems),
             ),
           // Main Content
           Expanded(
@@ -199,20 +219,24 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ],
       ),
       // Bottom Navigation for Mobile & Tablet
-      bottomNavigationBar:
-          isDesktop ? null : _buildBottomNavigation(context, isTablet),
+      bottomNavigationBar: isDesktop
+          ? null
+          : _buildBottomNavigation(context, navigationItems, isTablet),
     );
   }
 
-  String _getPageTitle() {
-    final item = _navigationItems.firstWhere(
+  String _getPageTitle(List<NavigationItem> items) {
+    final item = items.firstWhere(
       (item) => item.route == widget.currentRoute,
-      orElse: () => _navigationItems[0],
+      orElse: () => items.isNotEmpty
+          ? items[0]
+          : NavigationItem(
+              icon: Icons.dashboard, label: 'Dashboard', route: '/'),
     );
     return item.label;
   }
 
-  Widget _buildNavigationRail(User user) {
+  Widget _buildNavigationRail(User user, List<NavigationItem> items) {
     return Column(
       children: [
         // User Info
@@ -235,9 +259,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                user.role,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              Consumer(
+                builder: (context, ref, child) {
+                  final roles = ref.watch(authProvider).userRoles;
+                  return Text(
+                    roles.join(', '),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  );
+                },
               ),
             ],
           ),
@@ -246,10 +275,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         // Navigation Items
         Expanded(
           child: ListView.builder(
-            itemCount: _navigationItems.length,
+            itemCount: items.length,
             itemBuilder: (context, index) {
-              final item = _navigationItems[index];
-              final isSelected = _selectedIndex == index;
+              final item = items[index];
+              final isSelected = _getSelectedIndex(items) == index;
               return ListTile(
                 leading: Icon(
                   item.icon,
@@ -268,7 +297,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   ),
                 ),
                 selected: isSelected,
-                onTap: () => _onNavigationTap(index),
+                onTap: () => _onNavigationTap(items, index),
               );
             },
           ),
@@ -277,7 +306,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, User user, bool isTablet) {
+  Widget _buildDrawer(BuildContext context, User user,
+      List<NavigationItem> items, bool isTablet) {
     return Drawer(
       width: isTablet ? 300 : null,
       child: Column(
@@ -302,28 +332,33 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                   user.name,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
-                Text(
-                  user.role,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final roles = ref.watch(authProvider).userRoles;
+                    return Text(
+                      roles.join(', '),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: _navigationItems.length,
+              itemCount: items.length,
               itemBuilder: (context, index) {
-                final item = _navigationItems[index];
-                final isSelected = _selectedIndex == index;
+                final item = items[index];
+                final isSelected = _getSelectedIndex(items) == index;
                 return ListTile(
                   leading: Icon(item.icon),
                   title: Text(item.label),
                   selected: isSelected,
                   onTap: () {
-                    _onNavigationTap(index);
+                    _onNavigationTap(items, index);
                     Navigator.pop(context);
                   },
                 );
@@ -335,15 +370,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     );
   }
 
-  Widget _buildBottomNavigation(BuildContext context, bool isTablet) {
-    // For mobile, show only primary items
-    final primaryItems = [
-      _navigationItems[0], // Dashboard
-      _navigationItems[1], // Clients
-      _navigationItems[3], // POS
-      _navigationItems[4], // Sales
-      _navigationItems[10], // Settings
-    ];
+  Widget _buildBottomNavigation(
+      BuildContext context, List<NavigationItem> items, bool isTablet) {
+    // For mobile, show only primary items that user has access to
+    final primaryRoutes = ['/', '/clients', '/pos', '/sales', '/settings'];
+    final primaryItems =
+        items.where((item) => primaryRoutes.contains(item.route)).toList();
+
+    if (primaryItems.isEmpty) {
+      // If no primary items available, show first 5 items user can access
+      final availableItems = items.length > 5 ? items.sublist(0, 5) : items;
+      primaryItems.addAll(availableItems);
+    }
 
     final currentIndex = primaryItems.indexWhere(
       (item) => item.route == widget.currentRoute,
@@ -356,7 +394,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       unselectedFontSize: isTablet ? 12 : 10,
       iconSize: isTablet ? 28 : 24,
       onTap: (index) {
-        context.go(primaryItems[index].route);
+        if (index < primaryItems.length) {
+          context.go(primaryItems[index].route);
+        }
       },
       items: primaryItems
           .map(

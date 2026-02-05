@@ -7,6 +7,7 @@ import '../../../core/database/database.dart';
 import '../../../core/services/secure_storage_service.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/providers/providers.dart';
+import '../../../core/rbac/permissions.dart';
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AppDatabase _database;
@@ -23,16 +24,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final isLoggedIn = await _storage.isLoggedIn();
     if (isLoggedIn) {
       final userId = await _storage.getUserId();
-      final userRole = await _storage.getUserRole();
 
-      if (userId != null && userRole != null) {
+      if (userId != null) {
         final user = await (_database.select(
           _database.users,
         )..where((tbl) => tbl.id.equals(int.parse(userId))))
             .getSingleOrNull();
 
         if (user != null) {
-          state = AuthState.authenticated(user);
+          // Load user roles
+          final userRoles = await _loadUserRoles(user.id);
+          state = AuthState.authenticated(user, userRoles);
         } else {
           await logout();
         }
@@ -40,8 +42,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // Login
-  Future<bool> login(String email, String password) async {
+  // Load user roles from database
+  Future<List<String>> _loadUserRoles(int userId) async {
+    final query = _database.select(_database.userRoles).join([
+      innerJoin(
+        _database.roles,
+        _database.roles.id.equalsExp(_database.userRoles.roleId),
+      ),
+    ])
+      ..where(_database.userRoles.userId.equals(userId));
+
+    final results = await query.get();
+    return results.map((row) => row.readTable(_database.roles).name).toList();
+  }
+
+  // Login with email or phone
+  Future<bool> login(String emailOrPhone, String password) async {
     try {
       state = AuthState.loading();
 
@@ -49,14 +65,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final hashedPassword = _hashPassword(password);
 
       debugPrint('🔐 Login attempt:');
-      debugPrint('   Email: $email');
+      debugPrint('   Email/Phone: $emailOrPhone');
       debugPrint('   Hashed Password: $hashedPassword');
 
-      // Check local database first (offline-first)
+      // Check local database first (offline-first) - support email OR phone
       final user = await (_database.select(_database.users)
             ..where(
               (tbl) =>
-                  tbl.email.equals(email) &
+                  (tbl.email.equals(emailOrPhone) |
+                      tbl.phone.equals(emailOrPhone)) &
                   tbl.passwordHash.equals(hashedPassword),
             ))
           .getSingleOrNull();
@@ -68,16 +85,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       if (user != null && user.isActive) {
+        // Load user roles
+        final userRoles = await _loadUserRoles(user.id);
+
         // Save auth data
         await _storage.saveUserId(user.id.toString());
-        await _storage.saveUserRole(user.role);
+        await _storage
+            .saveUserRole(user.role); // Keep for backward compatibility
         await _storage.setLoggedIn(true);
 
         // Try to get token from server if online
         try {
           final response = await _apiService.post(
             '/auth/login',
-            data: {'email': email, 'password': password},
+            data: {'identifier': emailOrPhone, 'password': password},
           );
 
           if (response.statusCode == 200) {
@@ -90,10 +111,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
           // Ignore network errors, continue with offline mode
         }
 
-        state = AuthState.authenticated(user);
+        state = AuthState.authenticated(user, userRoles);
         return true;
       } else {
-        state = AuthState.unauthenticated(error: 'Invalid email or password');
+        state =
+            AuthState.unauthenticated(error: 'Invalid email/phone or password');
         return false;
       }
     } catch (e) {
@@ -113,7 +135,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String name,
     required String email,
     required String password,
-    required String role,
+    required List<String> roleNames,
     String? phone,
   }) async {
     try {
@@ -129,21 +151,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       }
 
-      // Create user
-      await _database.into(_database.users).insert(
+      // Create user - use first role as primary for backward compatibility
+      final userId = await _database.into(_database.users).insert(
             UsersCompanion.insert(
               name: name,
               email: email,
               phone: phone != null ? Value(phone) : const Value.absent(),
-              role: role,
+              role: roleNames.isNotEmpty ? roleNames.first : 'AGENT',
               passwordHash: hashedPassword,
               createdAt: DateTime.now(),
               updatedAt: DateTime.now(),
             ),
           );
 
+      // Assign roles to user
+      for (final roleName in roleNames) {
+        final role = await (_database.select(_database.roles)
+              ..where((tbl) => tbl.name.equals(roleName)))
+            .getSingleOrNull();
+
+        if (role != null) {
+          await _database.into(_database.userRoles).insert(
+                UserRolesCompanion.insert(
+                  userId: userId,
+                  roleId: role.id,
+                  assignedAt: DateTime.now(),
+                ),
+              );
+        }
+      }
+
       return true;
     } catch (e) {
+      debugPrint('Registration error: $e');
       return false;
     }
   }
@@ -187,39 +227,62 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Get current user
   User? get currentUser => state.user;
 
-  // Check if user has permission
-  bool hasPermission(String requiredRole) {
-    if (state.user == null) return false;
+  // Get current user roles
+  List<String> get currentUserRoles => state.userRoles;
 
-    final roleHierarchy = {
-      'SUPER_ADMIN': 6,
-      'MARKETING': 5,
-      'SALES': 4,
-      'TECHNICAL': 3,
-      'FINANCE': 2,
-      'AGENT': 1,
-    };
+  // Check if user has specific permission
+  bool hasPermission(Permission permission) {
+    if (state.user == null || state.userRoles.isEmpty) return false;
 
-    final userRoleLevel = roleHierarchy[state.user!.role] ?? 0;
-    final requiredRoleLevel = roleHierarchy[requiredRole] ?? 0;
+    final checker = PermissionChecker(state.userRoles);
+    return checker.hasPermission(permission);
+  }
 
-    return userRoleLevel >= requiredRoleLevel;
+  // Check if user can access a route
+  bool canAccessRoute(String routePath) {
+    if (state.user == null || state.userRoles.isEmpty) return false;
+
+    final checker = PermissionChecker(state.userRoles);
+    return checker.canAccessRoute(routePath);
+  }
+
+  // Check if user has any of the specified roles
+  bool hasAnyRole(List<String> roleNames) {
+    if (state.user == null || state.userRoles.isEmpty) return false;
+
+    final checker = PermissionChecker(state.userRoles);
+    return checker.hasAnyRole(roleNames);
+  }
+
+  // Check if user has all of the specified roles
+  bool hasAllRoles(List<String> roleNames) {
+    if (state.user == null || state.userRoles.isEmpty) return false;
+
+    final checker = PermissionChecker(state.userRoles);
+    return checker.hasAllRoles(roleNames);
   }
 }
 
 // Auth State
 class AuthState {
   final User? user;
+  final List<String> userRoles;
   final bool isLoading;
   final String? error;
 
-  AuthState({this.user, this.isLoading = false, this.error});
+  AuthState({
+    this.user,
+    this.userRoles = const [],
+    this.isLoading = false,
+    this.error,
+  });
 
   factory AuthState.initial() => AuthState();
 
   factory AuthState.loading() => AuthState(isLoading: true);
 
-  factory AuthState.authenticated(User user) => AuthState(user: user);
+  factory AuthState.authenticated(User user, List<String> roles) =>
+      AuthState(user: user, userRoles: roles);
 
   factory AuthState.unauthenticated({String? error}) => AuthState(error: error);
 

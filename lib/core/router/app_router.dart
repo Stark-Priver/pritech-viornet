@@ -1,8 +1,11 @@
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../layout/main_layout.dart';
 import '../screens/splash_screen.dart';
+import '../rbac/permissions.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/clients/screens/clients_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
@@ -19,9 +22,42 @@ import '../../features/packages/screens/packages_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 
-class AppRouter {
-  static final GoRouter router = GoRouter(
+// Router Provider
+final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
+
+  return GoRouter(
     initialLocation: '/splash',
+    redirect: (context, state) {
+      final isLoggedIn = authState.isAuthenticated;
+      final goingToLogin = state.uri.path == '/login';
+      final goingToRegister = state.uri.path == '/register';
+      final goingToSplash = state.uri.path == '/splash';
+
+      // Allow splash screen always
+      if (goingToSplash) return null;
+
+      // If not logged in and not going to login/register, redirect to login
+      if (!isLoggedIn && !goingToLogin && !goingToRegister) {
+        return '/login';
+      }
+
+      // If logged in and going to login, redirect to dashboard
+      if (isLoggedIn && (goingToLogin || goingToRegister)) {
+        return '/';
+      }
+
+      // Check route permissions for authenticated users
+      if (isLoggedIn && !goingToLogin && !goingToRegister && !goingToSplash) {
+        final checker = PermissionChecker(authState.userRoles);
+        if (!checker.canAccessRoute(state.uri.path)) {
+          // User doesn't have permission, redirect to dashboard
+          return '/';
+        }
+      }
+
+      return null;
+    },
     routes: [
       // Splash Screen (no layout)
       GoRoute(
@@ -135,4 +171,8 @@ class AppRouter {
       ),
     ],
   );
+});
+
+class AppRouter {
+  static GoRouter router(WidgetRef ref) => ref.watch(routerProvider);
 }

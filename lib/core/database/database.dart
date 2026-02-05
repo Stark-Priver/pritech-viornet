@@ -219,6 +219,28 @@ class Packages extends Table {
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 }
 
+// Roles Table
+class Roles extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().unique()();
+  TextColumn get description => text()();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+// UserRoles Table (Many-to-Many)
+class UserRoles extends Table {
+  IntColumn get userId =>
+      integer().references(Users, #id, onDelete: KeyAction.cascade)();
+  IntColumn get roleId =>
+      integer().references(Roles, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get assignedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId, roleId};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -232,21 +254,68 @@ class Packages extends Table {
     SmsLogs,
     SmsTemplates,
     Packages,
+    Roles,
+    UserRoles,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+
+        // Insert default roles first
+        final rolesList = [
+          RolesCompanion.insert(
+            name: 'SUPER_ADMIN',
+            description: 'Full system access with all permissions',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          RolesCompanion.insert(
+            name: 'MARKETING',
+            description: 'Marketing team with client and SMS management',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          RolesCompanion.insert(
+            name: 'SALES',
+            description: 'Sales team with voucher and package management',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          RolesCompanion.insert(
+            name: 'TECHNICAL',
+            description: 'Technical team with site and asset management',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          RolesCompanion.insert(
+            name: 'FINANCE',
+            description: 'Finance team with expense management',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+          RolesCompanion.insert(
+            name: 'AGENT',
+            description: 'Agent with limited access',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ),
+        ];
+
+        await batch((batch) {
+          batch.insertAll(roles, rolesList);
+        });
+
         // Insert default super admin user
-        await into(users).insert(
+        final adminId = await into(users).insert(
           UsersCompanion.insert(
             name: 'Super Admin',
             email: 'admin@viornet.com',
@@ -255,6 +324,19 @@ class AppDatabase extends _$AppDatabase {
             passwordHash: 'admin123', // Should be hashed in production
             createdAt: DateTime.now(),
             updatedAt: DateTime.now(),
+          ),
+        );
+
+        // Assign SUPER_ADMIN role to admin user
+        final superAdminRole = await (select(roles)
+              ..where((tbl) => tbl.name.equals('SUPER_ADMIN')))
+            .getSingle();
+
+        await into(userRoles).insert(
+          UserRolesCompanion.insert(
+            userId: adminId,
+            roleId: superAdminRole.id,
+            assignedAt: DateTime.now(),
           ),
         );
 
@@ -377,6 +459,74 @@ class AppDatabase extends _$AppDatabase {
               ),
             ]);
           });
+        }
+        if (from < 3) {
+          // Add Roles and UserRoles tables for version 3
+          await m.createTable(roles);
+          await m.createTable(userRoles);
+
+          // Insert default roles
+          final rolesList = [
+            RolesCompanion.insert(
+              name: 'SUPER_ADMIN',
+              description: 'Full system access with all permissions',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            RolesCompanion.insert(
+              name: 'MARKETING',
+              description: 'Marketing team with client and SMS management',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            RolesCompanion.insert(
+              name: 'SALES',
+              description: 'Sales team with voucher and package management',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            RolesCompanion.insert(
+              name: 'TECHNICAL',
+              description: 'Technical team with site and asset management',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            RolesCompanion.insert(
+              name: 'FINANCE',
+              description: 'Finance team with expense management',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+            RolesCompanion.insert(
+              name: 'AGENT',
+              description: 'Agent with limited access',
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          ];
+
+          await batch((batch) {
+            batch.insertAll(roles, rolesList);
+          });
+
+          // Migrate existing users' roles to UserRoles table
+          final existingUsers = await select(users).get();
+          for (final user in existingUsers) {
+            // Find the role ID for the user's current role
+            final roleQuery = await (select(roles)
+                  ..where((tbl) => tbl.name.equals(user.role)))
+                .getSingleOrNull();
+
+            if (roleQuery != null) {
+              await into(userRoles).insert(
+                UserRolesCompanion.insert(
+                  userId: user.id,
+                  roleId: roleQuery.id,
+                  assignedAt: DateTime.now(),
+                ),
+              );
+            }
+          }
         }
       },
     );
