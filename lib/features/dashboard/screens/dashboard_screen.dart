@@ -1,85 +1,202 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/database/database.dart';
+import '../../../core/providers/providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isTablet = constraints.maxWidth >= 768;
-          final isMobile = constraints.maxWidth < 768;
+    final database = ref.watch(databaseProvider);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Stats Cards
-              GridView.count(
-                crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: isMobile ? 1.2 : 1.5,
+    return FutureBuilder<DashboardData>(
+      future: _fetchDashboardData(database),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final data = snapshot.data ?? DashboardData.empty();
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 768;
+              final isMobile = constraints.maxWidth < 768;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatCard(
-                    context,
-                    'Total Clients',
-                    '0',
-                    Icons.people,
-                    Colors.blue,
+                  // Stats Cards
+                  GridView.count(
+                    crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: isMobile ? 1.2 : 1.5,
+                    children: [
+                      _buildStatCard(
+                        context,
+                        'Total Clients',
+                        '${data.totalClients}',
+                        Icons.people,
+                        Colors.blue,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Active Vouchers',
+                        '${data.activeVouchers}',
+                        Icons.confirmation_number,
+                        Colors.green,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Today Sales',
+                        CurrencyFormatter.format(data.todaySales),
+                        Icons.attach_money,
+                        Colors.orange,
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Total Revenue',
+                        CurrencyFormatter.format(data.totalRevenue),
+                        Icons.trending_up,
+                        Colors.purple,
+                      ),
+                    ],
                   ),
-                  _buildStatCard(
-                    context,
-                    'Active Vouchers',
-                    '0',
-                    Icons.confirmation_number,
-                    Colors.green,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Today Sales',
-                    CurrencyFormatter.format(0),
-                    Icons.attach_money,
-                    Colors.orange,
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Total Revenue',
-                    CurrencyFormatter.format(0),
-                    Icons.trending_up,
-                    Colors.purple,
-                  ),
+                  const SizedBox(height: 24),
+
+                  // Charts
+                  if (isMobile) ...[
+                    _buildSalesChart(context, data.last7DaysSales),
+                    const SizedBox(height: 16),
+                    _buildVoucherChart(context, data.voucherStats),
+                  ] else
+                    Row(
+                      children: [
+                        Expanded(
+                            child:
+                                _buildSalesChart(context, data.last7DaysSales)),
+                        const SizedBox(width: 16),
+                        Expanded(
+                            child:
+                                _buildVoucherChart(context, data.voucherStats)),
+                      ],
+                    ),
+                  const SizedBox(height: 24),
+
+                  // Recent Activities
+                  _buildRecentActivities(context, data.recentSales),
                 ],
-              ),
-              const SizedBox(height: 24),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 
-              // Charts
-              if (isMobile) ...[
-                _buildSalesChart(context),
-                const SizedBox(height: 16),
-                _buildVoucherChart(context),
-              ] else
-                Row(
-                  children: [
-                    Expanded(child: _buildSalesChart(context)),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildVoucherChart(context)),
-                  ],
-                ),
-              const SizedBox(height: 24),
+  Future<DashboardData> _fetchDashboardData(AppDatabase database) async {
+    // Total clients
+    final totalClients = await (database.selectOnly(database.clients)
+          ..addColumns([database.clients.id.count()]))
+        .map((row) => row.read(database.clients.id.count()) ?? 0)
+        .getSingle();
 
-              // Recent Activities
-              _buildRecentActivities(context),
-            ],
-          );
-        },
+    // Active vouchers
+    final activeVouchers = await (database.selectOnly(database.vouchers)
+          ..addColumns([database.vouchers.id.count()])
+          ..where(database.vouchers.status.equals('ACTIVE')))
+        .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+        .getSingle();
+
+    // Today's sales
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final todaySalesAmount = await (database.selectOnly(database.sales)
+          ..addColumns([database.sales.amount.sum()])
+          ..where(database.sales.saleDate.isBiggerOrEqualValue(startOfDay)))
+        .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
+        .getSingle();
+
+    // Total revenue
+    final totalRevenue = await (database.selectOnly(database.sales)
+          ..addColumns([database.sales.amount.sum()]))
+        .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
+        .getSingle();
+
+    // Last 7 days sales
+    final last7Days = <DateTime>[];
+    for (int i = 6; i >= 0; i--) {
+      last7Days.add(DateTime(today.year, today.month, today.day - i));
+    }
+
+    final dailySales = <double>[];
+    for (final day in last7Days) {
+      final nextDay = day.add(const Duration(days: 1));
+      final amount = await (database.selectOnly(database.sales)
+            ..addColumns([database.sales.amount.sum()])
+            ..where(database.sales.saleDate.isBiggerOrEqualValue(day) &
+                database.sales.saleDate.isSmallerThanValue(nextDay)))
+          .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
+          .getSingle();
+      dailySales.add(amount);
+    }
+
+    // Voucher stats
+    final voucherCounts = await Future.wait([
+      (database.selectOnly(database.vouchers)
+            ..addColumns([database.vouchers.id.count()])
+            ..where(database.vouchers.status.equals('ACTIVE')))
+          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+          .getSingle(),
+      (database.selectOnly(database.vouchers)
+            ..addColumns([database.vouchers.id.count()])
+            ..where(database.vouchers.status.equals('SOLD')))
+          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+          .getSingle(),
+      (database.selectOnly(database.vouchers)
+            ..addColumns([database.vouchers.id.count()])
+            ..where(database.vouchers.status.equals('EXPIRED')))
+          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+          .getSingle(),
+      (database.selectOnly(database.vouchers)
+            ..addColumns([database.vouchers.id.count()])
+            ..where(database.vouchers.status.equals('UNUSED')))
+          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+          .getSingle(),
+    ]);
+
+    // Recent sales
+    final recentSales = await (database.select(database.sales)
+          ..orderBy([(t) => drift.OrderingTerm.desc(t.saleDate)])
+          ..limit(5))
+        .get();
+
+    return DashboardData(
+      totalClients: totalClients,
+      activeVouchers: activeVouchers,
+      todaySales: todaySalesAmount,
+      totalRevenue: totalRevenue,
+      last7DaysSales: dailySales,
+      voucherStats: VoucherStats(
+        active: voucherCounts[0],
+        sold: voucherCounts[1],
+        expired: voucherCounts[2],
+        unused: voucherCounts[3],
       ),
+      recentSales: recentSales,
     );
   }
 
@@ -127,7 +244,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSalesChart(BuildContext context) {
+  Widget _buildSalesChart(BuildContext context, List<double> salesData) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -135,34 +252,82 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Sales Overview',
+              'Sales Overview (Last 7 Days)',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child: LineChart(
-                LineChartData(
-                  gridData: const FlGridData(show: true),
-                  titlesData: const FlTitlesData(show: true),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: const [
-                        FlSpot(0, 1),
-                        FlSpot(1, 3),
-                        FlSpot(2, 2),
-                        FlSpot(3, 5),
-                        FlSpot(4, 4),
-                      ],
-                      isCurved: true,
-                      color: Theme.of(context).primaryColor,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: false),
+              child: salesData.isEmpty || salesData.every((s) => s == 0)
+                  ? const Center(child: Text('No sales data available'))
+                  : LineChart(
+                      LineChartData(
+                        gridData: const FlGridData(show: true),
+                        titlesData: FlTitlesData(
+                          show: true,
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                const days = [
+                                  'Mon',
+                                  'Tue',
+                                  'Wed',
+                                  'Thu',
+                                  'Fri',
+                                  'Sat',
+                                  'Sun'
+                                ];
+                                if (value.toInt() >= 0 &&
+                                    value.toInt() < days.length) {
+                                  return Text(days[value.toInt()],
+                                      style: const TextStyle(fontSize: 10));
+                                }
+                                return const Text('');
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 40,
+                              getTitlesWidget: (value, meta) {
+                                return Text(
+                                  '${(value / 1000).toStringAsFixed(0)}K',
+                                  style: const TextStyle(fontSize: 10),
+                                );
+                              },
+                            ),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                        ),
+                        borderData: FlBorderData(show: true),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: List.generate(
+                              salesData.length,
+                              (index) =>
+                                  FlSpot(index.toDouble(), salesData[index]),
+                            ),
+                            isCurved: true,
+                            color: Theme.of(context).primaryColor,
+                            barWidth: 3,
+                            dotData: const FlDotData(show: true),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: Theme.of(context)
+                                  .primaryColor
+                                  .withValues(alpha: 0.2),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -170,7 +335,9 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildVoucherChart(BuildContext context) {
+  Widget _buildVoucherChart(BuildContext context, VoucherStats stats) {
+    final total = stats.active + stats.sold + stats.expired + stats.unused;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -184,54 +351,88 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             SizedBox(
               height: 200,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 40,
-                  sections: [
-                    PieChartSectionData(
-                      value: 40,
-                      title: '40%',
-                      color: Colors.green,
-                      radius: 60,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+              child: total == 0
+                  ? const Center(child: Text('No vouchers available'))
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: PieChart(
+                            PieChartData(
+                              sectionsSpace: 2,
+                              centerSpaceRadius: 40,
+                              sections: [
+                                if (stats.active > 0)
+                                  PieChartSectionData(
+                                    value: stats.active.toDouble(),
+                                    title:
+                                        '${((stats.active / total) * 100).toStringAsFixed(0)}%',
+                                    color: Colors.green,
+                                    radius: 60,
+                                    titleStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                if (stats.sold > 0)
+                                  PieChartSectionData(
+                                    value: stats.sold.toDouble(),
+                                    title:
+                                        '${((stats.sold / total) * 100).toStringAsFixed(0)}%',
+                                    color: Colors.blue,
+                                    radius: 60,
+                                    titleStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                if (stats.expired > 0)
+                                  PieChartSectionData(
+                                    value: stats.expired.toDouble(),
+                                    title:
+                                        '${((stats.expired / total) * 100).toStringAsFixed(0)}%',
+                                    color: Colors.orange,
+                                    radius: 60,
+                                    titleStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                if (stats.unused > 0)
+                                  PieChartSectionData(
+                                    value: stats.unused.toDouble(),
+                                    title:
+                                        '${((stats.unused / total) * 100).toStringAsFixed(0)}%',
+                                    color: Colors.red,
+                                    radius: 60,
+                                    titleStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLegendItem(
+                                'Active', Colors.green, stats.active),
+                            _buildLegendItem('Sold', Colors.blue, stats.sold),
+                            _buildLegendItem(
+                                'Expired', Colors.orange, stats.expired),
+                            _buildLegendItem(
+                                'Unused', Colors.red, stats.unused),
+                          ],
+                        ),
+                      ],
                     ),
-                    PieChartSectionData(
-                      value: 30,
-                      title: '30%',
-                      color: Colors.blue,
-                      radius: 60,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: 20,
-                      title: '20%',
-                      color: Colors.orange,
-                      radius: 60,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: 10,
-                      title: '10%',
-                      color: Colors.red,
-                      radius: 60,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -239,7 +440,27 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentActivities(BuildContext context) {
+  Widget _buildLegendItem(String label, Color color, int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('$label: $count', style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivities(BuildContext context, List<Sale> recentSales) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -247,19 +468,95 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recent Activities',
+              'Recent Sales',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text('No recent activities'),
+            if (recentSales.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('No recent sales'),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recentSales.length,
+                separatorBuilder: (_, __) => const Divider(),
+                itemBuilder: (context, index) {
+                  final sale = recentSales[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.green,
+                      child:
+                          const Icon(Icons.attach_money, color: Colors.white),
+                    ),
+                    title: Text('Receipt: ${sale.receiptNumber}'),
+                    subtitle: Text(
+                      '${sale.saleDate.day}/${sale.saleDate.month}/${sale.saleDate.year} - ${sale.paymentMethod}',
+                    ),
+                    trailing: Text(
+                      CurrencyFormatter.format(sale.amount),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
           ],
         ),
       ),
     );
   }
+}
+
+// Data models
+class DashboardData {
+  final int totalClients;
+  final int activeVouchers;
+  final double todaySales;
+  final double totalRevenue;
+  final List<double> last7DaysSales;
+  final VoucherStats voucherStats;
+  final List<Sale> recentSales;
+
+  DashboardData({
+    required this.totalClients,
+    required this.activeVouchers,
+    required this.todaySales,
+    required this.totalRevenue,
+    required this.last7DaysSales,
+    required this.voucherStats,
+    required this.recentSales,
+  });
+
+  factory DashboardData.empty() {
+    return DashboardData(
+      totalClients: 0,
+      activeVouchers: 0,
+      todaySales: 0,
+      totalRevenue: 0,
+      last7DaysSales: List.filled(7, 0),
+      voucherStats: VoucherStats(active: 0, sold: 0, expired: 0, unused: 0),
+      recentSales: [],
+    );
+  }
+}
+
+class VoucherStats {
+  final int active;
+  final int sold;
+  final int expired;
+  final int unused;
+
+  VoucherStats({
+    required this.active,
+    required this.sold,
+    required this.expired,
+    required this.unused,
+  });
 }
