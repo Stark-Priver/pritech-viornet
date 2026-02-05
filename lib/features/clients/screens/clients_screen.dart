@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'add_edit_client_screen.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
@@ -282,8 +283,24 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   }
 
   Future<List<Client>> _getFilteredClients(AppDatabase database) async {
-    // Fetch all clients
-    final allClients = await database.select(database.clients).get();
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAllSites = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
+
+    // Fetch clients based on site access
+    List<Client> allClients;
+    if (!canAccessAllSites && userSites.isNotEmpty) {
+      // Filter to only show clients from assigned sites
+      allClients = await (database.select(database.clients)
+            ..where((tbl) => tbl.siteId.isIn(userSites)))
+          .get();
+    } else if (!canAccessAllSites && userSites.isEmpty) {
+      // User has no assigned sites
+      return [];
+    } else {
+      // User can see all clients
+      allClients = await database.select(database.clients).get();
+    }
 
     // Apply search filter first if needed
     var clients = allClients;

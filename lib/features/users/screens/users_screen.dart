@@ -671,12 +671,27 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     BuildContext context,
     User user,
     AppDatabase database,
-  ) {
+  ) async {
     final nameController = TextEditingController(text: user.name);
     final emailController = TextEditingController(text: user.email);
     final phoneController = TextEditingController(text: user.phone);
-    String role = user.role;
+
+    // Load current user roles
+    final currentRolesQuery = database.select(database.userRoles).join([
+      drift.innerJoin(
+        database.roles,
+        database.roles.id.equalsExp(database.userRoles.roleId),
+      ),
+    ]);
+    currentRolesQuery.where(database.userRoles.userId.equals(user.id));
+    final currentRoles = await currentRolesQuery.get();
+
+    final selectedRoles =
+        currentRoles.map((row) => row.readTable(database.roles).name).toSet();
+
     bool isActive = user.isActive;
+
+    if (!context.mounted) return;
 
     showDialog(
       context: context,
@@ -840,7 +855,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                         ),
                         const SizedBox(height: 24),
                         const Text(
-                          'Role *',
+                          'Roles * (Select one or more)',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -848,55 +863,49 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: role,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: Colors.grey[300]!),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Colors.indigo, width: 2),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 18,
-                            ),
-                            filled: true,
-                            fillColor: Colors.grey[50],
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey[300]!),
+                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.grey[50],
                           ),
-                          items: [
-                            'SUPER_ADMIN',
-                            'MARKETING',
-                            'SALES',
-                            'TECHNICAL',
-                            'FINANCE',
-                            'AGENT'
-                          ].map((r) {
-                            return DropdownMenuItem(
-                              value: r,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _getRoleIcon(r),
-                                    size: 20,
-                                    color: _getRoleColor(r),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(_formatRole(r)),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setDialogState(() => role = value!);
-                          },
+                          padding: const EdgeInsets.all(8),
+                          child: Column(
+                            children: [
+                              'SUPER_ADMIN',
+                              'MARKETING',
+                              'SALES',
+                              'TECHNICAL',
+                              'FINANCE',
+                              'AGENT'
+                            ].map((r) {
+                              return CheckboxListTile(
+                                value: selectedRoles.contains(r),
+                                onChanged: (checked) {
+                                  setDialogState(() {
+                                    if (checked == true) {
+                                      selectedRoles.add(r);
+                                    } else {
+                                      selectedRoles.remove(r);
+                                    }
+                                  });
+                                },
+                                title: Row(
+                                  children: [
+                                    Icon(
+                                      _getRoleIcon(r),
+                                      size: 20,
+                                      color: _getRoleColor(r),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(_formatRole(r)),
+                                  ],
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                              );
+                            }).toList(),
+                          ),
                         ),
                         const SizedBox(height: 20),
                         Container(
@@ -958,12 +967,13 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                       FilledButton(
                         onPressed: () async {
                           if (nameController.text.isEmpty ||
-                              emailController.text.isEmpty) {
+                              emailController.text.isEmpty ||
+                              selectedRoles.isEmpty) {
                             final messenger = ScaffoldMessenger.of(context);
                             messenger.showSnackBar(
                               const SnackBar(
-                                content:
-                                    Text('Please fill in all required fields'),
+                                content: Text(
+                                    'Please fill all required fields and select at least one role'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -973,6 +983,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                           final messenger = ScaffoldMessenger.of(context);
                           final nav = Navigator.of(context);
 
+                          // Update user basic info
                           await (database.update(database.users)
                                 ..where((tbl) => tbl.id.equals(user.id)))
                               .write(
@@ -980,21 +991,41 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                               name: drift.Value(nameController.text),
                               email: drift.Value(emailController.text),
                               phone: drift.Value(phoneController.text),
-                              role: drift.Value(role),
+                              role: drift.Value(selectedRoles.first),
                               isActive: drift.Value(isActive),
                               updatedAt: drift.Value(DateTime.now()),
                             ),
                           );
 
+                          // Update user roles
+                          // First, delete existing roles
+                          await (database.delete(database.userRoles)
+                                ..where((tbl) => tbl.userId.equals(user.id)))
+                              .go();
+
+                          // Then, insert new roles
+                          for (final roleName in selectedRoles) {
+                            final role = await (database.select(database.roles)
+                                  ..where((tbl) => tbl.name.equals(roleName)))
+                                .getSingle();
+
+                            await database.into(database.userRoles).insert(
+                                  UserRolesCompanion.insert(
+                                    userId: user.id,
+                                    roleId: role.id,
+                                    assignedAt: DateTime.now(),
+                                  ),
+                                );
+                          }
+
                           nav.pop();
                           messenger.showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.check_circle,
-                                      color: Colors.white),
-                                  const SizedBox(width: 12),
-                                  const Text('User updated successfully'),
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 12),
+                                  Text('User updated successfully'),
                                 ],
                               ),
                               backgroundColor: Colors.green,

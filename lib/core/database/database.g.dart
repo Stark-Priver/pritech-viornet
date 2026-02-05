@@ -8589,6 +8589,244 @@ class UserRolesCompanion extends UpdateCompanion<UserRole> {
   }
 }
 
+class $UserSitesTable extends UserSites
+    with TableInfo<$UserSitesTable, UserSite> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UserSitesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<int> userId = GeneratedColumn<int>(
+      'user_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES users (id) ON DELETE CASCADE'));
+  static const VerificationMeta _siteIdMeta = const VerificationMeta('siteId');
+  @override
+  late final GeneratedColumn<int> siteId = GeneratedColumn<int>(
+      'site_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES sites (id) ON DELETE CASCADE'));
+  static const VerificationMeta _assignedAtMeta =
+      const VerificationMeta('assignedAt');
+  @override
+  late final GeneratedColumn<DateTime> assignedAt = GeneratedColumn<DateTime>(
+      'assigned_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [userId, siteId, assignedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'user_sites';
+  @override
+  VerificationContext validateIntegrity(Insertable<UserSite> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(_userIdMeta,
+          userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta));
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('site_id')) {
+      context.handle(_siteIdMeta,
+          siteId.isAcceptableOrUnknown(data['site_id']!, _siteIdMeta));
+    } else if (isInserting) {
+      context.missing(_siteIdMeta);
+    }
+    if (data.containsKey('assigned_at')) {
+      context.handle(
+          _assignedAtMeta,
+          assignedAt.isAcceptableOrUnknown(
+              data['assigned_at']!, _assignedAtMeta));
+    } else if (isInserting) {
+      context.missing(_assignedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {userId, siteId};
+  @override
+  UserSite map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserSite(
+      userId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}user_id'])!,
+      siteId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}site_id'])!,
+      assignedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}assigned_at'])!,
+    );
+  }
+
+  @override
+  $UserSitesTable createAlias(String alias) {
+    return $UserSitesTable(attachedDatabase, alias);
+  }
+}
+
+class UserSite extends DataClass implements Insertable<UserSite> {
+  final int userId;
+  final int siteId;
+  final DateTime assignedAt;
+  const UserSite(
+      {required this.userId, required this.siteId, required this.assignedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['user_id'] = Variable<int>(userId);
+    map['site_id'] = Variable<int>(siteId);
+    map['assigned_at'] = Variable<DateTime>(assignedAt);
+    return map;
+  }
+
+  UserSitesCompanion toCompanion(bool nullToAbsent) {
+    return UserSitesCompanion(
+      userId: Value(userId),
+      siteId: Value(siteId),
+      assignedAt: Value(assignedAt),
+    );
+  }
+
+  factory UserSite.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserSite(
+      userId: serializer.fromJson<int>(json['userId']),
+      siteId: serializer.fromJson<int>(json['siteId']),
+      assignedAt: serializer.fromJson<DateTime>(json['assignedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'userId': serializer.toJson<int>(userId),
+      'siteId': serializer.toJson<int>(siteId),
+      'assignedAt': serializer.toJson<DateTime>(assignedAt),
+    };
+  }
+
+  UserSite copyWith({int? userId, int? siteId, DateTime? assignedAt}) =>
+      UserSite(
+        userId: userId ?? this.userId,
+        siteId: siteId ?? this.siteId,
+        assignedAt: assignedAt ?? this.assignedAt,
+      );
+  UserSite copyWithCompanion(UserSitesCompanion data) {
+    return UserSite(
+      userId: data.userId.present ? data.userId.value : this.userId,
+      siteId: data.siteId.present ? data.siteId.value : this.siteId,
+      assignedAt:
+          data.assignedAt.present ? data.assignedAt.value : this.assignedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSite(')
+          ..write('userId: $userId, ')
+          ..write('siteId: $siteId, ')
+          ..write('assignedAt: $assignedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(userId, siteId, assignedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserSite &&
+          other.userId == this.userId &&
+          other.siteId == this.siteId &&
+          other.assignedAt == this.assignedAt);
+}
+
+class UserSitesCompanion extends UpdateCompanion<UserSite> {
+  final Value<int> userId;
+  final Value<int> siteId;
+  final Value<DateTime> assignedAt;
+  final Value<int> rowid;
+  const UserSitesCompanion({
+    this.userId = const Value.absent(),
+    this.siteId = const Value.absent(),
+    this.assignedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UserSitesCompanion.insert({
+    required int userId,
+    required int siteId,
+    required DateTime assignedAt,
+    this.rowid = const Value.absent(),
+  })  : userId = Value(userId),
+        siteId = Value(siteId),
+        assignedAt = Value(assignedAt);
+  static Insertable<UserSite> custom({
+    Expression<int>? userId,
+    Expression<int>? siteId,
+    Expression<DateTime>? assignedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (userId != null) 'user_id': userId,
+      if (siteId != null) 'site_id': siteId,
+      if (assignedAt != null) 'assigned_at': assignedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UserSitesCompanion copyWith(
+      {Value<int>? userId,
+      Value<int>? siteId,
+      Value<DateTime>? assignedAt,
+      Value<int>? rowid}) {
+    return UserSitesCompanion(
+      userId: userId ?? this.userId,
+      siteId: siteId ?? this.siteId,
+      assignedAt: assignedAt ?? this.assignedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (userId.present) {
+      map['user_id'] = Variable<int>(userId.value);
+    }
+    if (siteId.present) {
+      map['site_id'] = Variable<int>(siteId.value);
+    }
+    if (assignedAt.present) {
+      map['assigned_at'] = Variable<DateTime>(assignedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserSitesCompanion(')
+          ..write('userId: $userId, ')
+          ..write('siteId: $siteId, ')
+          ..write('assignedAt: $assignedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8605,6 +8843,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PackagesTable packages = $PackagesTable(this);
   late final $RolesTable roles = $RolesTable(this);
   late final $UserRolesTable userRoles = $UserRolesTable(this);
+  late final $UserSitesTable userSites = $UserSitesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8622,7 +8861,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         smsTemplates,
         packages,
         roles,
-        userRoles
+        userRoles,
+        userSites
       ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
@@ -8639,6 +8879,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('user_roles', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('users',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('user_sites', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('sites',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('user_sites', kind: UpdateKind.delete),
             ],
           ),
         ],
@@ -8730,6 +8984,20 @@ final class $$UsersTableReferences
         .filter((f) => f.userId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_userRolesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$UserSitesTable, List<UserSite>>
+      _userSitesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.userSites,
+          aliasName: $_aliasNameGenerator(db.users.id, db.userSites.userId));
+
+  $$UserSitesTableProcessedTableManager get userSitesRefs {
+    final manager = $$UserSitesTableTableManager($_db, $_db.userSites)
+        .filter((f) => f.userId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_userSitesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -8855,6 +9123,27 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
             $$UserRolesTableFilterComposer(
               $db: $db,
               $table: $db.userRoles,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> userSitesRefs(
+      Expression<bool> Function($$UserSitesTableFilterComposer f) f) {
+    final $$UserSitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.userSites,
+        getReferencedColumn: (t) => t.userId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UserSitesTableFilterComposer(
+              $db: $db,
+              $table: $db.userSites,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -9040,6 +9329,27 @@ class $$UsersTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> userSitesRefs<T extends Object>(
+      Expression<T> Function($$UserSitesTableAnnotationComposer a) f) {
+    final $$UserSitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.userSites,
+        getReferencedColumn: (t) => t.userId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UserSitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.userSites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$UsersTableTableManager extends RootTableManager<
@@ -9057,7 +9367,8 @@ class $$UsersTableTableManager extends RootTableManager<
         {bool vouchersRefs,
         bool salesRefs,
         bool expensesRefs,
-        bool userRolesRefs})> {
+        bool userRolesRefs,
+        bool userSitesRefs})> {
   $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
       : super(TableManagerState(
           db: db,
@@ -9132,14 +9443,16 @@ class $$UsersTableTableManager extends RootTableManager<
               {vouchersRefs = false,
               salesRefs = false,
               expensesRefs = false,
-              userRolesRefs = false}) {
+              userRolesRefs = false,
+              userSitesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (vouchersRefs) db.vouchers,
                 if (salesRefs) db.sales,
                 if (expensesRefs) db.expenses,
-                if (userRolesRefs) db.userRoles
+                if (userRolesRefs) db.userRoles,
+                if (userSitesRefs) db.userSites
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -9187,6 +9500,17 @@ class $$UsersTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.userId == item.id),
+                        typedResults: items),
+                  if (userSitesRefs)
+                    await $_getPrefetchedData<User, $UsersTable, UserSite>(
+                        currentTable: table,
+                        referencedTable:
+                            $$UsersTableReferences._userSitesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$UsersTableReferences(db, table, p0).userSitesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.userId == item.id),
                         typedResults: items)
                 ];
               },
@@ -9210,7 +9534,8 @@ typedef $$UsersTableProcessedTableManager = ProcessedTableManager<
         {bool vouchersRefs,
         bool salesRefs,
         bool expensesRefs,
-        bool userRolesRefs})>;
+        bool userRolesRefs,
+        bool userSitesRefs})>;
 typedef $$SitesTableCreateCompanionBuilder = SitesCompanion Function({
   Value<int> id,
   Value<String?> serverId,
@@ -9330,6 +9655,20 @@ final class $$SitesTableReferences
         .filter((f) => f.siteId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_maintenanceRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$UserSitesTable, List<UserSite>>
+      _userSitesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.userSites,
+          aliasName: $_aliasNameGenerator(db.sites.id, db.userSites.siteId));
+
+  $$UserSitesTableProcessedTableManager get userSitesRefs {
+    final manager = $$UserSitesTableTableManager($_db, $_db.userSites)
+        .filter((f) => f.siteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_userSitesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -9509,6 +9848,27 @@ class $$SitesTableFilterComposer extends Composer<_$AppDatabase, $SitesTable> {
             $$MaintenanceTableFilterComposer(
               $db: $db,
               $table: $db.maintenance,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> userSitesRefs(
+      Expression<bool> Function($$UserSitesTableFilterComposer f) f) {
+    final $$UserSitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.userSites,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UserSitesTableFilterComposer(
+              $db: $db,
+              $table: $db.userSites,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -9758,6 +10118,27 @@ class $$SitesTableAnnotationComposer
             ));
     return f(composer);
   }
+
+  Expression<T> userSitesRefs<T extends Object>(
+      Expression<T> Function($$UserSitesTableAnnotationComposer a) f) {
+    final $$UserSitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.userSites,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UserSitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.userSites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$SitesTableTableManager extends RootTableManager<
@@ -9777,7 +10158,8 @@ class $$SitesTableTableManager extends RootTableManager<
         bool salesRefs,
         bool expensesRefs,
         bool assetsRefs,
-        bool maintenanceRefs})> {
+        bool maintenanceRefs,
+        bool userSitesRefs})> {
   $$SitesTableTableManager(_$AppDatabase db, $SitesTable table)
       : super(TableManagerState(
           db: db,
@@ -9866,7 +10248,8 @@ class $$SitesTableTableManager extends RootTableManager<
               salesRefs = false,
               expensesRefs = false,
               assetsRefs = false,
-              maintenanceRefs = false}) {
+              maintenanceRefs = false,
+              userSitesRefs = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
@@ -9875,7 +10258,8 @@ class $$SitesTableTableManager extends RootTableManager<
                 if (salesRefs) db.sales,
                 if (expensesRefs) db.expenses,
                 if (assetsRefs) db.assets,
-                if (maintenanceRefs) db.maintenance
+                if (maintenanceRefs) db.maintenance,
+                if (userSitesRefs) db.userSites
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -9947,6 +10331,17 @@ class $$SitesTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.siteId == item.id),
+                        typedResults: items),
+                  if (userSitesRefs)
+                    await $_getPrefetchedData<Site, $SitesTable, UserSite>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SitesTableReferences._userSitesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SitesTableReferences(db, table, p0).userSitesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.siteId == item.id),
                         typedResults: items)
                 ];
               },
@@ -9972,7 +10367,8 @@ typedef $$SitesTableProcessedTableManager = ProcessedTableManager<
         bool salesRefs,
         bool expensesRefs,
         bool assetsRefs,
-        bool maintenanceRefs})>;
+        bool maintenanceRefs,
+        bool userSitesRefs})>;
 typedef $$ClientsTableCreateCompanionBuilder = ClientsCompanion Function({
   Value<int> id,
   Value<String?> serverId,
@@ -15211,6 +15607,323 @@ typedef $$UserRolesTableProcessedTableManager = ProcessedTableManager<
     (UserRole, $$UserRolesTableReferences),
     UserRole,
     PrefetchHooks Function({bool userId, bool roleId})>;
+typedef $$UserSitesTableCreateCompanionBuilder = UserSitesCompanion Function({
+  required int userId,
+  required int siteId,
+  required DateTime assignedAt,
+  Value<int> rowid,
+});
+typedef $$UserSitesTableUpdateCompanionBuilder = UserSitesCompanion Function({
+  Value<int> userId,
+  Value<int> siteId,
+  Value<DateTime> assignedAt,
+  Value<int> rowid,
+});
+
+final class $$UserSitesTableReferences
+    extends BaseReferences<_$AppDatabase, $UserSitesTable, UserSite> {
+  $$UserSitesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $UsersTable _userIdTable(_$AppDatabase db) => db.users
+      .createAlias($_aliasNameGenerator(db.userSites.userId, db.users.id));
+
+  $$UsersTableProcessedTableManager get userId {
+    final $_column = $_itemColumn<int>('user_id')!;
+
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $SitesTable _siteIdTable(_$AppDatabase db) => db.sites
+      .createAlias($_aliasNameGenerator(db.userSites.siteId, db.sites.id));
+
+  $$SitesTableProcessedTableManager get siteId {
+    final $_column = $_itemColumn<int>('site_id')!;
+
+    final manager = $$SitesTableTableManager($_db, $_db.sites)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_siteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$UserSitesTableFilterComposer
+    extends Composer<_$AppDatabase, $UserSitesTable> {
+  $$UserSitesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get assignedAt => $composableBuilder(
+      column: $table.assignedAt, builder: (column) => ColumnFilters(column));
+
+  $$UsersTableFilterComposer get userId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableFilterComposer get siteId {
+    final $$SitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableFilterComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$UserSitesTableOrderingComposer
+    extends Composer<_$AppDatabase, $UserSitesTable> {
+  $$UserSitesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get assignedAt => $composableBuilder(
+      column: $table.assignedAt, builder: (column) => ColumnOrderings(column));
+
+  $$UsersTableOrderingComposer get userId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableOrderingComposer get siteId {
+    final $$SitesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableOrderingComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$UserSitesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UserSitesTable> {
+  $$UserSitesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get assignedAt => $composableBuilder(
+      column: $table.assignedAt, builder: (column) => column);
+
+  $$UsersTableAnnotationComposer get userId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.userId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableAnnotationComposer get siteId {
+    final $$SitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$UserSitesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $UserSitesTable,
+    UserSite,
+    $$UserSitesTableFilterComposer,
+    $$UserSitesTableOrderingComposer,
+    $$UserSitesTableAnnotationComposer,
+    $$UserSitesTableCreateCompanionBuilder,
+    $$UserSitesTableUpdateCompanionBuilder,
+    (UserSite, $$UserSitesTableReferences),
+    UserSite,
+    PrefetchHooks Function({bool userId, bool siteId})> {
+  $$UserSitesTableTableManager(_$AppDatabase db, $UserSitesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UserSitesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UserSitesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UserSitesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> userId = const Value.absent(),
+            Value<int> siteId = const Value.absent(),
+            Value<DateTime> assignedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UserSitesCompanion(
+            userId: userId,
+            siteId: siteId,
+            assignedAt: assignedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required int userId,
+            required int siteId,
+            required DateTime assignedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UserSitesCompanion.insert(
+            userId: userId,
+            siteId: siteId,
+            assignedAt: assignedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$UserSitesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({userId = false, siteId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (userId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.userId,
+                    referencedTable:
+                        $$UserSitesTableReferences._userIdTable(db),
+                    referencedColumn:
+                        $$UserSitesTableReferences._userIdTable(db).id,
+                  ) as T;
+                }
+                if (siteId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.siteId,
+                    referencedTable:
+                        $$UserSitesTableReferences._siteIdTable(db),
+                    referencedColumn:
+                        $$UserSitesTableReferences._siteIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$UserSitesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $UserSitesTable,
+    UserSite,
+    $$UserSitesTableFilterComposer,
+    $$UserSitesTableOrderingComposer,
+    $$UserSitesTableAnnotationComposer,
+    $$UserSitesTableCreateCompanionBuilder,
+    $$UserSitesTableUpdateCompanionBuilder,
+    (UserSite, $$UserSitesTableReferences),
+    UserSite,
+    PrefetchHooks Function({bool userId, bool siteId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -15241,4 +15954,6 @@ class $AppDatabaseManager {
       $$RolesTableTableManager(_db, _db.roles);
   $$UserRolesTableTableManager get userRoles =>
       $$UserRolesTableTableManager(_db, _db.userRoles);
+  $$UserSitesTableTableManager get userSites =>
+      $$UserSitesTableTableManager(_db, _db.userSites);
 }

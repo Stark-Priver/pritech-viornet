@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../auth/providers/auth_provider.dart';
 import 'add_voucher_screen.dart';
 
 class VouchersScreen extends ConsumerStatefulWidget {
@@ -298,7 +299,33 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
   }
 
   Future<List<Voucher>> _getFilteredVouchers(AppDatabase database) async {
-    final allVouchers = await database.select(database.vouchers).get();
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAllSites = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
+
+    // Fetch vouchers based on site access (through clients)
+    List<Voucher> allVouchers;
+    if (!canAccessAllSites && userSites.isNotEmpty) {
+      // Get clients from assigned sites
+      final clientIds = await (database.selectOnly(database.clients)
+            ..addColumns([database.clients.id])
+            ..where(database.clients.siteId.isIn(userSites)))
+          .map((row) => row.read(database.clients.id)!)
+          .get();
+
+      if (clientIds.isEmpty) {
+        return [];
+      }
+
+      // Filter vouchers by client IDs
+      allVouchers = await (database.select(database.vouchers)
+            ..where((tbl) => tbl.clientId.isIn(clientIds)))
+          .get();
+    } else if (!canAccessAllSites && userSites.isEmpty) {
+      return [];
+    } else {
+      allVouchers = await database.select(database.vouchers).get();
+    }
 
     var vouchers = allVouchers;
 

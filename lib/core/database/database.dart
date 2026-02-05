@@ -241,6 +241,18 @@ class UserRoles extends Table {
   Set<Column> get primaryKey => {userId, roleId};
 }
 
+// UserSites Table (Many-to-Many) - Users assigned to specific sites
+class UserSites extends Table {
+  IntColumn get userId =>
+      integer().references(Users, #id, onDelete: KeyAction.cascade)();
+  IntColumn get siteId =>
+      integer().references(Sites, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get assignedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId, siteId};
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -256,13 +268,14 @@ class UserRoles extends Table {
     Packages,
     Roles,
     UserRoles,
+    UserSites,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -527,6 +540,10 @@ class AppDatabase extends _$AppDatabase {
               );
             }
           }
+        }
+        if (from < 4) {
+          // Add UserSites table for version 4
+          await m.createTable(userSites);
         }
       },
     );

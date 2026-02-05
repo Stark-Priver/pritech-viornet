@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' hide Column;
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class SalesHistoryScreen extends ConsumerStatefulWidget {
   const SalesHistoryScreen({super.key});
@@ -298,10 +299,37 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
   }
 
   Future<List<_SaleWithDetails>> _getFilteredSales(AppDatabase database) async {
-    var query = database.select(database.sales)
-      ..orderBy([(t) => OrderingTerm.desc(t.saleDate)]);
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAllSites = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
 
-    final allSales = await query.get();
+    // Fetch sales based on site access
+    List<Sale> allSales;
+    if (!canAccessAllSites && userSites.isNotEmpty) {
+      // Get clients from assigned sites
+      final clientIds = await (database.selectOnly(database.clients)
+            ..addColumns([database.clients.id])
+            ..where(database.clients.siteId.isIn(userSites)))
+          .map((row) => row.read(database.clients.id)!)
+          .get();
+
+      if (clientIds.isEmpty) {
+        return [];
+      }
+
+      // Filter sales by client IDs
+      final query = database.select(database.sales)
+        ..where((tbl) => tbl.clientId.isIn(clientIds))
+        ..orderBy([(t) => OrderingTerm.desc(t.saleDate)]);
+      allSales = await query.get();
+    } else if (!canAccessAllSites && userSites.isEmpty) {
+      return [];
+    } else {
+      var query = database.select(database.sales)
+        ..orderBy([(t) => OrderingTerm.desc(t.saleDate)]);
+      allSales = await query.get();
+    }
+
     final results = <_SaleWithDetails>[];
 
     for (final sale in allSales) {

@@ -32,9 +32,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
             .getSingleOrNull();
 
         if (user != null) {
-          // Load user roles
+          // Load user roles and sites
           final userRoles = await _loadUserRoles(user.id);
-          state = AuthState.authenticated(user, userRoles);
+          final userSites = await _loadUserSites(user.id);
+          state = AuthState.authenticated(user, userRoles, userSites);
         } else {
           await logout();
         }
@@ -54,6 +55,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final results = await query.get();
     return results.map((row) => row.readTable(_database.roles).name).toList();
+  }
+
+  // Load user's assigned sites from database
+  Future<List<int>> _loadUserSites(int userId) async {
+    final query = _database.select(_database.userSites)
+      ..where((tbl) => tbl.userId.equals(userId));
+
+    final results = await query.get();
+    return results.map((row) => row.siteId).toList();
   }
 
   // Login with email or phone
@@ -85,8 +95,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       if (user != null && user.isActive) {
-        // Load user roles
+        // Load user roles and sites
         final userRoles = await _loadUserRoles(user.id);
+        final userSites = await _loadUserSites(user.id);
 
         // Save auth data
         await _storage.saveUserId(user.id.toString());
@@ -111,7 +122,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           // Ignore network errors, continue with offline mode
         }
 
-        state = AuthState.authenticated(user, userRoles);
+        state = AuthState.authenticated(user, userRoles, userSites);
         return true;
       } else {
         state =
@@ -230,6 +241,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // Get current user roles
   List<String> get currentUserRoles => state.userRoles;
 
+  // Get current user's assigned sites
+  List<int> get currentUserSites => state.userSites;
+
+  // Check if user can access all sites (SUPER_ADMIN or FINANCE)
+  bool get canAccessAllSites {
+    return state.userRoles.contains('SUPER_ADMIN') ||
+        state.userRoles.contains('FINANCE');
+  }
+
   // Check if user has specific permission
   bool hasPermission(Permission permission) {
     if (state.user == null || state.userRoles.isEmpty) return false;
@@ -267,12 +287,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
 class AuthState {
   final User? user;
   final List<String> userRoles;
+  final List<int> userSites;
   final bool isLoading;
   final String? error;
 
   AuthState({
     this.user,
     this.userRoles = const [],
+    this.userSites = const [],
     this.isLoading = false,
     this.error,
   });
@@ -281,8 +303,9 @@ class AuthState {
 
   factory AuthState.loading() => AuthState(isLoading: true);
 
-  factory AuthState.authenticated(User user, List<String> roles) =>
-      AuthState(user: user, userRoles: roles);
+  factory AuthState.authenticated(
+          User user, List<String> roles, List<int> sites) =>
+      AuthState(user: user, userRoles: roles, userSites: sites);
 
   factory AuthState.unauthenticated({String? error}) => AuthState(error: error);
 

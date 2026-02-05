@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:drift/drift.dart' as drift;
+import 'package:drift/drift.dart' as drift hide Column;
+import 'package:drift/drift.dart' show Expression;
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -12,9 +14,18 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final database = ref.watch(databaseProvider);
+    final authState = ref.watch(authProvider);
+    final authNotifier = ref.read(authProvider.notifier);
+
+    // Check if user can see financial data
+    final canSeeFinancials = !authState.userRoles.contains('AGENT');
 
     return FutureBuilder<DashboardData>(
-      future: _fetchDashboardData(database),
+      future: _fetchDashboardData(
+        database,
+        authNotifier.canAccessAllSites,
+        authNotifier.currentUserSites,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -59,42 +70,47 @@ class DashboardScreen extends ConsumerWidget {
                         Icons.confirmation_number,
                         Colors.green,
                       ),
-                      _buildStatCard(
-                        context,
-                        'Today Sales',
-                        CurrencyFormatter.format(data.todaySales),
-                        Icons.attach_money,
-                        Colors.orange,
-                      ),
-                      _buildStatCard(
-                        context,
-                        'Total Revenue',
-                        CurrencyFormatter.format(data.totalRevenue),
-                        Icons.trending_up,
-                        Colors.purple,
-                      ),
+                      // Hide financial data from agents
+                      if (canSeeFinancials) ...[
+                        _buildStatCard(
+                          context,
+                          'Today Sales',
+                          CurrencyFormatter.format(data.todaySales),
+                          Icons.attach_money,
+                          Colors.orange,
+                        ),
+                        _buildStatCard(
+                          context,
+                          'Total Revenue',
+                          CurrencyFormatter.format(data.totalRevenue),
+                          Icons.trending_up,
+                          Colors.purple,
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 24),
 
-                  // Charts
-                  if (isMobile) ...[
-                    _buildSalesChart(context, data.last7DaysSales),
-                    const SizedBox(height: 16),
-                    _buildVoucherChart(context, data.voucherStats),
-                  ] else
-                    Row(
-                      children: [
-                        Expanded(
-                            child:
-                                _buildSalesChart(context, data.last7DaysSales)),
-                        const SizedBox(width: 16),
-                        Expanded(
-                            child:
-                                _buildVoucherChart(context, data.voucherStats)),
-                      ],
-                    ),
-                  const SizedBox(height: 24),
+                  // Charts - Hide from agents
+                  if (canSeeFinancials) ...[
+                    if (isMobile) ...[
+                      _buildSalesChart(context, data.last7DaysSales),
+                      const SizedBox(height: 16),
+                      _buildVoucherChart(context, data.voucherStats),
+                    ] else
+                      Row(
+                        children: [
+                          Expanded(
+                              child: _buildSalesChart(
+                                  context, data.last7DaysSales)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                              child: _buildVoucherChart(
+                                  context, data.voucherStats)),
+                        ],
+                      ),
+                    const SizedBox(height: 24),
+                  ],
 
                   // Recent Activities
                   _buildRecentActivities(context, data.recentSales),
@@ -107,36 +123,78 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Future<DashboardData> _fetchDashboardData(AppDatabase database) async {
+  Future<DashboardData> _fetchDashboardData(
+    AppDatabase database,
+    bool canAccessAllSites,
+    List<int> userSites,
+  ) async {
+    // Site filter for queries
+    Expression<bool>? siteFilter;
+    if (!canAccessAllSites && userSites.isNotEmpty) {
+      siteFilter = database.clients.siteId.isIn(userSites);
+    }
+
     // Total clients
-    final totalClients = await (database.selectOnly(database.clients)
-          ..addColumns([database.clients.id.count()]))
+    final clientsQuery = database.selectOnly(database.clients)
+      ..addColumns([database.clients.id.count()]);
+    if (siteFilter != null) {
+      clientsQuery.where(siteFilter);
+    }
+    final totalClients = await clientsQuery
         .map((row) => row.read(database.clients.id.count()) ?? 0)
         .getSingle();
 
-    // Active vouchers
-    final activeVouchers = await (database.selectOnly(database.vouchers)
-          ..addColumns([database.vouchers.id.count()])
-          ..where(database.vouchers.status.equals('ACTIVE')))
+    // Active vouchers - filter by client's site
+    final vouchersJoin = database.selectOnly(database.vouchers).join([
+      drift.innerJoin(
+        database.clients,
+        database.clients.id.equalsExp(database.vouchers.clientId),
+      ),
+    ]);
+    vouchersJoin.addColumns([database.vouchers.id.count()]);
+    vouchersJoin.where(database.vouchers.status.equals('ACTIVE'));
+    if (siteFilter != null) {
+      vouchersJoin.where(siteFilter);
+    }
+    final activeVouchers = await vouchersJoin
         .map((row) => row.read(database.vouchers.id.count()) ?? 0)
         .getSingle();
 
-    // Today's sales
+    // Today's sales - filter by client's site
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
-    final todaySalesAmount = await (database.selectOnly(database.sales)
-          ..addColumns([database.sales.amount.sum()])
-          ..where(database.sales.saleDate.isBiggerOrEqualValue(startOfDay)))
+    final todaySalesJoin = database.selectOnly(database.sales).join([
+      drift.innerJoin(
+        database.clients,
+        database.clients.id.equalsExp(database.sales.clientId),
+      ),
+    ]);
+    todaySalesJoin.addColumns([database.sales.amount.sum()]);
+    todaySalesJoin
+        .where(database.sales.saleDate.isBiggerOrEqualValue(startOfDay));
+    if (siteFilter != null) {
+      todaySalesJoin.where(siteFilter);
+    }
+    final todaySalesAmount = await todaySalesJoin
         .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
         .getSingle();
 
-    // Total revenue
-    final totalRevenue = await (database.selectOnly(database.sales)
-          ..addColumns([database.sales.amount.sum()]))
+    // Total revenue - filter by client's site
+    final revenueJoin = database.selectOnly(database.sales).join([
+      drift.innerJoin(
+        database.clients,
+        database.clients.id.equalsExp(database.sales.clientId),
+      ),
+    ]);
+    revenueJoin.addColumns([database.sales.amount.sum()]);
+    if (siteFilter != null) {
+      revenueJoin.where(siteFilter);
+    }
+    final totalRevenue = await revenueJoin
         .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
         .getSingle();
 
-    // Last 7 days sales
+    // Last 7 days sales - filter by client's site
     final last7Days = <DateTime>[];
     for (int i = 6; i >= 0; i--) {
       last7Days.add(DateTime(today.year, today.month, today.day - i));
@@ -145,44 +203,63 @@ class DashboardScreen extends ConsumerWidget {
     final dailySales = <double>[];
     for (final day in last7Days) {
       final nextDay = day.add(const Duration(days: 1));
-      final amount = await (database.selectOnly(database.sales)
-            ..addColumns([database.sales.amount.sum()])
-            ..where(database.sales.saleDate.isBiggerOrEqualValue(day) &
-                database.sales.saleDate.isSmallerThanValue(nextDay)))
+      final dayJoin = database.selectOnly(database.sales).join([
+        drift.innerJoin(
+          database.clients,
+          database.clients.id.equalsExp(database.sales.clientId),
+        ),
+      ]);
+      dayJoin.addColumns([database.sales.amount.sum()]);
+      dayJoin.where(database.sales.saleDate.isBiggerOrEqualValue(day) &
+          database.sales.saleDate.isSmallerThanValue(nextDay));
+      if (siteFilter != null) {
+        dayJoin.where(siteFilter);
+      }
+      final amount = await dayJoin
           .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
           .getSingle();
       dailySales.add(amount);
     }
 
-    // Voucher stats
+    // Voucher stats - filter by client's site
+    Future<int> voucherStatusQuery(String status) async {
+      final voucherJoin = database.selectOnly(database.vouchers).join([
+        drift.innerJoin(
+          database.clients,
+          database.clients.id.equalsExp(database.vouchers.clientId),
+        ),
+      ]);
+      voucherJoin.addColumns([database.vouchers.id.count()]);
+      voucherJoin.where(database.vouchers.status.equals(status));
+      if (siteFilter != null) {
+        voucherJoin.where(siteFilter);
+      }
+      return await voucherJoin
+          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
+          .getSingle();
+    }
+
     final voucherCounts = await Future.wait([
-      (database.selectOnly(database.vouchers)
-            ..addColumns([database.vouchers.id.count()])
-            ..where(database.vouchers.status.equals('ACTIVE')))
-          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-          .getSingle(),
-      (database.selectOnly(database.vouchers)
-            ..addColumns([database.vouchers.id.count()])
-            ..where(database.vouchers.status.equals('SOLD')))
-          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-          .getSingle(),
-      (database.selectOnly(database.vouchers)
-            ..addColumns([database.vouchers.id.count()])
-            ..where(database.vouchers.status.equals('EXPIRED')))
-          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-          .getSingle(),
-      (database.selectOnly(database.vouchers)
-            ..addColumns([database.vouchers.id.count()])
-            ..where(database.vouchers.status.equals('UNUSED')))
-          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-          .getSingle(),
+      voucherStatusQuery('ACTIVE'),
+      voucherStatusQuery('SOLD'),
+      voucherStatusQuery('EXPIRED'),
+      voucherStatusQuery('UNUSED'),
     ]);
 
-    // Recent sales
-    final recentSales = await (database.select(database.sales)
-          ..orderBy([(t) => drift.OrderingTerm.desc(t.saleDate)])
-          ..limit(5))
-        .get();
+    // Recent sales - filter by client's site
+    final recentSalesJoin = database.select(database.sales).join([
+      drift.innerJoin(
+        database.clients,
+        database.clients.id.equalsExp(database.sales.clientId),
+      ),
+    ]);
+    recentSalesJoin.orderBy([drift.OrderingTerm.desc(database.sales.saleDate)]);
+    recentSalesJoin.limit(5);
+    if (siteFilter != null) {
+      recentSalesJoin.where(siteFilter);
+    }
+    final recentSales =
+        await recentSalesJoin.map((row) => row.readTable(database.sales)).get();
 
     return DashboardData(
       totalClients: totalClients,
