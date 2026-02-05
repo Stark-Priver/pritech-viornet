@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../database/database.dart';
 import '../rbac/permissions.dart';
+import '../providers/providers.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -20,6 +21,8 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
+  bool _isSyncing = false;
+
   List<NavigationItem> _getFilteredNavigationItems() {
     final authState = ref.watch(authProvider);
     final userRoles = authState.userRoles;
@@ -77,6 +80,88 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
   }
 
+  Future<void> _handleSyncToCloud() async {
+    if (_isSyncing) return;
+
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      final driveService = ref.read(googleDriveServiceProvider);
+
+      // Check if user is signed in
+      final currentUser = driveService.getCurrentUser();
+      if (currentUser == null) {
+        // Sign in first
+        final signInSuccess = await driveService.signIn();
+        if (!signInSuccess) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to sign in to Google Drive'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+
+      // Upload database
+      final uploadSuccess = await driveService.uploadDatabase();
+
+      if (uploadSuccess) {
+        final lastSync = await driveService.getLastSyncTime();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Data synced to cloud successfully${lastSync != null ? ' at ${_formatTime(lastSync)}' : ''}',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to sync data to cloud'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error syncing to cloud: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+  }
+
+  String _formatTime(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+
+    if (difference.inMinutes < 1) {
+      return 'just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hrs ago';
+    } else {
+      return '${difference.inDays} days ago';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -107,13 +192,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         actions: [
           // Sync Button
           IconButton(
-            icon: const Icon(Icons.sync),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Sync feature coming soon')),
-              );
-            },
-            tooltip: 'Sync Data',
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.cloud_upload),
+            onPressed: _isSyncing ? null : _handleSyncToCloud,
+            tooltip: 'Sync to Cloud',
           ),
           // Notifications
           IconButton(

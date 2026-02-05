@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_service.dart';
+import '../services/google_drive_service.dart';
 import '../../features/clients/repository/client_repository.dart';
 import '../../features/vouchers/repository/voucher_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
@@ -22,6 +23,10 @@ final secureStorageProvider = Provider<SecureStorageService>((ref) {
 
 final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
+});
+
+final googleDriveServiceProvider = Provider<GoogleDriveService>((ref) {
+  return GoogleDriveService();
 });
 
 // Repository Providers

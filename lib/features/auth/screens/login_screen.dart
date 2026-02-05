@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/providers/providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +33,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (success && mounted) {
         context.go('/');
       }
+    }
+  }
+
+  Future<void> _handleSyncFromCloud() async {
+    try {
+      final driveService = ref.read(googleDriveServiceProvider);
+
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Syncing from cloud...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Sign in to Google
+      final signInSuccess = await driveService.signIn();
+      if (!signInSuccess) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to sign in to Google Drive'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Download database
+      final downloadSuccess = await driveService.downloadDatabase();
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      if (downloadSuccess) {
+        // Show success dialog with restart prompt
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green),
+                SizedBox(width: 8),
+                Text('Sync Successful'),
+              ],
+            ),
+            content: const Text(
+              'Database has been synced from cloud. The app needs to restart to load the new data.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // Close the app (user needs to restart manually)
+                  Navigator.pop(context);
+                  // In a real app, you might want to use a plugin like restart_app
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please restart the app to continue'),
+                      duration: Duration(seconds: 5),
+                    ),
+                  );
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No backup found in Google Drive or sync failed'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      // Close loading dialog if it's open
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error syncing from cloud: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -142,6 +244,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
                     ),
+
+                  // Sync from Cloud Button
+                  OutlinedButton.icon(
+                    onPressed:
+                        authState.isLoading ? null : _handleSyncFromCloud,
+                    icon: const Icon(Icons.cloud_download),
+                    label: const Text('Sync from Cloud'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // Login Button
                   SizedBox(

@@ -8,12 +8,16 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/api_service.dart';
 import 'core/database/database.dart';
+import 'core/services/google_drive_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize API Service
   ApiService().initialize();
+
+  // Initialize Google Drive Service
+  await GoogleDriveService().initialize();
 
   // Initialize database with default admin user
   await _initializeDatabase();
