@@ -80,6 +80,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ExpensesScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Add Expense'),
+      ),
     );
   }
 

@@ -15,6 +15,7 @@ class VouchersScreen extends ConsumerStatefulWidget {
 class _VouchersScreenState extends ConsumerState<VouchersScreen> {
   String _statusFilter = 'All';
   String _searchQuery = '';
+  int _rebuildKey = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,9 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
                 MaterialPageRoute(
                   builder: (context) => const AddVoucherScreen(),
                 ),
-              ).then((_) => setState(() {}));
+              ).then((_) => setState(() {
+                    _rebuildKey++;
+                  }));
             },
           ),
         ],
@@ -70,6 +73,7 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
           const SizedBox(height: 16),
           Expanded(
             child: FutureBuilder<List<Voucher>>(
+              key: ValueKey(_rebuildKey),
               future: _getFilteredVouchers(database),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -92,7 +96,9 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    setState(() {});
+                    setState(() {
+                      _rebuildKey++;
+                    });
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
@@ -121,6 +127,7 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
         onSelected: (selected) {
           setState(() {
             _statusFilter = label;
+            _rebuildKey++;
           });
         },
       ),

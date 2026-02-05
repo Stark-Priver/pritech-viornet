@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -17,17 +18,25 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   final _amountController = TextEditingController();
   final _commissionController = TextEditingController();
   final _searchController = TextEditingController();
+  final _clientNameController = TextEditingController();
+  final _clientPhoneController = TextEditingController();
+  final _clientEmailController = TextEditingController();
 
   Client? _selectedClient;
+  Site? _selectedSite;
   String _paymentMethod = 'CASH';
   String _saleType = 'VOUCHER';
   bool _isLoading = false;
+  bool _isWalkIn = false;
+  bool _showNewClientForm = false;
   List<Client> _clients = [];
+  List<Site> _sites = [];
 
   @override
   void initState() {
     super.initState();
     _loadClients();
+    _loadSites();
   }
 
   @override
@@ -35,6 +44,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     _amountController.dispose();
     _commissionController.dispose();
     _searchController.dispose();
+    _clientNameController.dispose();
+    _clientPhoneController.dispose();
+    _clientEmailController.dispose();
     super.dispose();
   }
 
@@ -48,13 +60,98 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     });
   }
 
+  Future<void> _loadSites() async {
+    final database = ref.read(databaseProvider);
+    final sites = await (database.select(database.sites)
+          ..where((tbl) => tbl.isActive.equals(true)))
+        .get();
+    setState(() {
+      _sites = sites;
+      if (_sites.isNotEmpty && _selectedSite == null) {
+        _selectedSite = _sites.first;
+      }
+    });
+  }
+
   Future<void> _createSale() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedClient == null) {
+
+    // Validate site selection
+    if (_selectedSite == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a client')),
+        const SnackBar(
+          content: Text('Please select a site'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
+    }
+
+    // Check if walk-in or client needs to be created
+    Client? clientForSale;
+
+    if (_isWalkIn) {
+      // Use walk-in customer (no client required)
+      clientForSale = null;
+    } else if (_showNewClientForm) {
+      // Validate new client form
+      if (_clientNameController.text.isEmpty ||
+          _clientPhoneController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter client name and phone number'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Create new client
+      final database = ref.read(databaseProvider);
+      try {
+        final clientId = await database.into(database.clients).insert(
+              ClientsCompanion.insert(
+                name: _clientNameController.text,
+                phone: _clientPhoneController.text,
+                siteId: drift.Value(_selectedSite!.id),
+                registrationDate: DateTime.now(),
+                email: drift.Value(_clientEmailController.text.isEmpty
+                    ? null
+                    : _clientEmailController.text),
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+
+        // Get the newly created client
+        clientForSale = await (database.select(database.clients)
+              ..where((tbl) => tbl.id.equals(clientId)))
+            .getSingle();
+
+        // Reload clients list
+        await _loadClients();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error creating client: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    } else if (_selectedClient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Please select a client, add new client, or choose walk-in'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    } else {
+      clientForSale = _selectedClient;
     }
 
     setState(() {
@@ -69,27 +166,60 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       final users = await database.select(database.users).get();
       final currentUser = users.first;
 
-      // Use makeSale helper which generates receipt number
-      await repository.makeSale(
-        voucherId:
-            1, // Note: Using default voucher, implement voucher selection if needed
-        agentId: currentUser.id,
-        clientId: _selectedClient!.id,
-        amount: double.parse(_amountController.text),
-        paymentMethod: _paymentMethod,
-        commission: _commissionController.text.isEmpty
-            ? 0
-            : double.parse(_commissionController.text),
-      );
+      if (_isWalkIn) {
+        // Create sale without client (walk-in)
+        final receiptNo = 'WI-${DateTime.now().millisecondsSinceEpoch}';
+        await database.into(database.sales).insert(
+              SalesCompanion.insert(
+                receiptNumber: receiptNo,
+                voucherId: 1, // Default voucher
+                agentId: currentUser.id,
+                siteId: drift.Value(_selectedSite!.id),
+                clientId: drift.Value(null), // Walk-in customer
+                amount: double.parse(_amountController.text),
+                paymentMethod: _paymentMethod,
+                commission: drift.Value(_commissionController.text.isEmpty
+                    ? 0
+                    : double.parse(_commissionController.text)),
+                saleDate: DateTime.now(),
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+      } else {
+        // Use makeSale helper which generates receipt number
+        await repository.makeSale(
+          voucherId: 1,
+          agentId: currentUser.id,
+          clientId: clientForSale!.id,
+          siteId: _selectedSite!.id,
+          amount: double.parse(_amountController.text),
+          paymentMethod: _paymentMethod,
+          commission: _commissionController.text.isEmpty
+              ? 0
+              : double.parse(_commissionController.text),
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sale recorded successfully!'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(_showNewClientForm
+                    ? 'Sale recorded and client added successfully!'
+                    : 'Sale recorded successfully!'),
+              ],
+            ),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
         _resetForm();
+        // Navigate back to sales list
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
@@ -115,8 +245,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       _amountController.clear();
       _commissionController.clear();
       _searchController.clear();
+      _clientNameController.clear();
+      _clientPhoneController.clear();
+      _clientEmailController.clear();
       _paymentMethod = 'CASH';
       _saleType = 'VOUCHER';
+      _isWalkIn = false;
+      _showNewClientForm = false;
     });
   }
 
@@ -134,53 +269,212 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Select Client',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Search client',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (value) => setState(() {}),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Customer Information',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            FilterChip(
+                              label: const Text('Walk-in'),
+                              selected: _isWalkIn,
+                              onSelected: (selected) {
+                                setState(() {
+                                  _isWalkIn = selected;
+                                  if (selected) {
+                                    _selectedClient = null;
+                                    _showNewClientForm = false;
+                                  }
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            if (!_isWalkIn)
+                              FilledButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _showNewClientForm = !_showNewClientForm;
+                                    if (_showNewClientForm) {
+                                      _selectedClient = null;
+                                    }
+                                  });
+                                },
+                                icon: Icon(_showNewClientForm
+                                    ? Icons.close
+                                    : Icons.person_add),
+                                label: Text(_showNewClientForm
+                                    ? 'Cancel'
+                                    : 'New Client'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      _showNewClientForm ? Colors.red : null,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    if (_selectedClient != null)
-                      ListTile(
-                        leading: CircleAvatar(
-                            child:
-                                Text(_selectedClient!.name[0].toUpperCase())),
-                        title: Text(_selectedClient!.name),
-                        subtitle: Text(_selectedClient!.phone),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () =>
-                              setState(() => _selectedClient = null),
+                    const SizedBox(height: 16),
+                    if (_isWalkIn)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Sale will be recorded without customer details',
+                                style: TextStyle(color: Colors.blue),
+                              ),
+                            ),
+                          ],
                         ),
                       )
+                    else if (_showNewClientForm)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Client Name *',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _clientNameController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter client name',
+                              prefixIcon: const Icon(Icons.person),
+                              border: const OutlineInputBorder(),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Phone Number *',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _clientPhoneController,
+                            decoration: InputDecoration(
+                              hintText: '+255 XXX XXX XXX',
+                              prefixIcon: const Icon(Icons.phone),
+                              border: const OutlineInputBorder(),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Email (Optional)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _clientEmailController,
+                            decoration: InputDecoration(
+                              hintText: 'client@example.com',
+                              prefixIcon: const Icon(Icons.email),
+                              border: const OutlineInputBorder(),
+                              filled: true,
+                              fillColor: Colors.grey[50],
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                        ],
+                      )
                     else
-                      Container(
-                        constraints: const BoxConstraints(maxHeight: 200),
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: _getFilteredClients().length,
-                          itemBuilder: (context, index) {
-                            final client = _getFilteredClients()[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                  child: Text(client.name[0].toUpperCase())),
-                              title: Text(client.name),
-                              subtitle: Text(client.phone),
-                              onTap: () => setState(() {
-                                _selectedClient = client;
-                                _searchController.clear();
-                              }),
-                            );
-                          },
-                        ),
+                      Column(
+                        children: [
+                          TextField(
+                            controller: _searchController,
+                            decoration: const InputDecoration(
+                              hintText: 'Search existing client',
+                              prefixIcon: Icon(Icons.search),
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (value) => setState(() {}),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_selectedClient != null)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.green),
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: Colors.green,
+                                  child: Text(
+                                    _selectedClient!.name[0].toUpperCase(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                title: Text(_selectedClient!.name),
+                                subtitle: Text(_selectedClient!.phone),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () =>
+                                      setState(() => _selectedClient = null),
+                                ),
+                              ),
+                            )
+                          else if (_searchController.text.isNotEmpty)
+                            Container(
+                              constraints: const BoxConstraints(maxHeight: 200),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _getFilteredClients().isEmpty
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Text('No clients found'),
+                                    )
+                                  : ListView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: _getFilteredClients().length,
+                                      itemBuilder: (context, index) {
+                                        final client =
+                                            _getFilteredClients()[index];
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                              child: Text(client.name[0]
+                                                  .toUpperCase())),
+                                          title: Text(client.name),
+                                          subtitle: Text(client.phone),
+                                          onTap: () => setState(() {
+                                            _selectedClient = client;
+                                            _searchController.clear();
+                                          }),
+                                        );
+                                      },
+                                    ),
+                            ),
+                        ],
                       ),
                   ],
                 ),
@@ -196,6 +490,29 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     const Text('Sale Details',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<Site>(
+                      initialValue: _selectedSite,
+                      decoration: const InputDecoration(
+                        labelText: 'Site *',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.location_on),
+                      ),
+                      items: _sites.map((site) {
+                        return DropdownMenuItem<Site>(
+                          value: site,
+                          child: Text(site.name),
+                        );
+                      }).toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedSite = value),
+                      validator: (value) {
+                        if (value == null) {
+                          return 'Please select a site';
+                        }
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: _saleType,

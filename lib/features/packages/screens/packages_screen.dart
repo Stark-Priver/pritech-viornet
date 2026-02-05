@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' as drift;
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/database/database.dart';
+import '../../../core/providers/providers.dart';
 
 class PackagesScreen extends ConsumerStatefulWidget {
   const PackagesScreen({super.key});
@@ -10,114 +13,165 @@ class PackagesScreen extends ConsumerStatefulWidget {
 }
 
 class _PackagesScreenState extends ConsumerState<PackagesScreen> {
-  final List<Map<String, dynamic>> _packages = [];
+  int _rebuildKey = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadPackages();
+    _initializeDefaultPackages();
   }
 
-  void _loadPackages() {
-    // Load predefined packages from local storage or create defaults
-    if (_packages.isEmpty) {
-      _packages.addAll([
-        {
-          'name': '1 Week',
-          'duration': 7,
-          'price': 5000.0,
-          'description': 'Access for 7 days',
-          'isActive': true,
-        },
-        {
-          'name': '2 Weeks',
-          'duration': 14,
-          'price': 9000.0,
-          'description': 'Access for 14 days',
-          'isActive': true,
-        },
-        {
-          'name': '1 Month',
-          'duration': 30,
-          'price': 15000.0,
-          'description': 'Access for 30 days',
-          'isActive': true,
-        },
-        {
-          'name': '3 Months',
-          'duration': 90,
-          'price': 40000.0,
-          'description': 'Access for 3 months',
-          'isActive': true,
-        },
-      ]);
+  Future<void> _initializeDefaultPackages() async {
+    final database = ref.read(databaseProvider);
+    final existingPackages = await database.select(database.packages).get();
+
+    // Only create defaults if no packages exist
+    if (existingPackages.isEmpty) {
+      final defaultPackages = [
+        PackagesCompanion.insert(
+          name: '1 Week',
+          duration: 7,
+          price: 5000.0,
+          description: drift.Value('Access for 7 days'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        PackagesCompanion.insert(
+          name: '2 Weeks',
+          duration: 14,
+          price: 9000.0,
+          description: drift.Value('Access for 14 days'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        PackagesCompanion.insert(
+          name: '1 Month',
+          duration: 30,
+          price: 15000.0,
+          description: drift.Value('Access for 30 days'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        PackagesCompanion.insert(
+          name: '3 Months',
+          duration: 90,
+          price: 40000.0,
+          description: drift.Value('Access for 3 months'),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      ];
+
+      for (final package in defaultPackages) {
+        await database.into(database.packages).insert(package);
+      }
+
+      if (mounted) {
+        setState(() {
+          _rebuildKey++;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final database = ref.watch(databaseProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Package Management'),
       ),
-      body: _packages.isEmpty
-          ? const Center(child: Text('No packages found'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _packages.length,
-              itemBuilder: (context, index) {
-                final package = _packages[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor:
-                          package['isActive'] ? Colors.green : Colors.grey,
-                      child: const Icon(
-                        Icons.wifi,
-                        color: Colors.white,
-                      ),
+      body: FutureBuilder<List<Package>>(
+        key: ValueKey(_rebuildKey),
+        future: database.select(database.packages).get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          final packages = snapshot.data ?? [];
+
+          if (packages.isEmpty) {
+            return const Center(child: Text('No packages found'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: packages.length,
+            itemBuilder: (context, index) {
+              final package = packages[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        package.isActive ? Colors.green : Colors.grey,
+                    child: const Icon(
+                      Icons.wifi,
+                      color: Colors.white,
                     ),
-                    title: Text(
-                      package['name'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Duration: ${package['duration']} days'),
-                        Text(package['description'] ?? ''),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          CurrencyFormatter.format(package['price']),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.green,
-                          ),
-                        ),
-                        Text(
-                          package['isActive'] ? 'Active' : 'Inactive',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: package['isActive']
-                                ? Colors.green
-                                : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    onTap: () => _editPackage(index, package),
-                    isThreeLine: true,
                   ),
-                );
-              },
-            ),
+                  title: Text(
+                    package.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Duration: ${package.duration} days'),
+                      if (package.description != null)
+                        Text(package.description!),
+                    ],
+                  ),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        CurrencyFormatter.format(package.price),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: package.isActive
+                              ? Colors.green[100]
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          package.isActive ? 'Active' : 'Inactive',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: package.isActive
+                                ? Colors.green[900]
+                                : Colors.grey[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _editPackage(package),
+                ),
+              );
+            },
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _addPackage(),
         icon: const Icon(Icons.add),
@@ -252,7 +306,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               if (nameController.text.isEmpty ||
                   durationController.text.isEmpty ||
                   priceController.text.isEmpty) {
@@ -267,15 +321,26 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
               if (nameController.text.isNotEmpty &&
                   durationController.text.isNotEmpty &&
                   priceController.text.isNotEmpty) {
+                final database = ref.read(databaseProvider);
+                await database.into(database.packages).insert(
+                  PackagesCompanion.insert(
+                    name: nameController.text.trim(),
+                    duration: int.parse(durationController.text.trim()),
+                    price: double.parse(priceController.text.trim()),
+                    description: drift.Value(descriptionController.text.trim().isEmpty
+                        ? null
+                        : descriptionController.text.trim()),
+                    isActive: const drift.Value(true),
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ),
+                );
+                
+                if (!mounted) return;
                 setState(() {
-                  _packages.add({
-                    'name': nameController.text.trim(),
-                    'duration': int.parse(durationController.text.trim()),
-                    'price': double.parse(priceController.text.trim()),
-                    'description': descriptionController.text.trim(),
-                    'isActive': true,
-                  });
+                  _rebuildKey++;
                 });
+                if (!context.mounted) return;
                 Navigator.pop(dialogContext);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -298,15 +363,15 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
     );
   }
 
-  Future<void> _editPackage(int index, Map<String, dynamic> package) async {
-    final nameController = TextEditingController(text: package['name']);
+  Future<void> _editPackage(Package package) async {
+    final nameController = TextEditingController(text: package.name);
     final durationController =
-        TextEditingController(text: package['duration'].toString());
+        TextEditingController(text: package.duration.toString());
     final priceController =
-        TextEditingController(text: package['price'].toString());
+        TextEditingController(text: package.price.toString());
     final descriptionController =
-        TextEditingController(text: package['description'] ?? '');
-    bool isActive = package['isActive'];
+        TextEditingController(text: package.description ?? '');
+    bool isActive = package.isActive;
 
     if (!mounted) return;
     await showDialog(
@@ -470,17 +535,25 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                         child: const Text('Cancel'),
                       ),
                       FilledButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          final database = ref.read(databaseProvider);
+                          await (database.delete(database.packages)
+                                ..where((tbl) => tbl.id.equals(package.id)))
+                              .go();
+
+                          if (!mounted) return;
                           setState(() {
-                            _packages.removeAt(index);
+                            _rebuildKey++;
                           });
+                          if (!context.mounted) return;
                           Navigator.pop(ctx);
                           Navigator.pop(dialogContext);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.delete, color: Colors.white),
+                                  const Icon(Icons.delete,
+                                      color: Colors.white),
                                   const SizedBox(width: 12),
                                   const Text('Package deleted successfully'),
                                 ],
@@ -506,7 +579,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: () {
+              onPressed: () async {
                 if (nameController.text.isEmpty ||
                     durationController.text.isEmpty ||
                     priceController.text.isEmpty) {
@@ -521,15 +594,30 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                 if (nameController.text.isNotEmpty &&
                     durationController.text.isNotEmpty &&
                     priceController.text.isNotEmpty) {
+                  final database = ref.read(databaseProvider);
+                  await (database.update(database.packages)
+                        ..where((tbl) => tbl.id.equals(package.id)))
+                      .write(
+                    PackagesCompanion(
+                      name: drift.Value(nameController.text.trim()),
+                      duration: drift.Value(
+                          int.parse(durationController.text.trim())),
+                      price: drift.Value(
+                          double.parse(priceController.text.trim())),
+                      description: drift.Value(
+                          descriptionController.text.trim().isEmpty
+                              ? null
+                              : descriptionController.text.trim()),
+                      isActive: drift.Value(isActive),
+                      updatedAt: drift.Value(DateTime.now()),
+                    ),
+                  );
+
+                  if (!mounted) return;
                   setState(() {
-                    _packages[index] = {
-                      'name': nameController.text.trim(),
-                      'duration': int.parse(durationController.text.trim()),
-                      'price': double.parse(priceController.text.trim()),
-                      'description': descriptionController.text.trim(),
-                      'isActive': isActive,
-                    };
+                    _rebuildKey++;
                   });
+                  if (!context.mounted) return;
                   Navigator.pop(dialogContext);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -539,9 +627,9 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                           const SizedBox(width: 12),
                           const Text('Package updated successfully'),
                         ],
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
+                        ),
+                        backgroundColor: Colors.green,
+                        ),
                   );
                 }
               },
@@ -553,3 +641,4 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
     );
   }
 }
+

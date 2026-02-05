@@ -15,6 +15,7 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _categoryFilter = 'All';
+  int _rebuildKey = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +49,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
           Expanded(
             child: FutureBuilder<List<Expense>>(
+              key: ValueKey(_rebuildKey),
               future: _getFilteredExpenses(database),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -119,6 +121,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddExpenseDialog(database),
+        icon: const Icon(Icons.add),
+        label: const Text('Add Expense'),
+      ),
     );
   }
 
@@ -128,7 +135,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       child: FilterChip(
         label: Text(label),
         selected: _categoryFilter == label,
-        onSelected: (selected) => setState(() => _categoryFilter = label),
+        onSelected: (selected) => setState(() {
+          _categoryFilter = label;
+          _rebuildKey++;
+        }),
       ),
     );
   }
@@ -214,7 +224,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     String category = 'MAINTENANCE';
     DateTime expenseDate = DateTime.now();
 
-    await showDialog(
+    final result = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
@@ -432,14 +442,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       ),
                     );
 
-                nav.pop();
+                nav.pop(true);
                 messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Expense added successfully'),
                     backgroundColor: Colors.green,
                   ),
                 );
-                this.setState(() {});
               },
               child: const Text('Add Expense'),
             ),
@@ -447,5 +456,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         ),
       ),
     );
+
+    // Update UI after dialog closes
+    if (result == true && mounted) {
+      setState(() {
+        _rebuildKey++;
+      });
+    }
   }
 }

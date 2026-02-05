@@ -15,6 +15,7 @@ class ClientsScreen extends ConsumerStatefulWidget {
 class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   String _searchQuery = '';
   String _statusFilter = 'All';
+  int _rebuildKey = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +62,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           // Clients List
           Expanded(
             child: FutureBuilder<List<Client>>(
+              key: ValueKey(_rebuildKey),
               future: _getFilteredClients(database),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -98,7 +100,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    setState(() {});
+                    setState(() {
+                      _rebuildKey++;
+                    });
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
@@ -123,7 +127,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
             ),
           );
           if (result == true) {
-            setState(() {});
+            setState(() {
+              _rebuildKey++;
+            });
           }
         },
         icon: const Icon(Icons.add),
@@ -142,6 +148,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         onSelected: (selected) {
           setState(() {
             _statusFilter = label;
+            _rebuildKey++;
           });
         },
       ),

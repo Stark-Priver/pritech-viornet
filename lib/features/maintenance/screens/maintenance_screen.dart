@@ -17,6 +17,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
   String _statusFilter = 'ALL';
   String _priorityFilter = 'ALL';
   int? _selectedSiteId;
+  int _rebuildKey = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +53,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
           _buildFilterBar(),
           Expanded(
             child: FutureBuilder<List<MaintenanceData>>(
+              key: ValueKey(_rebuildKey),
               future: _getFilteredMaintenance(repository),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -556,7 +558,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                   ),
                 );
                 if (mounted) {
-                  setState(() {});
+                  setState(() {
+                    _rebuildKey++;
+                  });
                 }
               },
               child: const Text('Report'),
@@ -767,7 +771,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 messenger.showSnackBar(
                   const SnackBar(content: Text('Status updated successfully')),
                 );
-                setState(() {});
+                setState(() {
+                  _rebuildKey++;
+                });
               },
               child: const Text('Update'),
             ),
@@ -846,7 +852,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                   content: Text('Maintenance completed successfully'),
                 ),
               );
-              setState(() {});
+              setState(() {
+                _rebuildKey++;
+              });
             },
             child: const Text('Complete'),
           ),

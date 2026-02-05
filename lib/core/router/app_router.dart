@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../layout/main_layout.dart';
+import '../screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
@@ -12,14 +13,23 @@ import '../../features/sites/screens/sites_screen.dart';
 import '../../features/assets/screens/assets_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
 import '../../features/finance/screens/finance_screen.dart';
+import '../../features/finance/screens/expenses_screen.dart';
 import '../../features/sms/screens/sms_screen.dart';
 import '../../features/packages/screens/packages_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/users/screens/users_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     routes: [
+      // Splash Screen (no layout)
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+
       // Auth Routes (no layout)
       GoRoute(
         path: '/login',
@@ -97,6 +107,11 @@ class AppRouter {
             builder: (context, state) => const FinanceScreen(),
           ),
           GoRoute(
+            path: '/expenses',
+            name: 'expenses',
+            builder: (context, state) => const ExpensesScreen(),
+          ),
+          GoRoute(
             path: '/sms',
             name: 'sms',
             builder: (context, state) => const SmsScreen(),
@@ -105,6 +120,11 @@ class AppRouter {
             path: '/packages',
             name: 'packages',
             builder: (context, state) => const PackagesScreen(),
+          ),
+          GoRoute(
+            path: '/users',
+            name: 'users',
+            builder: (context, state) => const UsersScreen(),
           ),
           GoRoute(
             path: '/settings',
