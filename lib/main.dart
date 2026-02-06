@@ -8,16 +8,16 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/api_service.dart';
 import 'core/database/database.dart';
-import 'core/services/supabase_sync_service.dart';
+import 'core/services/supabase_postgres_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Supabase Cloud Sync (FREE cross-platform solution)
+  // Initialize Supabase PostgreSQL Sync (record-level sync, no auth)
   await SupabaseSyncService.initialize(
     supabaseUrl: 'https://bylovbbaatsigcfsdspn.supabase.co',
-    supabaseAnonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bG92YmJhYXRzaWdjZnNkc3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTk4NzUsImV4cCI6MjA4NTkzNTg3NX0.VA2guwu-xwM58syLzdEPFQbD0GwZ4u9_Ek-caVj5H2A',
+    supabaseServiceKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bG92YmJhYXRzaWdjZnNkc3BuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDM1OTg3NSwiZXhwIjoyMDg1OTM1ODc1fQ.FGkddKMLiXPQOjQRBCfY2BoG-wTByjfJ2oKnlxv-JZQ',
   );
 
   // Initialize API Service

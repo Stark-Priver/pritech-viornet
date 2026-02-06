@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_service.dart';
-import '../services/supabase_sync_service.dart';
+import '../services/supabase_postgres_sync_service.dart';
 import '../../features/clients/repository/client_repository.dart';
 import '../../features/vouchers/repository/voucher_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
@@ -26,7 +26,10 @@ final apiServiceProvider = Provider<ApiService>((ref) {
 });
 
 final supabaseSyncServiceProvider = Provider<SupabaseSyncService>((ref) {
-  return SupabaseSyncService();
+  final syncService = SupabaseSyncService();
+  final database = ref.watch(databaseProvider);
+  syncService.setDatabase(database);
+  return syncService;
 });
 
 // Repository Providers

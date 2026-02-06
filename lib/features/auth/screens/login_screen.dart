@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/providers/providers.dart';
-import '../widgets/supabase_auth_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -41,18 +40,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final supabaseService = ref.read(supabaseSyncServiceProvider);
 
-      // Check if user is signed in to Supabase
-      if (!supabaseService.isSignedIn) {
-        // Show auth dialog
-        final authenticated = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const SupabaseAuthDialog(isDownload: true),
-        );
-
-        if (authenticated != true) return;
-      }
-
       // Show loading dialog
       if (!mounted) return;
       showDialog(
@@ -67,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Downloading from cloud...'),
+                  Text('Syncing from cloud...'),
                 ],
               ),
             ),
@@ -75,14 +62,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
 
-      // Download database
-      final downloadSuccess = await supabaseService.downloadDatabase();
+      // Pull changes from cloud
+      final result = await supabaseService.pullFromCloud();
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      if (downloadSuccess) {
-        // Show success dialog with restart prompt
+      if (result.pulled > 0 || result.conflicts == 0) {
+        // Show success dialog
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -94,8 +81,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text('Sync Successful'),
               ],
             ),
-            content: const Text(
-              'Database synced from cloud. Please restart the app to load the data.',
+            content: Text(
+              'Pulled ${result.pulled} records from cloud.${result.conflicts > 0 ? ' ${result.conflicts} conflicts resolved.' : ''}',
             ),
             actions: [
               TextButton(

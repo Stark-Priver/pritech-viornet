@@ -140,9 +140,10 @@ class SupabaseSyncService {
         debugPrint('📁 Created backup bucket: $_bucketName');
       }
 
-      // Upload file (overwrites if exists)
-      final userId = currentUser!.id;
-      final filePath = '$userId/$_dbFileName';
+      // Upload file to SHARED team database path (overwrites if exists)
+      // All authenticated users sync the same database
+      final filePath =
+          _dbFileName; // Shared: viornet_local.db (not user-specific)
 
       await client.storage.from(_bucketName).uploadBinary(
             filePath,
@@ -152,6 +153,9 @@ class SupabaseSyncService {
               contentType: 'application/octet-stream',
             ),
           );
+
+      debugPrint(
+          '👥 Uploaded to SHARED team database (accessible by all users)');
 
       debugPrint('✅ Database uploaded to Supabase');
       return true;
@@ -171,8 +175,12 @@ class SupabaseSyncService {
 
       debugPrint('📥 Starting database download from Supabase...');
 
-      final userId = currentUser!.id;
-      final filePath = '$userId/$_dbFileName';
+      // Download from SHARED team database path
+      final filePath =
+          _dbFileName; // Shared: viornet_local.db (not user-specific)
+
+      debugPrint(
+          '👥 Downloading SHARED team database (synced across all users)');
 
       // Download the file
       final bytes = await client.storage.from(_bucketName).download(filePath);
@@ -214,9 +222,8 @@ class SupabaseSyncService {
     try {
       if (!isSignedIn) return false;
 
-      final userId = currentUser!.id;
-
-      final files = await client.storage.from(_bucketName).list(path: userId);
+      // Check for SHARED team database (no user-specific path)
+      final files = await client.storage.from(_bucketName).list();
 
       return files.any((file) => file.name == _dbFileName);
     } catch (e) {
@@ -230,9 +237,8 @@ class SupabaseSyncService {
     try {
       if (!isSignedIn) return null;
 
-      final userId = currentUser!.id;
-
-      final files = await client.storage.from(_bucketName).list(path: userId);
+      // Get SHARED team database info (no user-specific path)
+      final files = await client.storage.from(_bucketName).list();
 
       final dbFile = files.firstWhere(
         (file) => file.name == _dbFileName,

@@ -3,19 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/database.dart';
 import '../../../core/services/secure_storage_service.dart';
-import '../../../core/services/api_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/rbac/permissions.dart';
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AppDatabase _database;
   final SecureStorageService _storage;
-  final ApiService _apiService;
 
-  AuthNotifier(this._database, this._storage, this._apiService)
-      : super(AuthState.initial()) {
+  AuthNotifier(this._database, this._storage) : super(AuthState.initial()) {
     _checkAuthStatus();
   }
 
@@ -105,22 +103,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
             .saveUserRole(user.role); // Keep for backward compatibility
         await _storage.setLoggedIn(true);
 
-        // Try to get token from server if online
-        try {
-          final response = await _apiService.post(
-            '/auth/login',
-            data: {'identifier': emailOrPhone, 'password': password},
-          );
-
-          if (response.statusCode == 200) {
-            final token = response.data['access_token'];
-            final refreshToken = response.data['refresh_token'];
-            await _storage.saveAccessToken(token);
-            await _storage.saveRefreshToken(refreshToken);
-          }
-        } catch (e) {
-          // Ignore network errors, continue with offline mode
-        }
+        // Local authentication only - no external API calls needed
+        // Token management removed as we're using local SQLite auth
 
         state = AuthState.authenticated(user, userRoles, userSites);
         return true;
@@ -165,6 +149,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // Create user - use first role as primary for backward compatibility
       final userId = await _database.into(_database.users).insert(
             UsersCompanion.insert(
+              serverId: Value(
+                  const Uuid().v4()), // Generate UUID for cross-device sync
               name: name,
               email: email,
               phone: phone != null ? Value(phone) : const Value.absent(),
@@ -316,6 +302,5 @@ class AuthState {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final database = ref.watch(databaseProvider);
   final storage = ref.watch(secureStorageProvider);
-  final apiService = ref.watch(apiServiceProvider);
-  return AuthNotifier(database, storage, apiService);
+  return AuthNotifier(database, storage);
 });

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../../features/auth/widgets/supabase_auth_dialog.dart';
 import '../database/database.dart';
 import '../rbac/permissions.dart';
 import '../providers/providers.dart';
@@ -28,13 +27,31 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final authState = ref.watch(authProvider);
     final userRoles = authState.userRoles;
 
-    if (userRoles.isEmpty) return [];
+    // If no roles, provide minimum access (Dashboard and Settings)
+    if (userRoles.isEmpty) {
+      return [
+        NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
+        NavigationItem(
+            icon: Icons.settings, label: 'Settings', route: '/settings'),
+      ];
+    }
 
     final checker = PermissionChecker(userRoles);
 
-    return _allNavigationItems
+    final filteredItems = _allNavigationItems
         .where((item) => checker.canAccessRoute(item.route))
         .toList();
+
+    // Ensure minimum items even with roles
+    if (filteredItems.length < 2) {
+      return [
+        NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
+        NavigationItem(
+            icon: Icons.settings, label: 'Settings', route: '/settings'),
+      ];
+    }
+
+    return filteredItems;
   }
 
   final List<NavigationItem> _allNavigationItems = [
@@ -91,33 +108,39 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     try {
       final supabaseService = ref.read(supabaseSyncServiceProvider);
 
-      // Check if user is signed in
-      if (!supabaseService.isSignedIn) {
-        // Show auth dialog
-        final authenticated = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const SupabaseAuthDialog(isDownload: false),
-        );
+      // Show syncing dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Syncing with cloud...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
 
-        if (authenticated != true) {
-          setState(() {
-            _isSyncing = false;
-          });
-          return;
-        }
-      }
+      // Perform bidirectional sync
+      final result = await supabaseService.syncAll();
 
-      // Upload database
-      final uploadSuccess = await supabaseService.uploadDatabase();
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
 
-      if (uploadSuccess) {
-        final lastSync = await supabaseService.getLastSyncTime();
-        if (!mounted) return;
+      if (result.errors.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Data synced to cloud${lastSync != null ? ' at ${_formatTime(lastSync)}' : ''}',
+              'Sync complete: Pushed ${result.pushed}, Pulled ${result.pulled}${result.conflicts > 0 ? ', ${result.conflicts} conflicts resolved' : ''}',
             ),
             backgroundColor: Colors.green,
           ),
@@ -125,9 +148,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to sync to cloud'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content:
+                Text('Sync completed with errors: ${result.errors.join(', ')}'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -145,21 +169,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           _isSyncing = false;
         });
       }
-    }
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inMinutes < 1) {
-      return 'just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hrs ago';
-    } else {
-      return '${difference.inDays} days ago';
     }
   }
 
@@ -462,13 +471,28 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       BuildContext context, List<NavigationItem> items, bool isTablet) {
     // For mobile, show only primary items that user has access to
     final primaryRoutes = ['/', '/clients', '/pos', '/sales', '/settings'];
-    final primaryItems =
+    List<NavigationItem> primaryItems =
         items.where((item) => primaryRoutes.contains(item.route)).toList();
 
-    if (primaryItems.isEmpty) {
+    if (primaryItems.isEmpty && items.isNotEmpty) {
       // If no primary items available, show first 5 items user can access
       final availableItems = items.length > 5 ? items.sublist(0, 5) : items;
-      primaryItems.addAll(availableItems);
+      primaryItems = availableItems;
+    }
+
+    // BottomNavigationBar requires at least 2 items
+    if (primaryItems.length < 2) {
+      // Fallback: ensure minimum 2 items from all navigation or use defaults
+      if (items.length >= 2) {
+        primaryItems = items.take(2).toList();
+      } else {
+        // Use default minimum navigation items as fallback
+        primaryItems = [
+          NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
+          NavigationItem(
+              icon: Icons.settings, label: 'Settings', route: '/settings'),
+        ];
+      }
     }
 
     final currentIndex = primaryItems.indexWhere(

@@ -12,9 +12,10 @@
 **After (Supabase):**
 - ✅ **Works perfectly on Windows** (and all platforms!)
 - ✅ **Simple email/password** authentication
-- ✅ **Each user has own account** (no sharing)
+- ✅ **Shared team database** - all users sync same data
 - ✅ **Pure HTTP API** (no platform plugins)
 - ✅ **100% FREE** tier (1GB storage)
+- ✅ **Team collaboration** - User A uploads, User B downloads same data
 
 ---
 
@@ -117,11 +118,15 @@ User: "Sync from Cloud"
 
 ### After (Supabase):
 ```
-User: "Sync from Cloud"
-→ Simple dialog appears ✅
-→ Sign up with their own email
-→ Or sign in if they have account
-→ Data syncs instantly
+User A: "Sync to Cloud"
+→ Adds customer data
+→ Uploads to Supabase ✅
+→ Data available to entire team
+
+User B: "Sync from Cloud"
+→ Simple dialog to sign in ✅
+→ Downloads shared database
+→ Sees User A's customer data instantly!
 → Works on ALL devices!
 ```
 
@@ -135,6 +140,7 @@ Your app now uses **Supabase exclusively** for cloud sync:
 - ✅ One unified solution for all platforms
 - ✅ Smaller app size
 - ✅ No platform-specific issues
+- ✅ **Shared team database** - all users sync same data
 
 ---
 
@@ -200,38 +206,36 @@ final lastSync = await supabaseService.getLastSyncTime();
 |---------|--------------|----------|
 | **Authentication** | OAuth 2.0 | Email + Password |
 | **Storage** 
-
-| Feature | Supabase |
-|---------|----------|
-| **Authentication** | Email + Password (secure) |
-| **Storage** | Private bucket (isolated per user) |
+Shared team bucket (collaborative) |
+| **Encryption** | HTTPS (end-to-end) |
+| **Access Control** | Row Level Security (RLS) |
+| **Credentials** | Runtime only (no storage) |
+| **Team Sync** | ✅ All users access same data |
+| **Platform Support** | ✅ All platforms | per user) |
 | **Encryption** | HTTPS (end-to-end) |
 | **Access Control** | Row Level Security (RLS) |
 | **Credentials** | Runtime only (no storage) |
 | **Platform Support** | ✅ All platforms
 ### Supabase Service Architecture:
-```
-User Action (UI)
-    ↓
-Supabase Auth Dialog (if needed)
-    ↓
-SupabaseSyncService
-    ↓
-Supabase Cloud (REST API)
-    ↓
-Storage Bucket (viornet-backups)
-    ↓
+``` (Upload)              Supabase Cloud               User B (Download)
+    ↓                              ↓                            ↓
+Supabase Auth Dialog      [SHARED DATABASE]         Supabase Auth Dialog
+    ↓                        viornet_local.db               ↓
+SupabaseSyncService              ↓                   SupabaseSyncService
+    ↓                        Storage Bucket                  ↓
+Upload Changes  ---------> (viornet-backups) <--------- Download Changes
+                                  ↓
+                    Same data accessible to all users
 User's Database File (userId/viornet_local.db)
 ```
-
-### File Organization in Supabase:
+└── viornet_local.db  ← ONE shared database for entire team
 ```
-viornet-backups/
-├── user-uuid-1/
-│   └── viornet_local.db
-├── user-uuid-2/
-│   └── viornet_local.db
-└── user-uuid-3/
+
+**Team Collaboration Model:**
+- All team members sync the SAME database file
+- User A uploads → User B downloads same data
+- Perfect for collaborative work
+- ⚠️ Last upload overwrites (sync frequently to avoid conflicts)
     └── viornet_local.db
 ```
 
@@ -312,6 +316,8 @@ Each user has their own folder (UUID-based), completely isolated.
 ## 📞 Support
 
 See detailed guides:
+- **[SUPABASE_RLS_FIX.md](./SUPABASE_RLS_FIX.md)** - Fix 403 errors with correct RLS policies
+- **[TEAM_SYNC_WORKFLOW.md](./TEAM_SYNC_WORKFLOW.md)** - Best practices for team collaboration
 - **[SUPABASE_SYNC_SETUP.md](./SUPABASE_SYNC_SETUP.md)** - Complete setup guide
 - **Supabase Docs**: https://supabase.com/docs
 - **Service Code**: `lib/core/services/supabase_sync_service.dart`
@@ -325,10 +331,12 @@ You now have:
 - ✅ **Cross-platform** solution (Windows, Android, iOS, Web)
 - ✅ **User-friendly** authentication
 - ✅ **No plugin errors**
-- ✅ **Each user has own account**
+- ✅ **Team collaboration** - shared database for all users
 - ✅ **Production-ready** implementation
 
 **The Google Drive plugin issue is now completely solved!** 🚀
+
+⚠️ **Important**: Use the [TEAM_SYNC_WORKFLOW.md](./TEAM_SYNC_WORKFLOW.md) guide to avoid data conflicts when multiple users sync simultaneously.
 
 ---
 
