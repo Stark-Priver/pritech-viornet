@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/providers/providers.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +39,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleSyncFromCloud() async {
     try {
-      final driveService = ref.read(googleDriveServiceProvider);
+      final supabaseService = ref.read(supabaseSyncServiceProvider);
+
+      // Check if user is signed in to Supabase
+      if (!supabaseService.isSignedIn) {
+        // Show auth dialog
+        final authenticated = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const SupabaseAuthDialog(isDownload: true),
+        );
+
+        if (authenticated != true) return;
+      }
 
       // Show loading dialog
       if (!mounted) return;
@@ -54,7 +67,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('Syncing from cloud...'),
+                  Text('Downloading from cloud...'),
                 ],
               ),
             ),
@@ -62,22 +75,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
       );
 
-      // Sign in to Google
-      final signInSuccess = await driveService.signIn();
-      if (!signInSuccess) {
-        if (!mounted) return;
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to sign in to Google Drive'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
       // Download database
-      final downloadSuccess = await driveService.downloadDatabase();
+      final downloadSuccess = await supabaseService.downloadDatabase();
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -96,17 +95,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ],
             ),
             content: const Text(
-              'Database has been synced from cloud. The app needs to restart to load the new data.',
+              'Database synced from cloud. Please restart the app to load the data.',
             ),
             actions: [
               TextButton(
                 onPressed: () {
-                  // Close the app (user needs to restart manually)
                   Navigator.pop(context);
-                  // In a real app, you might want to use a plugin like restart_app
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Please restart the app to continue'),
+                      content: Text('Please restart the app'),
                       duration: Duration(seconds: 5),
                     ),
                   );
@@ -119,18 +116,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No backup found in Google Drive or sync failed'),
+            content: Text('No backup found or download failed'),
             backgroundColor: Colors.orange,
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      // Close loading dialog if it's open
-      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error syncing from cloud: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );

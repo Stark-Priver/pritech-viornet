@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/widgets/supabase_auth_dialog.dart';
 import '../database/database.dart';
 import '../rbac/permissions.dart';
 import '../providers/providers.dart';
@@ -88,35 +89,35 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     });
 
     try {
-      final driveService = ref.read(googleDriveServiceProvider);
+      final supabaseService = ref.read(supabaseSyncServiceProvider);
 
       // Check if user is signed in
-      final currentUser = driveService.getCurrentUser();
-      if (currentUser == null) {
-        // Sign in first
-        final signInSuccess = await driveService.signIn();
-        if (!signInSuccess) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to sign in to Google Drive'),
-              backgroundColor: Colors.red,
-            ),
-          );
+      if (!supabaseService.isSignedIn) {
+        // Show auth dialog
+        final authenticated = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const SupabaseAuthDialog(isDownload: false),
+        );
+
+        if (authenticated != true) {
+          setState(() {
+            _isSyncing = false;
+          });
           return;
         }
       }
 
       // Upload database
-      final uploadSuccess = await driveService.uploadDatabase();
+      final uploadSuccess = await supabaseService.uploadDatabase();
 
       if (uploadSuccess) {
-        final lastSync = await driveService.getLastSyncTime();
+        final lastSync = await supabaseService.getLastSyncTime();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Data synced to cloud successfully${lastSync != null ? ' at ${_formatTime(lastSync)}' : ''}',
+              'Data synced to cloud${lastSync != null ? ' at ${_formatTime(lastSync)}' : ''}',
             ),
             backgroundColor: Colors.green,
           ),
@@ -125,7 +126,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to sync data to cloud'),
+            content: Text('Failed to sync to cloud'),
             backgroundColor: Colors.red,
           ),
         );
@@ -134,7 +135,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error syncing to cloud: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
         ),
       );

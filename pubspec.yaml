@@ -42,9 +42,8 @@ dependencies:
   jwt_decoder: ^2.0.1
   crypto: ^3.0.5
   
-  # Google Drive Sync
-  google_sign_in: ^6.2.1
-  googleapis: ^13.2.0
+  # Cloud Sync - Supabase (Cross-platform solution)
+  supabase_flutter: ^2.8.2
   googleapis_auth: ^1.6.0
   
   # SMS (Android)

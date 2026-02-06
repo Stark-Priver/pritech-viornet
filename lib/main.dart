@@ -8,16 +8,20 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/api_service.dart';
 import 'core/database/database.dart';
-import 'core/services/google_drive_service.dart';
+import 'core/services/supabase_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Supabase Cloud Sync (FREE cross-platform solution)
+  await SupabaseSyncService.initialize(
+    supabaseUrl: 'https://bylovbbaatsigcfsdspn.supabase.co',
+    supabaseAnonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5bG92YmJhYXRzaWdjZnNkc3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzNTk4NzUsImV4cCI6MjA4NTkzNTg3NX0.VA2guwu-xwM58syLzdEPFQbD0GwZ4u9_Ek-caVj5H2A',
+  );
+
   // Initialize API Service
   ApiService().initialize();
-
-  // Initialize Google Drive Service
-  await GoogleDriveService().initialize();
 
   // Initialize database with default admin user
   await _initializeDatabase();

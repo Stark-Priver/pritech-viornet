@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../database/database.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_service.dart';
-import '../services/google_drive_service.dart';
+import '../services/supabase_sync_service.dart';
 import '../../features/clients/repository/client_repository.dart';
 import '../../features/vouchers/repository/voucher_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
@@ -25,8 +25,8 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
 });
 
-final googleDriveServiceProvider = Provider<GoogleDriveService>((ref) {
-  return GoogleDriveService();
+final supabaseSyncServiceProvider = Provider<SupabaseSyncService>((ref) {
+  return SupabaseSyncService();
 });
 
 // Repository Providers
