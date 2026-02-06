@@ -63,6 +63,7 @@ class SupabaseSyncService {
 
       // Fix existing users without server_id before syncing
       await _ensureUsersHaveServerId();
+      await _ensureRecordsHaveServerId();
 
       final pushResult = await pushToCloud();
       final pullResult = await pullFromCloud();
@@ -1554,21 +1555,30 @@ class SupabaseSyncService {
 
       for (final templateData in cloudTemplates) {
         try {
-          final existing = await (db.select(db.smsTemplates)
-                ..where((tbl) =>
-                    tbl.serverId.equals(templateData['server_id'] as String)))
+          final cloudServerId = templateData['server_id'] as String;
+          final cloudName = templateData['name'] as String;
+
+          // Check by server_id OR name to prevent duplicates
+          var existing = await (db.select(db.smsTemplates)
+                ..where((tbl) => tbl.serverId.equals(cloudServerId)))
               .getSingleOrNull();
 
-          if (existing != null) {
-            if (existing.isSynced == false) {
+          existing ??= await (db.select(db.smsTemplates)
+                ..where((tbl) => tbl.name.equals(cloudName)))
+              .getSingleOrNull();
+
+          final existingTemplate = existing;
+          if (existingTemplate != null) {
+            if (existingTemplate.isSynced == false) {
               conflicts++;
               debugPrint(
-                  '⚠️  Conflict on SMS template ${existing.name} - server wins');
+                  '⚠️  Conflict on SMS template ${existingTemplate.name} - server wins');
             }
 
             await (db.update(db.smsTemplates)
-                  ..where((tbl) => tbl.id.equals(existing.id)))
+                  ..where((tbl) => tbl.id.equals(existingTemplate.id)))
                 .write(SmsTemplatesCompanion(
+              serverId: Value(cloudServerId), // Update server_id
               name: Value(templateData['name']),
               message: Value(templateData['message']),
               type: Value(templateData['type']),
@@ -1577,9 +1587,10 @@ class SupabaseSyncService {
               isSynced: const Value(true),
               lastSyncedAt: Value(DateTime.now()),
             ));
+            debugPrint('✅ Updated SMS template: ${existingTemplate.name}');
           } else {
             await db.into(db.smsTemplates).insert(SmsTemplatesCompanion(
-                  serverId: Value(templateData['server_id']),
+                  serverId: Value(cloudServerId),
                   name: Value(templateData['name']),
                   message: Value(templateData['message']),
                   type: Value(templateData['type']),
@@ -1589,6 +1600,7 @@ class SupabaseSyncService {
                   isSynced: const Value(true),
                   lastSyncedAt: Value(DateTime.now()),
                 ));
+            debugPrint('✅ Inserted new SMS template: $cloudName');
           }
           pulled++;
         } catch (e) {
@@ -1618,21 +1630,30 @@ class SupabaseSyncService {
 
       for (final packageData in cloudPackages) {
         try {
-          final existing = await (db.select(db.packages)
-                ..where((tbl) =>
-                    tbl.serverId.equals(packageData['server_id'] as String)))
+          final cloudServerId = packageData['server_id'] as String;
+          final cloudName = packageData['name'] as String;
+
+          // Check by server_id OR name to prevent duplicates
+          var existing = await (db.select(db.packages)
+                ..where((tbl) => tbl.serverId.equals(cloudServerId)))
               .getSingleOrNull();
 
-          if (existing != null) {
-            if (existing.isSynced == false) {
+          existing ??= await (db.select(db.packages)
+                ..where((tbl) => tbl.name.equals(cloudName)))
+              .getSingleOrNull();
+
+          final existingPackage = existing;
+          if (existingPackage != null) {
+            if (existingPackage.isSynced == false) {
               conflicts++;
               debugPrint(
-                  '⚠️  Conflict on package ${existing.name} - server wins');
+                  '⚠️  Conflict on package ${existingPackage.name} - server wins');
             }
 
             await (db.update(db.packages)
-                  ..where((tbl) => tbl.id.equals(existing.id)))
+                  ..where((tbl) => tbl.id.equals(existingPackage.id)))
                 .write(PackagesCompanion(
+              serverId: Value(cloudServerId), // Update server_id
               name: Value(packageData['name']),
               duration: Value(packageData['duration']),
               price: Value(packageData['price']),
@@ -1642,9 +1663,10 @@ class SupabaseSyncService {
               isSynced: const Value(true),
               lastSyncedAt: Value(DateTime.now()),
             ));
+            debugPrint('✅ Updated package: ${existingPackage.name}');
           } else {
             await db.into(db.packages).insert(PackagesCompanion(
-                  serverId: Value(packageData['server_id']),
+                  serverId: Value(cloudServerId),
                   name: Value(packageData['name']),
                   duration: Value(packageData['duration']),
                   price: Value(packageData['price']),
@@ -1655,6 +1677,7 @@ class SupabaseSyncService {
                   isSynced: const Value(true),
                   lastSyncedAt: Value(DateTime.now()),
                 ));
+            debugPrint('✅ Inserted new package: $cloudName');
           }
           pulled++;
         } catch (e) {
@@ -1925,6 +1948,88 @@ class SupabaseSyncService {
       debugPrint('✅ Migration complete');
     } catch (e) {
       debugPrint('❌ Migration failed: $e');
+    }
+  }
+
+  /// Migration: Ensure all records have server_id for all syncable tables
+  Future<void> _ensureRecordsHaveServerId() async {
+    try {
+      int totalMigrated = 0;
+
+      // Packages
+      final packagesWithoutServerId = await (db.select(db.packages)
+            ..where((tbl) => tbl.serverId.isNull()))
+          .get();
+      if (packagesWithoutServerId.isNotEmpty) {
+        debugPrint(
+            '🔧 Migrating ${packagesWithoutServerId.length} packages...');
+        for (final package in packagesWithoutServerId) {
+          await (db.update(db.packages)
+                ..where((tbl) => tbl.id.equals(package.id)))
+              .write(PackagesCompanion(
+            serverId: Value(_generateUUID()),
+            isSynced: const Value(false),
+          ));
+        }
+        totalMigrated += packagesWithoutServerId.length;
+      }
+
+      // Sites
+      final sitesWithoutServerId = await (db.select(db.sites)
+            ..where((tbl) => tbl.serverId.isNull()))
+          .get();
+      if (sitesWithoutServerId.isNotEmpty) {
+        debugPrint('🔧 Migrating ${sitesWithoutServerId.length} sites...');
+        for (final site in sitesWithoutServerId) {
+          await (db.update(db.sites)..where((tbl) => tbl.id.equals(site.id)))
+              .write(SitesCompanion(
+            serverId: Value(_generateUUID()),
+            isSynced: const Value(false),
+          ));
+        }
+        totalMigrated += sitesWithoutServerId.length;
+      }
+
+      // Clients
+      final clientsWithoutServerId = await (db.select(db.clients)
+            ..where((tbl) => tbl.serverId.isNull()))
+          .get();
+      if (clientsWithoutServerId.isNotEmpty) {
+        debugPrint('🔧 Migrating ${clientsWithoutServerId.length} clients...');
+        for (final client in clientsWithoutServerId) {
+          await (db.update(db.clients)
+                ..where((tbl) => tbl.id.equals(client.id)))
+              .write(ClientsCompanion(
+            serverId: Value(_generateUUID()),
+            isSynced: const Value(false),
+          ));
+        }
+        totalMigrated += clientsWithoutServerId.length;
+      }
+
+      // SMS Templates
+      final templatesWithoutServerId = await (db.select(db.smsTemplates)
+            ..where((tbl) => tbl.serverId.isNull()))
+          .get();
+      if (templatesWithoutServerId.isNotEmpty) {
+        debugPrint(
+            '🔧 Migrating ${templatesWithoutServerId.length} SMS templates...');
+        for (final template in templatesWithoutServerId) {
+          await (db.update(db.smsTemplates)
+                ..where((tbl) => tbl.id.equals(template.id)))
+              .write(SmsTemplatesCompanion(
+            serverId: Value(_generateUUID()),
+            isSynced: const Value(false),
+          ));
+        }
+        totalMigrated += templatesWithoutServerId.length;
+      }
+
+      if (totalMigrated > 0) {
+        debugPrint('✅ Migrated $totalMigrated records with server_id');
+      }
+    } catch (e) {
+      debugPrint('❌ Record migration failed: $e');
     }
   }
 

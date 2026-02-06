@@ -20,7 +20,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -38,6 +38,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Send SMS'),
+            Tab(text: 'Templates'),
             Tab(text: 'Contacts'),
             Tab(text: 'SMS Logs'),
           ],
@@ -47,6 +48,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
         controller: _tabController,
         children: [
           _buildSendSmsTab(),
+          _buildTemplatesTab(),
           _buildContactsTab(),
           _buildSmsLogsTab(),
         ],
@@ -110,6 +112,169 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTemplatesTab() {
+    final database = ref.watch(databaseProvider);
+
+    return FutureBuilder<List<SmsTemplate>>(
+      future: database.select(database.smsTemplates).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final templates = snapshot.data ?? [];
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${templates.length} Templates',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showAddTemplateDialog(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add Template'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: templates.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.message_outlined,
+                              size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('No SMS templates found'),
+                          SizedBox(height: 8),
+                          Text('Create templates for quick SMS sending',
+                              style: TextStyle(color: Colors.grey)),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: templates.length,
+                      itemBuilder: (context, index) {
+                        final template = templates[index];
+                        return Card(
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              child: Text(template.name[0].toUpperCase()),
+                            ),
+                            title: Text(template.name),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(
+                                  template.message,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.label_outline,
+                                      size: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      template.type,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Icon(
+                                      template.isActive
+                                          ? Icons.check_circle
+                                          : Icons.cancel,
+                                      size: 14,
+                                      color: template.isActive
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      template.isActive ? 'Active' : 'Inactive',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: template.isActive
+                                            ? Colors.green
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            trailing: PopupMenuButton(
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'use',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.send),
+                                      SizedBox(width: 8),
+                                      Text('Use Template'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit),
+                                      SizedBox(width: 8),
+                                      Text('Edit'),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete, color: Colors.red),
+                                      SizedBox(width: 8),
+                                      Text('Delete',
+                                          style: TextStyle(color: Colors.red)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              onSelected: (value) {
+                                if (value == 'use') {
+                                  _useTemplate(template);
+                                } else if (value == 'edit') {
+                                  _showEditTemplateDialog(template);
+                                } else if (value == 'delete') {
+                                  _deleteTemplate(template);
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -701,5 +866,224 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
     return await (database.select(database.smsLogs)
           ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .get();
+  }
+
+  void _useTemplate(SmsTemplate template) {
+    _tabController.animateTo(0); // Switch to Send SMS tab
+    // In a real implementation, you'd populate the message field
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Using template: ${template.name}')),
+    );
+  }
+
+  void _showAddTemplateDialog() {
+    final nameController = TextEditingController();
+    final messageController = TextEditingController();
+    final typeController = TextEditingController(text: 'General');
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add SMS Template'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Template Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(
+                  labelText: 'Type',
+                  border: OutlineInputBorder(),
+                  hintText: 'e.g., Welcome, Reminder, Promotion',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                decoration: const InputDecoration(
+                  labelText: 'Message',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty ||
+                  messageController.text.trim().isEmpty) {
+                return;
+              }
+
+              final database = ref.read(databaseProvider);
+              await database.into(database.smsTemplates).insert(
+                    SmsTemplatesCompanion.insert(
+                      name: nameController.text.trim(),
+                      message: messageController.text.trim(),
+                      type: typeController.text.trim(),
+                      createdAt: DateTime.now(),
+                      updatedAt: DateTime.now(),
+                    ),
+                  );
+
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Template added successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTemplateDialog(SmsTemplate template) {
+    final nameController = TextEditingController(text: template.name);
+    final messageController = TextEditingController(text: template.message);
+    final typeController = TextEditingController(text: template.type);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit SMS Template'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Template Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: typeController,
+                decoration: const InputDecoration(
+                  labelText: 'Type',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: messageController,
+                decoration: const InputDecoration(
+                  labelText: 'Message',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty ||
+                  messageController.text.trim().isEmpty) {
+                return;
+              }
+
+              final database = ref.read(databaseProvider);
+              await (database.update(database.smsTemplates)
+                    ..where((tbl) => tbl.id.equals(template.id)))
+                  .write(
+                SmsTemplatesCompanion(
+                  name: Value(nameController.text.trim()),
+                  message: Value(messageController.text.trim()),
+                  type: Value(typeController.text.trim()),
+                  updatedAt: Value(DateTime.now()),
+                  isSynced: const Value(false),
+                ),
+              );
+
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Template updated successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteTemplate(SmsTemplate template) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Template'),
+        content: Text('Are you sure you want to delete "${template.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final database = ref.read(databaseProvider);
+              await (database.delete(database.smsTemplates)
+                    ..where((tbl) => tbl.id.equals(template.id)))
+                  .go();
+
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Template deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 }
