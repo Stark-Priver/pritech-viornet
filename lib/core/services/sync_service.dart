@@ -561,10 +561,16 @@ class SyncService {
 
   Map<String, dynamic> _voucherToJson(Voucher voucher) => {
         'code': voucher.code,
-        'duration': voucher.duration,
+        'package_id': voucher.packageId,
         'price': voucher.price,
+        'validity': voucher.validity,
+        'speed': voucher.speed,
         'status': voucher.status,
-        'site_id': voucher.siteId,
+        'sold_at': voucher.soldAt?.toIso8601String(),
+        'sold_by_user_id': voucher.soldByUserId,
+        'sale_id': voucher.saleId,
+        'qr_code_data': voucher.qrCodeData,
+        'batch_id': voucher.batchId,
       };
 
   Map<String, dynamic> _saleToJson(Sale sale) => {

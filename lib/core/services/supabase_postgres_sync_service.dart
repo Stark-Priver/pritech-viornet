@@ -100,6 +100,8 @@ class SupabaseSyncService {
       totalPushed += await _pushPackages();
       totalPushed += await _pushRoles();
       totalPushed += await _pushUserRoles();
+      totalPushed += await _pushCommissionSettings();
+      totalPushed += await _pushCommissionHistory();
 
       debugPrint('✅ Pushed $totalPushed records to cloud');
       return SyncResult(pushed: totalPushed);
@@ -172,6 +174,14 @@ class SupabaseSyncService {
       final userRoleResult = await _pullUserRoles(lastSync);
       totalPulled += userRoleResult.pulled;
       conflicts += userRoleResult.conflicts;
+
+      final commissionSettingsResult = await _pullCommissionSettings(lastSync);
+      totalPulled += commissionSettingsResult.pulled;
+      conflicts += commissionSettingsResult.conflicts;
+
+      final commissionHistoryResult = await _pullCommissionHistory(lastSync);
+      totalPulled += commissionHistoryResult.pulled;
+      conflicts += commissionHistoryResult.conflicts;
 
       // Update last sync timestamp
       await _updateLastSyncTimestamp();
@@ -372,18 +382,17 @@ class SupabaseSyncService {
         final data = {
           'server_id': voucher.serverId ?? _generateUUID(),
           'code': voucher.code,
-          'username': voucher.username,
-          'password': voucher.password,
-          'duration': voucher.duration,
+          'package_id': voucher.packageId,
           'price': voucher.price,
+          'validity': voucher.validity,
+          'speed': voucher.speed,
           'status': voucher.status,
-          'site_id': voucher.siteId,
-          'agent_id': voucher.agentId,
-          'client_id': voucher.clientId,
-          'created_at': voucher.createdAt.toIso8601String(),
           'sold_at': voucher.soldAt?.toIso8601String(),
-          'activated_at': voucher.activatedAt?.toIso8601String(),
-          'expires_at': voucher.expiresAt?.toIso8601String(),
+          'sold_by_user_id': voucher.soldByUserId,
+          'sale_id': voucher.saleId,
+          'qr_code_data': voucher.qrCodeData,
+          'batch_id': voucher.batchId,
+          'created_at': voucher.createdAt.toIso8601String(),
           'updated_at': voucher.updatedAt.toIso8601String(),
           'is_synced': true,
           'last_synced_at': DateTime.now().toIso8601String(),
@@ -1067,23 +1076,18 @@ class SupabaseSyncService {
                   ..where((tbl) => tbl.id.equals(existing.id)))
                 .write(VouchersCompanion(
               code: Value(voucherData['code']),
-              username: Value(voucherData['username']),
-              password: Value(voucherData['password']),
-              duration: Value(voucherData['duration']),
+              packageId: Value(voucherData['package_id']),
               price: Value(voucherData['price']),
+              validity: Value(voucherData['validity']),
+              speed: Value(voucherData['speed']),
               status: Value(voucherData['status']),
-              siteId: Value(voucherData['site_id']),
-              agentId: Value(voucherData['agent_id']),
-              clientId: Value(voucherData['client_id']),
               soldAt: voucherData['sold_at'] != null
                   ? Value(DateTime.parse(voucherData['sold_at']))
                   : const Value(null),
-              activatedAt: voucherData['activated_at'] != null
-                  ? Value(DateTime.parse(voucherData['activated_at']))
-                  : const Value(null),
-              expiresAt: voucherData['expires_at'] != null
-                  ? Value(DateTime.parse(voucherData['expires_at']))
-                  : const Value(null),
+              soldByUserId: Value(voucherData['sold_by_user_id']),
+              saleId: Value(voucherData['sale_id']),
+              qrCodeData: Value(voucherData['qr_code_data']),
+              batchId: Value(voucherData['batch_id']),
               updatedAt: Value(DateTime.parse(voucherData['updated_at'])),
               isSynced: const Value(true),
               lastSyncedAt: Value(DateTime.now()),
@@ -1092,24 +1096,19 @@ class SupabaseSyncService {
             await db.into(db.vouchers).insert(VouchersCompanion(
                   serverId: Value(voucherData['server_id']),
                   code: Value(voucherData['code']),
-                  username: Value(voucherData['username']),
-                  password: Value(voucherData['password']),
-                  duration: Value(voucherData['duration']),
+                  packageId: Value(voucherData['package_id']),
                   price: Value(voucherData['price']),
+                  validity: Value(voucherData['validity']),
+                  speed: Value(voucherData['speed']),
                   status: Value(voucherData['status']),
-                  siteId: Value(voucherData['site_id']),
-                  agentId: Value(voucherData['agent_id']),
-                  clientId: Value(voucherData['client_id']),
                   createdAt: Value(DateTime.parse(voucherData['created_at'])),
                   soldAt: voucherData['sold_at'] != null
                       ? Value(DateTime.parse(voucherData['sold_at']))
                       : const Value(null),
-                  activatedAt: voucherData['activated_at'] != null
-                      ? Value(DateTime.parse(voucherData['activated_at']))
-                      : const Value(null),
-                  expiresAt: voucherData['expires_at'] != null
-                      ? Value(DateTime.parse(voucherData['expires_at']))
-                      : const Value(null),
+                  soldByUserId: Value(voucherData['sold_by_user_id']),
+                  saleId: Value(voucherData['sale_id']),
+                  qrCodeData: Value(voucherData['qr_code_data']),
+                  batchId: Value(voucherData['batch_id']),
                   updatedAt: Value(DateTime.parse(voucherData['updated_at'])),
                   isSynced: const Value(true),
                   lastSyncedAt: Value(DateTime.now()),
@@ -2126,6 +2125,255 @@ class SupabaseSyncService {
       lastSync: await _getLastSyncTimestamp(),
       isConnected: await isConnected(),
     );
+  }
+  // ==========================================================================
+  // COMMISSION SETTINGS SYNC
+  // ==========================================================================
+
+  Future<int> _pushCommissionSettings() async {
+    try {
+      // Push all commission settings (admin-configured, always sync)
+      final settings = await db.select(db.commissionSettings).get();
+
+      if (settings.isEmpty) return 0;
+
+      for (final setting in settings) {
+        await client.from('commission_settings').upsert({
+          'id': setting.id,
+          'name': setting.name,
+          'description': setting.description,
+          'commission_type': setting.commissionType,
+          'rate': setting.rate,
+          'min_sale_amount': setting.minSaleAmount,
+          'max_sale_amount': setting.maxSaleAmount,
+          'applicable_to': setting.applicableTo,
+          'role_id': setting.roleId,
+          'user_id': setting.userId,
+          'client_id': setting.clientId,
+          'package_id': setting.packageId,
+          'is_active': setting.isActive,
+          'priority': setting.priority,
+          'start_date': setting.startDate.toIso8601String(),
+          'end_date': setting.endDate?.toIso8601String(),
+          'created_at': setting.createdAt.toIso8601String(),
+          'updated_at': setting.updatedAt.toIso8601String(),
+        });
+      }
+
+      debugPrint('📤 Pushed ${settings.length} commission settings');
+      return settings.length;
+    } catch (e) {
+      debugPrint('❌ Failed to push commission settings: $e');
+      return 0;
+    }
+  }
+
+  Future<SyncResult> _pullCommissionSettings(DateTime? lastSync) async {
+    try {
+      var query = client.from('commission_settings').select();
+      if (lastSync != null) {
+        query = query.gt('updated_at', lastSync.toIso8601String());
+      }
+
+      final response = await query;
+      final List<dynamic> cloudSettings = response as List<dynamic>;
+
+      int pulled = 0;
+      for (final cloudSetting in cloudSettings) {
+        final existing = await (db.select(db.commissionSettings)
+              ..where((tbl) => tbl.id.equals(cloudSetting['id'])))
+            .getSingleOrNull();
+
+        if (existing == null) {
+          await db.into(db.commissionSettings).insert(
+                CommissionSettingsCompanion.insert(
+                  id: Value(cloudSetting['id']),
+                  name: cloudSetting['name'],
+                  description: Value(cloudSetting['description']),
+                  commissionType: cloudSetting['commission_type'],
+                  rate: cloudSetting['rate'],
+                  minSaleAmount: Value(cloudSetting['min_sale_amount'] ?? 0.0),
+                  maxSaleAmount: Value(cloudSetting['max_sale_amount']),
+                  applicableTo: cloudSetting['applicable_to'],
+                  roleId: Value(cloudSetting['role_id']),
+                  userId: Value(cloudSetting['user_id']),
+                  clientId: Value(cloudSetting['client_id']),
+                  packageId: Value(cloudSetting['package_id']),
+                  isActive: Value(cloudSetting['is_active'] ?? true),
+                  priority: Value(cloudSetting['priority'] ?? 0),
+                  startDate: cloudSetting['start_date'] != null
+                      ? DateTime.parse(cloudSetting['start_date'])
+                      : DateTime.now(),
+                  endDate: Value(cloudSetting['end_date'] != null
+                      ? DateTime.parse(cloudSetting['end_date'])
+                      : null),
+                  createdAt: DateTime.parse(cloudSetting['created_at']),
+                  updatedAt: DateTime.parse(cloudSetting['updated_at']),
+                ),
+              );
+          pulled++;
+        } else {
+          final cloudUpdated = DateTime.parse(cloudSetting['updated_at']);
+          if (cloudUpdated.isAfter(existing.updatedAt)) {
+            await (db.update(db.commissionSettings)
+                  ..where((tbl) => tbl.id.equals(cloudSetting['id'])))
+                .write(CommissionSettingsCompanion(
+              name: Value(cloudSetting['name']),
+              description: Value(cloudSetting['description']),
+              commissionType: Value(cloudSetting['commission_type']),
+              rate: Value(cloudSetting['rate']),
+              minSaleAmount: Value(cloudSetting['min_sale_amount'] ?? 0.0),
+              maxSaleAmount: Value(cloudSetting['max_sale_amount']),
+              applicableTo: Value(cloudSetting['applicable_to']),
+              roleId: Value(cloudSetting['role_id']),
+              userId: Value(cloudSetting['user_id']),
+              clientId: Value(cloudSetting['client_id']),
+              packageId: Value(cloudSetting['package_id']),
+              isActive: Value(cloudSetting['is_active'] ?? true),
+              priority: Value(cloudSetting['priority'] ?? 0),
+              startDate: Value(cloudSetting['start_date'] != null
+                  ? DateTime.parse(cloudSetting['start_date'])
+                  : DateTime.now()),
+              endDate: Value(cloudSetting['end_date'] != null
+                  ? DateTime.parse(cloudSetting['end_date'])
+                  : null),
+              updatedAt: Value(cloudUpdated),
+            ));
+            pulled++;
+          }
+        }
+      }
+
+      debugPrint('📥 Pulled $pulled commission settings');
+      return SyncResult(pulled: pulled);
+    } catch (e) {
+      debugPrint('❌ Failed to pull commission settings: $e');
+      return SyncResult(errors: [e.toString()]);
+    }
+  }
+
+  // ==========================================================================
+  // COMMISSION HISTORY SYNC
+  // ==========================================================================
+
+  Future<int> _pushCommissionHistory() async {
+    try {
+      final unsynced = await (db.select(db.commissionHistory)
+            ..where((tbl) => tbl.isSynced.equals(false)))
+          .get();
+
+      if (unsynced.isEmpty) return 0;
+
+      for (final history in unsynced) {
+        await client.from('commission_history').upsert({
+          'server_id': history.serverId,
+          'sale_id': history.saleId,
+          'agent_id': history.agentId,
+          'commission_amount': history.commissionAmount,
+          'sale_amount': history.saleAmount,
+          'commission_setting_id': history.commissionSettingId,
+          'commission_rate': history.commissionRate,
+          'calculation_details': history.calculationDetails,
+          'status': history.status,
+          'approved_by': history.approvedBy,
+          'approved_at': history.approvedAt?.toIso8601String(),
+          'paid_at': history.paidAt?.toIso8601String(),
+          'notes': history.notes,
+          'created_at': history.createdAt.toIso8601String(),
+          'updated_at': history.updatedAt.toIso8601String(),
+        });
+
+        await (db.update(db.commissionHistory)
+              ..where((tbl) => tbl.id.equals(history.id)))
+            .write(CommissionHistoryCompanion(
+          isSynced: const Value(true),
+          lastSyncedAt: Value(DateTime.now()),
+        ));
+      }
+
+      debugPrint('📤 Pushed ${unsynced.length} commission history records');
+      return unsynced.length;
+    } catch (e) {
+      debugPrint('❌ Failed to push commission history: $e');
+      return 0;
+    }
+  }
+
+  Future<SyncResult> _pullCommissionHistory(DateTime? lastSync) async {
+    try {
+      var query = client.from('commission_history').select();
+      if (lastSync != null) {
+        query = query.gt('updated_at', lastSync.toIso8601String());
+      }
+
+      final response = await query;
+      final List<dynamic> cloudHistory = response as List<dynamic>;
+
+      int pulled = 0;
+      for (final cloudRecord in cloudHistory) {
+        final serverId = cloudRecord['server_id'];
+        final existing = await (db.select(db.commissionHistory)
+              ..where((tbl) => tbl.serverId.equals(serverId)))
+            .getSingleOrNull();
+
+        if (existing == null) {
+          await db.into(db.commissionHistory).insert(
+                CommissionHistoryCompanion.insert(
+                  serverId: Value(serverId),
+                  saleId: cloudRecord['sale_id'],
+                  agentId: cloudRecord['agent_id'],
+                  commissionAmount: cloudRecord['commission_amount'],
+                  saleAmount: cloudRecord['sale_amount'],
+                  commissionSettingId:
+                      Value(cloudRecord['commission_setting_id']),
+                  commissionRate: Value(cloudRecord['commission_rate']),
+                  calculationDetails: Value(cloudRecord['calculation_details']),
+                  status: Value(cloudRecord['status'] ?? 'PENDING'),
+                  approvedBy: Value(cloudRecord['approved_by']),
+                  approvedAt: Value(cloudRecord['approved_at'] != null
+                      ? DateTime.parse(cloudRecord['approved_at'])
+                      : null),
+                  paidAt: Value(cloudRecord['paid_at'] != null
+                      ? DateTime.parse(cloudRecord['paid_at'])
+                      : null),
+                  notes: Value(cloudRecord['notes']),
+                  createdAt: DateTime.parse(cloudRecord['created_at']),
+                  updatedAt: DateTime.parse(cloudRecord['updated_at']),
+                  isSynced: const Value(true),
+                  lastSyncedAt: Value(DateTime.now()),
+                ),
+              );
+          pulled++;
+        } else {
+          final cloudUpdated = DateTime.parse(cloudRecord['updated_at']);
+          if (cloudUpdated.isAfter(existing.updatedAt)) {
+            await (db.update(db.commissionHistory)
+                  ..where((tbl) => tbl.serverId.equals(serverId)))
+                .write(CommissionHistoryCompanion(
+              status: Value(cloudRecord['status'] ?? 'PENDING'),
+              approvedBy: Value(cloudRecord['approved_by']),
+              approvedAt: Value(cloudRecord['approved_at'] != null
+                  ? DateTime.parse(cloudRecord['approved_at'])
+                  : null),
+              paidAt: Value(cloudRecord['paid_at'] != null
+                  ? DateTime.parse(cloudRecord['paid_at'])
+                  : null),
+              notes: Value(cloudRecord['notes']),
+              updatedAt: Value(cloudUpdated),
+              isSynced: const Value(true),
+              lastSyncedAt: Value(DateTime.now()),
+            ));
+            pulled++;
+          }
+        }
+      }
+
+      debugPrint('📥 Pulled $pulled commission history records');
+      return SyncResult(pulled: pulled);
+    } catch (e) {
+      debugPrint('❌ Failed to pull commission history: $e');
+      return SyncResult(errors: [e.toString()]);
+    }
   }
 }
 

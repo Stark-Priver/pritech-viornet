@@ -64,27 +64,6 @@ class Clients extends Table {
 }
 
 // Vouchers Table
-class Vouchers extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get serverId => text().nullable()();
-  TextColumn get code => text().unique()();
-  TextColumn get username => text().nullable()();
-  TextColumn get password => text().nullable()();
-  IntColumn get duration => integer()(); // days
-  RealColumn get price => real()();
-  TextColumn get status => text()(); // UNUSED, SOLD, ACTIVE, EXPIRED
-  IntColumn get siteId => integer().nullable().references(Sites, #id)();
-  IntColumn get agentId => integer().nullable().references(Users, #id)();
-  IntColumn get clientId => integer().nullable().references(Clients, #id)();
-  DateTimeColumn get createdAt => dateTime()();
-  DateTimeColumn get soldAt => dateTime().nullable()();
-  DateTimeColumn get activatedAt => dateTime().nullable()();
-  DateTimeColumn get expiresAt => dateTime().nullable()();
-  DateTimeColumn get updatedAt => dateTime()();
-  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
-  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
-}
-
 // Sales Table
 class Sales extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -253,6 +232,76 @@ class UserSites extends Table {
   Set<Column> get primaryKey => {userId, siteId};
 }
 
+// Vouchers Table
+class Vouchers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get serverId => text().nullable()();
+  TextColumn get code => text().unique()();
+  IntColumn get packageId => integer().nullable().references(Packages, #id)();
+  RealColumn get price => real().nullable()();
+  TextColumn get validity =>
+      text().nullable()(); // e.g., "12Hours", "1Day", "1Week"
+  TextColumn get speed => text().nullable()(); // e.g., "5Mbps", "10Mbps"
+  TextColumn get status => text()(); // AVAILABLE, SOLD, USED, EXPIRED
+  DateTimeColumn get soldAt => dateTime().nullable()();
+  IntColumn get soldByUserId => integer().nullable().references(Users, #id)();
+  IntColumn get saleId => integer().nullable().references(Sales, #id)();
+  TextColumn get qrCodeData => text().nullable()();
+  TextColumn get batchId => text().nullable()(); // For bulk uploads
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+}
+
+// Commission Settings Table
+class CommissionSettings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get commissionType => text()(); // PERCENTAGE, FIXED_AMOUNT, TIERED
+  RealColumn get rate => real()(); // Percentage (0-100) or fixed amount
+  RealColumn get minSaleAmount => real().withDefault(const Constant(0.0))();
+  RealColumn get maxSaleAmount => real().nullable()();
+  TextColumn get applicableTo =>
+      text()(); // ALL_AGENTS, SPECIFIC_ROLE, SPECIFIC_USER, SPECIFIC_CLIENT, SPECIFIC_PACKAGE
+  IntColumn get roleId => integer().nullable().references(Roles, #id)();
+  IntColumn get userId => integer().nullable().references(Users, #id)();
+  IntColumn get clientId => integer().nullable().references(Clients, #id)();
+  IntColumn get packageId => integer().nullable().references(Packages, #id)();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  IntColumn get priority => integer().withDefault(const Constant(0))();
+  DateTimeColumn get startDate => dateTime()();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+// Commission History Table
+class CommissionHistory extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get serverId => text().nullable()();
+  IntColumn get saleId =>
+      integer().references(Sales, #id, onDelete: KeyAction.cascade)();
+  IntColumn get agentId => integer().references(Users, #id)();
+  RealColumn get commissionAmount => real()();
+  RealColumn get saleAmount => real()();
+  IntColumn get commissionSettingId =>
+      integer().nullable().references(CommissionSettings, #id)();
+  RealColumn get commissionRate => real().nullable()();
+  TextColumn get calculationDetails => text().nullable()(); // JSON string
+  TextColumn get status => text().withDefault(
+      const Constant('PENDING'))(); // PENDING, APPROVED, PAID, CANCELLED
+  IntColumn get approvedBy => integer().nullable().references(Users, #id)();
+  DateTimeColumn get approvedAt => dateTime().nullable()();
+  DateTimeColumn get paidAt => dateTime().nullable()();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+}
+
 @DriftDatabase(
   tables: [
     Users,
@@ -269,13 +318,15 @@ class UserSites extends Table {
     Roles,
     UserRoles,
     UserSites,
+    CommissionSettings,
+    CommissionHistory,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -544,6 +595,20 @@ class AppDatabase extends _$AppDatabase {
         if (from < 4) {
           // Add UserSites table for version 4
           await m.createTable(userSites);
+        }
+        if (from < 5) {
+          // Add Commission tables for version 5
+          await m.createTable(commissionSettings);
+          await m.createTable(commissionHistory);
+        }
+        if (from < 6) {
+          // Add clientId and packageId columns to commission_settings for version 6
+          await m.addColumn(commissionSettings, commissionSettings.clientId);
+          await m.addColumn(commissionSettings, commissionSettings.packageId);
+        }
+        if (from < 7) {
+          // Add Vouchers table for version 7
+          await m.createTable(vouchers);
         }
       },
     );

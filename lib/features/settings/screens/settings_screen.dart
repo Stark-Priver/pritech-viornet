@@ -33,6 +33,13 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/packages'),
           ),
+          ListTile(
+            leading: const Icon(Icons.percent),
+            title: const Text('Commission Settings'),
+            subtitle: const Text('Configure agent commissions'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/commissions'),
+          ),
           const ListTile(
             leading: Icon(Icons.sync),
             title: Text('Sync Settings'),

@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../widgets/agent_commission_widget.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -91,6 +92,15 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
 
+                  // Agent Commission Widget - Show only for agents
+                  if (authState.userRoles.contains('AGENT') ||
+                      authState.userRoles.contains('SALES'))
+                    const AgentCommissionWidget(),
+
+                  if (authState.userRoles.contains('AGENT') ||
+                      authState.userRoles.contains('SALES'))
+                    const SizedBox(height: 24),
+
                   // Charts - Hide from agents
                   if (canSeeFinancials) ...[
                     if (isMobile) ...[
@@ -144,21 +154,10 @@ class DashboardScreen extends ConsumerWidget {
         .map((row) => row.read(database.clients.id.count()) ?? 0)
         .getSingle();
 
-    // Active vouchers - filter by client's site
-    final vouchersJoin = database.selectOnly(database.vouchers).join([
-      drift.innerJoin(
-        database.clients,
-        database.clients.id.equalsExp(database.vouchers.clientId),
-      ),
-    ]);
-    vouchersJoin.addColumns([database.vouchers.id.count()]);
-    vouchersJoin.where(database.vouchers.status.equals('ACTIVE'));
-    if (siteFilter != null) {
-      vouchersJoin.where(siteFilter);
-    }
-    final activeVouchers = await vouchersJoin
-        .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-        .getSingle();
+    // Available vouchers count
+    final vouchersQuery = database.select(database.vouchers)
+      ..where((tbl) => tbl.status.equals('AVAILABLE'));
+    final activeVouchers = await vouchersQuery.get().then((v) => v.length);
 
     // Today's sales - filter by client's site
     final today = DateTime.now();
@@ -221,20 +220,12 @@ class DashboardScreen extends ConsumerWidget {
       dailySales.add(amount);
     }
 
-    // Voucher stats - filter by client's site
+    // Voucher stats by status
     Future<int> voucherStatusQuery(String status) async {
-      final voucherJoin = database.selectOnly(database.vouchers).join([
-        drift.innerJoin(
-          database.clients,
-          database.clients.id.equalsExp(database.vouchers.clientId),
-        ),
-      ]);
-      voucherJoin.addColumns([database.vouchers.id.count()]);
-      voucherJoin.where(database.vouchers.status.equals(status));
-      if (siteFilter != null) {
-        voucherJoin.where(siteFilter);
-      }
-      return await voucherJoin
+      final query = database.selectOnly(database.vouchers);
+      query.addColumns([database.vouchers.id.count()]);
+      query.where(database.vouchers.status.equals(status));
+      return await query
           .map((row) => row.read(database.vouchers.id.count()) ?? 0)
           .getSingle();
     }

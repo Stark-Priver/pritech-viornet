@@ -3,8 +3,9 @@ import '../database/database.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_service.dart';
 import '../services/supabase_postgres_sync_service.dart';
+import '../services/voucher_service.dart';
+import '../services/commission_service.dart';
 import '../../features/clients/repository/client_repository.dart';
-import '../../features/vouchers/repository/voucher_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
 import '../../features/sites/repository/site_repository.dart';
 import '../../features/assets/repository/asset_repository.dart';
@@ -32,15 +33,20 @@ final supabaseSyncServiceProvider = Provider<SupabaseSyncService>((ref) {
   return syncService;
 });
 
+final voucherServiceProvider = Provider<VoucherService>((ref) {
+  final database = ref.watch(databaseProvider);
+  return VoucherService(database);
+});
+
+final commissionServiceProvider = Provider<CommissionService>((ref) {
+  final database = ref.watch(databaseProvider);
+  return CommissionService(database);
+});
+
 // Repository Providers
 final clientRepositoryProvider = Provider<ClientRepository>((ref) {
   final database = ref.watch(databaseProvider);
   return ClientRepository(database);
-});
-
-final voucherRepositoryProvider = Provider<VoucherRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return VoucherRepository(database);
 });
 
 final salesRepositoryProvider = Provider<SalesRepository>((ref) {

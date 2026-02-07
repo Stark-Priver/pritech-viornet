@@ -9,7 +9,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/clients/screens/clients_screen.dart';
 import '../../features/clients/screens/client_detail_screen.dart';
-import '../../features/vouchers/screens/vouchers_screen.dart';
+import '../../features/vouchers/screens/voucher_management_screen.dart';
 import '../../features/sales/screens/sales_history_screen.dart';
 import '../../features/sales/screens/pos_screen.dart';
 import '../../features/sites/screens/sites_screen.dart';
@@ -20,6 +20,7 @@ import '../../features/finance/screens/expenses_screen.dart';
 import '../../features/sms/screens/sms_screen.dart';
 import '../../features/packages/screens/packages_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/settings/screens/commission_settings_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 
 // Router Provider
@@ -110,7 +111,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/vouchers',
             name: 'vouchers',
-            builder: (context, state) => const VouchersScreen(),
+            builder: (context, state) => const VoucherManagementScreen(),
           ),
           GoRoute(
             path: '/sales',
@@ -166,6 +167,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             name: 'settings',
             builder: (context, state) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'commissions',
+                name: 'commission-settings',
+                builder: (context, state) => const CommissionSettingsScreen(),
+              ),
+            ],
           ),
         ],
       ),

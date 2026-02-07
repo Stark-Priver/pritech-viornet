@@ -21,9 +21,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   final _clientNameController = TextEditingController();
   final _clientPhoneController = TextEditingController();
   final _clientEmailController = TextEditingController();
+  final _voucherCodeController = TextEditingController();
 
   Client? _selectedClient;
   Site? _selectedSite;
+  Package? _selectedPackage;
+  Voucher? _selectedVoucher;
   String _paymentMethod = 'CASH';
   String _saleType = 'VOUCHER';
   bool _isLoading = false;
@@ -31,12 +34,15 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   bool _showNewClientForm = false;
   List<Client> _clients = [];
   List<Site> _sites = [];
+  List<Package> _packages = [];
+  List<Voucher> _availableVouchers = [];
 
   @override
   void initState() {
     super.initState();
     _loadClients();
     _loadSites();
+    _loadPackages();
   }
 
   @override
@@ -47,6 +53,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     _clientNameController.dispose();
     _clientPhoneController.dispose();
     _clientEmailController.dispose();
+    _voucherCodeController.dispose();
     super.dispose();
   }
 
@@ -73,6 +80,53 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     });
   }
 
+  Future<void> _loadPackages() async {
+    final database = ref.read(databaseProvider);
+    final packages = await (database.select(database.packages)
+          ..where((tbl) => tbl.isActive.equals(true)))
+        .get();
+    setState(() {
+      _packages = packages;
+    });
+  }
+
+  Future<void> _loadAvailableVouchers({int? packageId}) async {
+    final voucherService = ref.read(voucherServiceProvider);
+    final vouchers =
+        await voucherService.getAvailableVouchers(packageId: packageId);
+    setState(() {
+      _availableVouchers = vouchers;
+      _selectedVoucher = null;
+    });
+  }
+
+  Future<void> _searchVoucherByCode(String code) async {
+    if (code.isEmpty) return;
+
+    final voucherService = ref.read(voucherServiceProvider);
+    final voucher = await voucherService.getVoucherByCode(code);
+
+    if (voucher != null && voucher.status == 'AVAILABLE') {
+      setState(() {
+        _selectedVoucher = voucher;
+        if (voucher.price != null) {
+          _amountController.text = voucher.price.toString();
+        }
+      });
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(voucher == null
+                ? 'Voucher not found'
+                : 'Voucher already ${voucher.status.toLowerCase()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _createSale() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -81,6 +135,17 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a site'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Validate voucher selection for VOUCHER sales
+    if (_saleType == 'VOUCHER' && _selectedVoucher == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select or scan a voucher'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -161,18 +226,22 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     try {
       final database = ref.read(databaseProvider);
       final repository = SalesRepository(database);
+      final voucherService = ref.read(voucherServiceProvider);
+      final commissionService = ref.read(commissionServiceProvider);
 
       // Get current user from database
       final users = await database.select(database.users).get();
       final currentUser = users.first;
 
+      int saleId;
+
       if (_isWalkIn) {
         // Create sale without client (walk-in)
         final receiptNo = 'WI-${DateTime.now().millisecondsSinceEpoch}';
-        await database.into(database.sales).insert(
+        saleId = await database.into(database.sales).insert(
               SalesCompanion.insert(
                 receiptNumber: receiptNo,
-                voucherId: 1, // Default voucher
+                voucherId: _selectedVoucher?.id ?? 1,
                 agentId: currentUser.id,
                 siteId: drift.Value(_selectedSite!.id),
                 clientId: drift.Value(null), // Walk-in customer
@@ -188,8 +257,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             );
       } else {
         // Use makeSale helper which generates receipt number
-        await repository.makeSale(
-          voucherId: 1,
+        saleId = await repository.makeSale(
+          voucherId: _selectedVoucher?.id ?? 1,
           agentId: currentUser.id,
           clientId: clientForSale!.id,
           siteId: _selectedSite!.id,
@@ -201,25 +270,83 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         );
       }
 
+      // Mark voucher as sold if it's a voucher sale
+      if (_saleType == 'VOUCHER' && _selectedVoucher != null) {
+        await voucherService.markVoucherAsSold(
+          voucherId: _selectedVoucher!.id,
+          soldByUserId: currentUser.id,
+          saleId: saleId,
+        );
+      }
+
+      // Calculate commission
+      await commissionService.calculateCommission(
+        saleId: saleId,
+        agentId: currentUser.id,
+        saleAmount: double.parse(_amountController.text),
+        clientId: clientForSale?.id,
+        packageId: _selectedPackage?.id,
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
+        // Show success with option to send SMS
+        final shouldSendSms = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Sale Completed!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
                 Text(_showNewClientForm
                     ? 'Sale recorded and client added successfully!'
                     : 'Sale recorded successfully!'),
+                if (_saleType == 'VOUCHER' && _selectedVoucher != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  const Text('Voucher Details:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  SelectableText('Code: ${_selectedVoucher!.code}',
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontSize: 18)),
+                  if (_selectedVoucher!.validity != null)
+                    Text('Validity: ${_selectedVoucher!.validity}'),
+                  if (_selectedVoucher!.speed != null)
+                    Text('Speed: ${_selectedVoucher!.speed}'),
+                  const SizedBox(height: 16),
+                  if (clientForSale != null)
+                    const Text('Send voucher code via SMS to client?'),
+                ],
               ],
             ),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Close'),
+              ),
+              if (_saleType == 'VOUCHER' && clientForSale != null)
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.sms),
+                  label: const Text('Send SMS'),
+                ),
+            ],
           ),
         );
+
+        if (shouldSendSms == true &&
+            clientForSale != null &&
+            _selectedVoucher != null) {
+          await _sendVoucherSms(clientForSale, _selectedVoucher!);
+        }
+
         _resetForm();
         // Navigate back to sales list
-        Navigator.of(context).pop();
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -239,12 +366,73 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     }
   }
 
+  Future<void> _sendVoucherSms(Client client, Voucher voucher) async {
+    try {
+      final database = ref.read(databaseProvider);
+
+      // Format SMS message
+      final message = '''
+Hello ${client.name},
+
+Thank you for your purchase!
+
+Voucher Code: ${voucher.code}
+${voucher.validity != null ? 'Validity: ${voucher.validity}' : ''}
+${voucher.speed != null ? 'Speed: ${voucher.speed}' : ''}
+
+Use this code to connect to our network.
+
+Thank you!
+''';
+
+      // Log SMS
+      await database.into(database.smsLogs).insert(
+            SmsLogsCompanion.insert(
+              recipient: client.phone,
+              message: message,
+              status: 'PENDING',
+              type: 'NOTIFICATION',
+              sentAt: drift.Value(DateTime.now()),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text('Voucher sent to ${client.phone}'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send SMS: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
   void _resetForm() {
     setState(() {
       _selectedClient = null;
+      _selectedVoucher = null;
+      _selectedPackage = null;
       _amountController.clear();
       _commissionController.clear();
       _searchController.clear();
+      _voucherCodeController.clear();
       _clientNameController.clear();
       _clientPhoneController.clear();
       _clientEmailController.clear();
@@ -526,9 +714,180 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                         DropdownMenuItem(
                             value: 'UPGRADE', child: Text('Upgrade')),
                       ],
-                      onChanged: (value) => setState(() => _saleType = value!),
+                      onChanged: (value) {
+                        setState(() {
+                          _saleType = value!;
+                          if (_saleType == 'VOUCHER') {
+                            _loadAvailableVouchers();
+                          }
+                        });
+                      },
                     ),
                     const SizedBox(height: 16),
+
+                    // Voucher Selection (only show for VOUCHER sales)
+                    if (_saleType == 'VOUCHER') ...[
+                      Card(
+                        color: Colors.blue.withValues(alpha: 0.05),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.confirmation_number,
+                                      color: Colors.blue),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Voucher Selection',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Package filter (optional)
+                              DropdownButtonFormField<int>(
+                                decoration: const InputDecoration(
+                                  labelText: 'Filter by Package (Optional)',
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                initialValue: _selectedPackage?.id,
+                                items: _packages
+                                    .map((pkg) => DropdownMenuItem(
+                                          value: pkg.id,
+                                          child: Text(
+                                              '${pkg.name} - ${CurrencyFormatter.format(pkg.price)}'),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedPackage = _packages
+                                        .firstWhere((p) => p.id == value);
+                                    _loadAvailableVouchers(packageId: value);
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Scan or Enter Code
+                              TextField(
+                                controller: _voucherCodeController,
+                                decoration: InputDecoration(
+                                  labelText: 'Scan or Enter Voucher Code',
+                                  hintText: 'e.g., 645827',
+                                  border: const OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  prefixIcon: const Icon(Icons.qr_code_scanner),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.search),
+                                    onPressed: () {
+                                      _searchVoucherByCode(
+                                          _voucherCodeController.text);
+                                    },
+                                  ),
+                                ),
+                                onSubmitted: (value) {
+                                  _searchVoucherByCode(value);
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Or select from dropdown
+                              const Text('Or select from available vouchers:',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 8),
+                              DropdownButtonFormField<int>(
+                                decoration: const InputDecoration(
+                                  labelText: 'Available Vouchers',
+                                  border: OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                initialValue: _selectedVoucher?.id,
+                                items: _availableVouchers
+                                    .map((voucher) => DropdownMenuItem(
+                                          value: voucher.id,
+                                          child: Text(
+                                            '${voucher.code}${voucher.price != null ? ' - ${CurrencyFormatter.format(voucher.price!)}' : ''}',
+                                            style: const TextStyle(
+                                                fontFamily: 'monospace'),
+                                          ),
+                                        ))
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedVoucher = _availableVouchers
+                                        .firstWhere((v) => v.id == value);
+                                    _voucherCodeController.text =
+                                        _selectedVoucher!.code;
+                                    if (_selectedVoucher!.price != null) {
+                                      _amountController.text =
+                                          _selectedVoucher!.price.toString();
+                                    }
+                                  });
+                                },
+                              ),
+
+                              // Selected voucher details
+                              if (_selectedVoucher != null) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 20),
+                                          const SizedBox(width: 8),
+                                          const Text('Selected Voucher:',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text('Code: ${_selectedVoucher!.code}',
+                                          style: const TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontSize: 16)),
+                                      if (_selectedVoucher!.validity != null)
+                                        Text(
+                                            'Validity: ${_selectedVoucher!.validity}'),
+                                      if (_selectedVoucher!.speed != null)
+                                        Text(
+                                            'Speed: ${_selectedVoucher!.speed}'),
+                                      if (_selectedVoucher!.price != null)
+                                        Text(
+                                            'Price: ${CurrencyFormatter.format(_selectedVoucher!.price!)}',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     TextFormField(
                       controller: _amountController,
                       decoration: InputDecoration(
