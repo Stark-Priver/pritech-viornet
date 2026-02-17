@@ -2,6 +2,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../layout/main_layout.dart';
 import '../screens/splash_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import './_site_isp_subscription_screen_loader.dart';
 import '../rbac/permissions.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -174,6 +177,26 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) => const CommissionSettingsScreen(),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/isp-subscription/:siteId',
+            name: 'isp-subscription',
+            builder: (context, state) {
+              final siteIdStr = state.pathParameters['siteId'];
+              if (siteIdStr == null) {
+                return const Scaffold(
+                  body: Center(child: Text('No site ID provided.')),
+                );
+              }
+              final siteId = int.tryParse(siteIdStr);
+              if (siteId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('Invalid site ID.')),
+                );
+              }
+              // Use a FutureBuilder to fetch the Site by ID
+              return _SiteIspSubscriptionScreenLoader(siteId: siteId);
+            },
           ),
         ],
       ),

@@ -17,6 +17,18 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   String _searchQuery = '';
+  int _rebuildKey = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Force rebuild when screen is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _rebuildKey++;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +38,14 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       appBar: AppBar(
         title: const Text('Sales History'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() {
+                _rebuildKey++;
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
@@ -66,6 +86,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
             ),
           Expanded(
             child: FutureBuilder<List<_SaleWithDetails>>(
+              key: ValueKey(_rebuildKey),
               future: _getFilteredSales(database),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

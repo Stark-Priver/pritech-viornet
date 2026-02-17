@@ -568,7 +568,6 @@ class SyncService {
         'status': voucher.status,
         'sold_at': voucher.soldAt?.toIso8601String(),
         'sold_by_user_id': voucher.soldByUserId,
-        'sale_id': voucher.saleId,
         'qr_code_data': voucher.qrCodeData,
         'batch_id': voucher.batchId,
       };

@@ -5,6 +5,7 @@ import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'add_edit_site_screen.dart';
+import 'site_isp_subscription_screen.dart';
 
 class SitesScreen extends ConsumerStatefulWidget {
   const SitesScreen({super.key});
@@ -107,7 +108,7 @@ class _SitesScreenState extends ConsumerState<SitesScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => AddEditSiteScreen(site: site),
+              builder: (context) => SiteIspSubscriptionScreen(site: site),
             ),
           ).then((_) => setState(() {}));
         },

@@ -2169,6 +2169,698 @@ class ClientsCompanion extends UpdateCompanion<Client> {
   }
 }
 
+class $IspSubscriptionsTable extends IspSubscriptions
+    with TableInfo<$IspSubscriptionsTable, IspSubscription> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IspSubscriptionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _siteIdMeta = const VerificationMeta('siteId');
+  @override
+  late final GeneratedColumn<int> siteId = GeneratedColumn<int>(
+      'site_id', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: true,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sites (id)'));
+  static const VerificationMeta _providerNameMeta =
+      const VerificationMeta('providerName');
+  @override
+  late final GeneratedColumn<String> providerName = GeneratedColumn<String>(
+      'provider_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _paymentControlNumberMeta =
+      const VerificationMeta('paymentControlNumber');
+  @override
+  late final GeneratedColumn<String> paymentControlNumber =
+      GeneratedColumn<String>('payment_control_number', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _registeredNameMeta =
+      const VerificationMeta('registeredName');
+  @override
+  late final GeneratedColumn<String> registeredName = GeneratedColumn<String>(
+      'registered_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _serviceNumberMeta =
+      const VerificationMeta('serviceNumber');
+  @override
+  late final GeneratedColumn<String> serviceNumber = GeneratedColumn<String>(
+      'service_number', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
+  @override
+  late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
+      'paid_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _endsAtMeta = const VerificationMeta('endsAt');
+  @override
+  late final GeneratedColumn<DateTime> endsAt = GeneratedColumn<DateTime>(
+      'ends_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+      'amount', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+      'notes', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isSyncedMeta =
+      const VerificationMeta('isSynced');
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+      'is_synced', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_synced" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _lastSyncedAtMeta =
+      const VerificationMeta('lastSyncedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+      'last_synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        siteId,
+        providerName,
+        paymentControlNumber,
+        registeredName,
+        serviceNumber,
+        paidAt,
+        endsAt,
+        amount,
+        notes,
+        createdAt,
+        updatedAt,
+        isSynced,
+        lastSyncedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'isp_subscriptions';
+  @override
+  VerificationContext validateIntegrity(Insertable<IspSubscription> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('site_id')) {
+      context.handle(_siteIdMeta,
+          siteId.isAcceptableOrUnknown(data['site_id']!, _siteIdMeta));
+    } else if (isInserting) {
+      context.missing(_siteIdMeta);
+    }
+    if (data.containsKey('provider_name')) {
+      context.handle(
+          _providerNameMeta,
+          providerName.isAcceptableOrUnknown(
+              data['provider_name']!, _providerNameMeta));
+    } else if (isInserting) {
+      context.missing(_providerNameMeta);
+    }
+    if (data.containsKey('payment_control_number')) {
+      context.handle(
+          _paymentControlNumberMeta,
+          paymentControlNumber.isAcceptableOrUnknown(
+              data['payment_control_number']!, _paymentControlNumberMeta));
+    }
+    if (data.containsKey('registered_name')) {
+      context.handle(
+          _registeredNameMeta,
+          registeredName.isAcceptableOrUnknown(
+              data['registered_name']!, _registeredNameMeta));
+    }
+    if (data.containsKey('service_number')) {
+      context.handle(
+          _serviceNumberMeta,
+          serviceNumber.isAcceptableOrUnknown(
+              data['service_number']!, _serviceNumberMeta));
+    }
+    if (data.containsKey('paid_at')) {
+      context.handle(_paidAtMeta,
+          paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta));
+    } else if (isInserting) {
+      context.missing(_paidAtMeta);
+    }
+    if (data.containsKey('ends_at')) {
+      context.handle(_endsAtMeta,
+          endsAt.isAcceptableOrUnknown(data['ends_at']!, _endsAtMeta));
+    } else if (isInserting) {
+      context.missing(_endsAtMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(_amountMeta,
+          amount.isAcceptableOrUnknown(data['amount']!, _amountMeta));
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+          _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(_isSyncedMeta,
+          isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta));
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+          _lastSyncedAtMeta,
+          lastSyncedAt.isAcceptableOrUnknown(
+              data['last_synced_at']!, _lastSyncedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  IspSubscription map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IspSubscription(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      siteId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}site_id'])!,
+      providerName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}provider_name'])!,
+      paymentControlNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}payment_control_number']),
+      registeredName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}registered_name']),
+      serviceNumber: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}service_number']),
+      paidAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}paid_at'])!,
+      endsAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}ends_at'])!,
+      amount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}amount']),
+      notes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      isSynced: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_synced'])!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+    );
+  }
+
+  @override
+  $IspSubscriptionsTable createAlias(String alias) {
+    return $IspSubscriptionsTable(attachedDatabase, alias);
+  }
+}
+
+class IspSubscription extends DataClass implements Insertable<IspSubscription> {
+  final int id;
+  final int siteId;
+  final String providerName;
+  final String? paymentControlNumber;
+  final String? registeredName;
+  final String? serviceNumber;
+  final DateTime paidAt;
+  final DateTime endsAt;
+  final double? amount;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isSynced;
+  final DateTime? lastSyncedAt;
+  const IspSubscription(
+      {required this.id,
+      required this.siteId,
+      required this.providerName,
+      this.paymentControlNumber,
+      this.registeredName,
+      this.serviceNumber,
+      required this.paidAt,
+      required this.endsAt,
+      this.amount,
+      this.notes,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.isSynced,
+      this.lastSyncedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['site_id'] = Variable<int>(siteId);
+    map['provider_name'] = Variable<String>(providerName);
+    if (!nullToAbsent || paymentControlNumber != null) {
+      map['payment_control_number'] = Variable<String>(paymentControlNumber);
+    }
+    if (!nullToAbsent || registeredName != null) {
+      map['registered_name'] = Variable<String>(registeredName);
+    }
+    if (!nullToAbsent || serviceNumber != null) {
+      map['service_number'] = Variable<String>(serviceNumber);
+    }
+    map['paid_at'] = Variable<DateTime>(paidAt);
+    map['ends_at'] = Variable<DateTime>(endsAt);
+    if (!nullToAbsent || amount != null) {
+      map['amount'] = Variable<double>(amount);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || lastSyncedAt != null) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    return map;
+  }
+
+  IspSubscriptionsCompanion toCompanion(bool nullToAbsent) {
+    return IspSubscriptionsCompanion(
+      id: Value(id),
+      siteId: Value(siteId),
+      providerName: Value(providerName),
+      paymentControlNumber: paymentControlNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentControlNumber),
+      registeredName: registeredName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(registeredName),
+      serviceNumber: serviceNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serviceNumber),
+      paidAt: Value(paidAt),
+      endsAt: Value(endsAt),
+      amount:
+          amount == null && nullToAbsent ? const Value.absent() : Value(amount),
+      notes:
+          notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isSynced: Value(isSynced),
+      lastSyncedAt: lastSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncedAt),
+    );
+  }
+
+  factory IspSubscription.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IspSubscription(
+      id: serializer.fromJson<int>(json['id']),
+      siteId: serializer.fromJson<int>(json['siteId']),
+      providerName: serializer.fromJson<String>(json['providerName']),
+      paymentControlNumber:
+          serializer.fromJson<String?>(json['paymentControlNumber']),
+      registeredName: serializer.fromJson<String?>(json['registeredName']),
+      serviceNumber: serializer.fromJson<String?>(json['serviceNumber']),
+      paidAt: serializer.fromJson<DateTime>(json['paidAt']),
+      endsAt: serializer.fromJson<DateTime>(json['endsAt']),
+      amount: serializer.fromJson<double?>(json['amount']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'siteId': serializer.toJson<int>(siteId),
+      'providerName': serializer.toJson<String>(providerName),
+      'paymentControlNumber': serializer.toJson<String?>(paymentControlNumber),
+      'registeredName': serializer.toJson<String?>(registeredName),
+      'serviceNumber': serializer.toJson<String?>(serviceNumber),
+      'paidAt': serializer.toJson<DateTime>(paidAt),
+      'endsAt': serializer.toJson<DateTime>(endsAt),
+      'amount': serializer.toJson<double?>(amount),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+    };
+  }
+
+  IspSubscription copyWith(
+          {int? id,
+          int? siteId,
+          String? providerName,
+          Value<String?> paymentControlNumber = const Value.absent(),
+          Value<String?> registeredName = const Value.absent(),
+          Value<String?> serviceNumber = const Value.absent(),
+          DateTime? paidAt,
+          DateTime? endsAt,
+          Value<double?> amount = const Value.absent(),
+          Value<String?> notes = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          bool? isSynced,
+          Value<DateTime?> lastSyncedAt = const Value.absent()}) =>
+      IspSubscription(
+        id: id ?? this.id,
+        siteId: siteId ?? this.siteId,
+        providerName: providerName ?? this.providerName,
+        paymentControlNumber: paymentControlNumber.present
+            ? paymentControlNumber.value
+            : this.paymentControlNumber,
+        registeredName:
+            registeredName.present ? registeredName.value : this.registeredName,
+        serviceNumber:
+            serviceNumber.present ? serviceNumber.value : this.serviceNumber,
+        paidAt: paidAt ?? this.paidAt,
+        endsAt: endsAt ?? this.endsAt,
+        amount: amount.present ? amount.value : this.amount,
+        notes: notes.present ? notes.value : this.notes,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        isSynced: isSynced ?? this.isSynced,
+        lastSyncedAt:
+            lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+      );
+  IspSubscription copyWithCompanion(IspSubscriptionsCompanion data) {
+    return IspSubscription(
+      id: data.id.present ? data.id.value : this.id,
+      siteId: data.siteId.present ? data.siteId.value : this.siteId,
+      providerName: data.providerName.present
+          ? data.providerName.value
+          : this.providerName,
+      paymentControlNumber: data.paymentControlNumber.present
+          ? data.paymentControlNumber.value
+          : this.paymentControlNumber,
+      registeredName: data.registeredName.present
+          ? data.registeredName.value
+          : this.registeredName,
+      serviceNumber: data.serviceNumber.present
+          ? data.serviceNumber.value
+          : this.serviceNumber,
+      paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      endsAt: data.endsAt.present ? data.endsAt.value : this.endsAt,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IspSubscription(')
+          ..write('id: $id, ')
+          ..write('siteId: $siteId, ')
+          ..write('providerName: $providerName, ')
+          ..write('paymentControlNumber: $paymentControlNumber, ')
+          ..write('registeredName: $registeredName, ')
+          ..write('serviceNumber: $serviceNumber, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('amount: $amount, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      siteId,
+      providerName,
+      paymentControlNumber,
+      registeredName,
+      serviceNumber,
+      paidAt,
+      endsAt,
+      amount,
+      notes,
+      createdAt,
+      updatedAt,
+      isSynced,
+      lastSyncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IspSubscription &&
+          other.id == this.id &&
+          other.siteId == this.siteId &&
+          other.providerName == this.providerName &&
+          other.paymentControlNumber == this.paymentControlNumber &&
+          other.registeredName == this.registeredName &&
+          other.serviceNumber == this.serviceNumber &&
+          other.paidAt == this.paidAt &&
+          other.endsAt == this.endsAt &&
+          other.amount == this.amount &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class IspSubscriptionsCompanion extends UpdateCompanion<IspSubscription> {
+  final Value<int> id;
+  final Value<int> siteId;
+  final Value<String> providerName;
+  final Value<String?> paymentControlNumber;
+  final Value<String?> registeredName;
+  final Value<String?> serviceNumber;
+  final Value<DateTime> paidAt;
+  final Value<DateTime> endsAt;
+  final Value<double?> amount;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isSynced;
+  final Value<DateTime?> lastSyncedAt;
+  const IspSubscriptionsCompanion({
+    this.id = const Value.absent(),
+    this.siteId = const Value.absent(),
+    this.providerName = const Value.absent(),
+    this.paymentControlNumber = const Value.absent(),
+    this.registeredName = const Value.absent(),
+    this.serviceNumber = const Value.absent(),
+    this.paidAt = const Value.absent(),
+    this.endsAt = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  });
+  IspSubscriptionsCompanion.insert({
+    this.id = const Value.absent(),
+    required int siteId,
+    required String providerName,
+    this.paymentControlNumber = const Value.absent(),
+    this.registeredName = const Value.absent(),
+    this.serviceNumber = const Value.absent(),
+    required DateTime paidAt,
+    required DateTime endsAt,
+    this.amount = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.isSynced = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  })  : siteId = Value(siteId),
+        providerName = Value(providerName),
+        paidAt = Value(paidAt),
+        endsAt = Value(endsAt),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<IspSubscription> custom({
+    Expression<int>? id,
+    Expression<int>? siteId,
+    Expression<String>? providerName,
+    Expression<String>? paymentControlNumber,
+    Expression<String>? registeredName,
+    Expression<String>? serviceNumber,
+    Expression<DateTime>? paidAt,
+    Expression<DateTime>? endsAt,
+    Expression<double>? amount,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<DateTime>? lastSyncedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (siteId != null) 'site_id': siteId,
+      if (providerName != null) 'provider_name': providerName,
+      if (paymentControlNumber != null)
+        'payment_control_number': paymentControlNumber,
+      if (registeredName != null) 'registered_name': registeredName,
+      if (serviceNumber != null) 'service_number': serviceNumber,
+      if (paidAt != null) 'paid_at': paidAt,
+      if (endsAt != null) 'ends_at': endsAt,
+      if (amount != null) 'amount': amount,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+    });
+  }
+
+  IspSubscriptionsCompanion copyWith(
+      {Value<int>? id,
+      Value<int>? siteId,
+      Value<String>? providerName,
+      Value<String?>? paymentControlNumber,
+      Value<String?>? registeredName,
+      Value<String?>? serviceNumber,
+      Value<DateTime>? paidAt,
+      Value<DateTime>? endsAt,
+      Value<double?>? amount,
+      Value<String?>? notes,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<bool>? isSynced,
+      Value<DateTime?>? lastSyncedAt}) {
+    return IspSubscriptionsCompanion(
+      id: id ?? this.id,
+      siteId: siteId ?? this.siteId,
+      providerName: providerName ?? this.providerName,
+      paymentControlNumber: paymentControlNumber ?? this.paymentControlNumber,
+      registeredName: registeredName ?? this.registeredName,
+      serviceNumber: serviceNumber ?? this.serviceNumber,
+      paidAt: paidAt ?? this.paidAt,
+      endsAt: endsAt ?? this.endsAt,
+      amount: amount ?? this.amount,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (siteId.present) {
+      map['site_id'] = Variable<int>(siteId.value);
+    }
+    if (providerName.present) {
+      map['provider_name'] = Variable<String>(providerName.value);
+    }
+    if (paymentControlNumber.present) {
+      map['payment_control_number'] =
+          Variable<String>(paymentControlNumber.value);
+    }
+    if (registeredName.present) {
+      map['registered_name'] = Variable<String>(registeredName.value);
+    }
+    if (serviceNumber.present) {
+      map['service_number'] = Variable<String>(serviceNumber.value);
+    }
+    if (paidAt.present) {
+      map['paid_at'] = Variable<DateTime>(paidAt.value);
+    }
+    if (endsAt.present) {
+      map['ends_at'] = Variable<DateTime>(endsAt.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IspSubscriptionsCompanion(')
+          ..write('id: $id, ')
+          ..write('siteId: $siteId, ')
+          ..write('providerName: $providerName, ')
+          ..write('paymentControlNumber: $paymentControlNumber, ')
+          ..write('registeredName: $registeredName, ')
+          ..write('serviceNumber: $serviceNumber, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('amount: $amount, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PackagesTable extends Packages with TableInfo<$PackagesTable, Package> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -2712,6 +3404,808 @@ class PackagesCompanion extends UpdateCompanion<Package> {
   }
 }
 
+class $VouchersTable extends Vouchers with TableInfo<$VouchersTable, Voucher> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VouchersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _serverIdMeta =
+      const VerificationMeta('serverId');
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+      'server_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _codeMeta = const VerificationMeta('code');
+  @override
+  late final GeneratedColumn<String> code = GeneratedColumn<String>(
+      'code', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
+  static const VerificationMeta _packageIdMeta =
+      const VerificationMeta('packageId');
+  @override
+  late final GeneratedColumn<int> packageId = GeneratedColumn<int>(
+      'package_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES packages (id)'));
+  static const VerificationMeta _siteIdMeta = const VerificationMeta('siteId');
+  @override
+  late final GeneratedColumn<int> siteId = GeneratedColumn<int>(
+      'site_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sites (id)'));
+  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  @override
+  late final GeneratedColumn<double> price = GeneratedColumn<double>(
+      'price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _validityMeta =
+      const VerificationMeta('validity');
+  @override
+  late final GeneratedColumn<String> validity = GeneratedColumn<String>(
+      'validity', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<String> speed = GeneratedColumn<String>(
+      'speed', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _soldAtMeta = const VerificationMeta('soldAt');
+  @override
+  late final GeneratedColumn<DateTime> soldAt = GeneratedColumn<DateTime>(
+      'sold_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _soldByUserIdMeta =
+      const VerificationMeta('soldByUserId');
+  @override
+  late final GeneratedColumn<int> soldByUserId = GeneratedColumn<int>(
+      'sold_by_user_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
+  static const VerificationMeta _qrCodeDataMeta =
+      const VerificationMeta('qrCodeData');
+  @override
+  late final GeneratedColumn<String> qrCodeData = GeneratedColumn<String>(
+      'qr_code_data', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _batchIdMeta =
+      const VerificationMeta('batchId');
+  @override
+  late final GeneratedColumn<String> batchId = GeneratedColumn<String>(
+      'batch_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _isSyncedMeta =
+      const VerificationMeta('isSynced');
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+      'is_synced', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_synced" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _lastSyncedAtMeta =
+      const VerificationMeta('lastSyncedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+      'last_synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        serverId,
+        code,
+        packageId,
+        siteId,
+        price,
+        validity,
+        speed,
+        status,
+        soldAt,
+        soldByUserId,
+        qrCodeData,
+        batchId,
+        createdAt,
+        updatedAt,
+        isSynced,
+        lastSyncedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'vouchers';
+  @override
+  VerificationContext validateIntegrity(Insertable<Voucher> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(_serverIdMeta,
+          serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta));
+    }
+    if (data.containsKey('code')) {
+      context.handle(
+          _codeMeta, code.isAcceptableOrUnknown(data['code']!, _codeMeta));
+    } else if (isInserting) {
+      context.missing(_codeMeta);
+    }
+    if (data.containsKey('package_id')) {
+      context.handle(_packageIdMeta,
+          packageId.isAcceptableOrUnknown(data['package_id']!, _packageIdMeta));
+    }
+    if (data.containsKey('site_id')) {
+      context.handle(_siteIdMeta,
+          siteId.isAcceptableOrUnknown(data['site_id']!, _siteIdMeta));
+    }
+    if (data.containsKey('price')) {
+      context.handle(
+          _priceMeta, price.isAcceptableOrUnknown(data['price']!, _priceMeta));
+    }
+    if (data.containsKey('validity')) {
+      context.handle(_validityMeta,
+          validity.isAcceptableOrUnknown(data['validity']!, _validityMeta));
+    }
+    if (data.containsKey('speed')) {
+      context.handle(
+          _speedMeta, speed.isAcceptableOrUnknown(data['speed']!, _speedMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('sold_at')) {
+      context.handle(_soldAtMeta,
+          soldAt.isAcceptableOrUnknown(data['sold_at']!, _soldAtMeta));
+    }
+    if (data.containsKey('sold_by_user_id')) {
+      context.handle(
+          _soldByUserIdMeta,
+          soldByUserId.isAcceptableOrUnknown(
+              data['sold_by_user_id']!, _soldByUserIdMeta));
+    }
+    if (data.containsKey('qr_code_data')) {
+      context.handle(
+          _qrCodeDataMeta,
+          qrCodeData.isAcceptableOrUnknown(
+              data['qr_code_data']!, _qrCodeDataMeta));
+    }
+    if (data.containsKey('batch_id')) {
+      context.handle(_batchIdMeta,
+          batchId.isAcceptableOrUnknown(data['batch_id']!, _batchIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(_isSyncedMeta,
+          isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta));
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+          _lastSyncedAtMeta,
+          lastSyncedAt.isAcceptableOrUnknown(
+              data['last_synced_at']!, _lastSyncedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Voucher map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Voucher(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      serverId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}server_id']),
+      code: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}code'])!,
+      packageId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}package_id']),
+      siteId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}site_id']),
+      price: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}price']),
+      validity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}validity']),
+      speed: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}speed']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      soldAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}sold_at']),
+      soldByUserId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sold_by_user_id']),
+      qrCodeData: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}qr_code_data']),
+      batchId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}batch_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      isSynced: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_synced'])!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
+    );
+  }
+
+  @override
+  $VouchersTable createAlias(String alias) {
+    return $VouchersTable(attachedDatabase, alias);
+  }
+}
+
+class Voucher extends DataClass implements Insertable<Voucher> {
+  final int id;
+  final String? serverId;
+  final String code;
+  final int? packageId;
+  final int? siteId;
+  final double? price;
+  final String? validity;
+  final String? speed;
+  final String status;
+  final DateTime? soldAt;
+  final int? soldByUserId;
+  final String? qrCodeData;
+  final String? batchId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final bool isSynced;
+  final DateTime? lastSyncedAt;
+  const Voucher(
+      {required this.id,
+      this.serverId,
+      required this.code,
+      this.packageId,
+      this.siteId,
+      this.price,
+      this.validity,
+      this.speed,
+      required this.status,
+      this.soldAt,
+      this.soldByUserId,
+      this.qrCodeData,
+      this.batchId,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.isSynced,
+      this.lastSyncedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
+    map['code'] = Variable<String>(code);
+    if (!nullToAbsent || packageId != null) {
+      map['package_id'] = Variable<int>(packageId);
+    }
+    if (!nullToAbsent || siteId != null) {
+      map['site_id'] = Variable<int>(siteId);
+    }
+    if (!nullToAbsent || price != null) {
+      map['price'] = Variable<double>(price);
+    }
+    if (!nullToAbsent || validity != null) {
+      map['validity'] = Variable<String>(validity);
+    }
+    if (!nullToAbsent || speed != null) {
+      map['speed'] = Variable<String>(speed);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || soldAt != null) {
+      map['sold_at'] = Variable<DateTime>(soldAt);
+    }
+    if (!nullToAbsent || soldByUserId != null) {
+      map['sold_by_user_id'] = Variable<int>(soldByUserId);
+    }
+    if (!nullToAbsent || qrCodeData != null) {
+      map['qr_code_data'] = Variable<String>(qrCodeData);
+    }
+    if (!nullToAbsent || batchId != null) {
+      map['batch_id'] = Variable<String>(batchId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    if (!nullToAbsent || lastSyncedAt != null) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    return map;
+  }
+
+  VouchersCompanion toCompanion(bool nullToAbsent) {
+    return VouchersCompanion(
+      id: Value(id),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
+      code: Value(code),
+      packageId: packageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(packageId),
+      siteId:
+          siteId == null && nullToAbsent ? const Value.absent() : Value(siteId),
+      price:
+          price == null && nullToAbsent ? const Value.absent() : Value(price),
+      validity: validity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(validity),
+      speed:
+          speed == null && nullToAbsent ? const Value.absent() : Value(speed),
+      status: Value(status),
+      soldAt:
+          soldAt == null && nullToAbsent ? const Value.absent() : Value(soldAt),
+      soldByUserId: soldByUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(soldByUserId),
+      qrCodeData: qrCodeData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(qrCodeData),
+      batchId: batchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(batchId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isSynced: Value(isSynced),
+      lastSyncedAt: lastSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncedAt),
+    );
+  }
+
+  factory Voucher.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Voucher(
+      id: serializer.fromJson<int>(json['id']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
+      code: serializer.fromJson<String>(json['code']),
+      packageId: serializer.fromJson<int?>(json['packageId']),
+      siteId: serializer.fromJson<int?>(json['siteId']),
+      price: serializer.fromJson<double?>(json['price']),
+      validity: serializer.fromJson<String?>(json['validity']),
+      speed: serializer.fromJson<String?>(json['speed']),
+      status: serializer.fromJson<String>(json['status']),
+      soldAt: serializer.fromJson<DateTime?>(json['soldAt']),
+      soldByUserId: serializer.fromJson<int?>(json['soldByUserId']),
+      qrCodeData: serializer.fromJson<String?>(json['qrCodeData']),
+      batchId: serializer.fromJson<String?>(json['batchId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'serverId': serializer.toJson<String?>(serverId),
+      'code': serializer.toJson<String>(code),
+      'packageId': serializer.toJson<int?>(packageId),
+      'siteId': serializer.toJson<int?>(siteId),
+      'price': serializer.toJson<double?>(price),
+      'validity': serializer.toJson<String?>(validity),
+      'speed': serializer.toJson<String?>(speed),
+      'status': serializer.toJson<String>(status),
+      'soldAt': serializer.toJson<DateTime?>(soldAt),
+      'soldByUserId': serializer.toJson<int?>(soldByUserId),
+      'qrCodeData': serializer.toJson<String?>(qrCodeData),
+      'batchId': serializer.toJson<String?>(batchId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+    };
+  }
+
+  Voucher copyWith(
+          {int? id,
+          Value<String?> serverId = const Value.absent(),
+          String? code,
+          Value<int?> packageId = const Value.absent(),
+          Value<int?> siteId = const Value.absent(),
+          Value<double?> price = const Value.absent(),
+          Value<String?> validity = const Value.absent(),
+          Value<String?> speed = const Value.absent(),
+          String? status,
+          Value<DateTime?> soldAt = const Value.absent(),
+          Value<int?> soldByUserId = const Value.absent(),
+          Value<String?> qrCodeData = const Value.absent(),
+          Value<String?> batchId = const Value.absent(),
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          bool? isSynced,
+          Value<DateTime?> lastSyncedAt = const Value.absent()}) =>
+      Voucher(
+        id: id ?? this.id,
+        serverId: serverId.present ? serverId.value : this.serverId,
+        code: code ?? this.code,
+        packageId: packageId.present ? packageId.value : this.packageId,
+        siteId: siteId.present ? siteId.value : this.siteId,
+        price: price.present ? price.value : this.price,
+        validity: validity.present ? validity.value : this.validity,
+        speed: speed.present ? speed.value : this.speed,
+        status: status ?? this.status,
+        soldAt: soldAt.present ? soldAt.value : this.soldAt,
+        soldByUserId:
+            soldByUserId.present ? soldByUserId.value : this.soldByUserId,
+        qrCodeData: qrCodeData.present ? qrCodeData.value : this.qrCodeData,
+        batchId: batchId.present ? batchId.value : this.batchId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        isSynced: isSynced ?? this.isSynced,
+        lastSyncedAt:
+            lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+      );
+  Voucher copyWithCompanion(VouchersCompanion data) {
+    return Voucher(
+      id: data.id.present ? data.id.value : this.id,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      code: data.code.present ? data.code.value : this.code,
+      packageId: data.packageId.present ? data.packageId.value : this.packageId,
+      siteId: data.siteId.present ? data.siteId.value : this.siteId,
+      price: data.price.present ? data.price.value : this.price,
+      validity: data.validity.present ? data.validity.value : this.validity,
+      speed: data.speed.present ? data.speed.value : this.speed,
+      status: data.status.present ? data.status.value : this.status,
+      soldAt: data.soldAt.present ? data.soldAt.value : this.soldAt,
+      soldByUserId: data.soldByUserId.present
+          ? data.soldByUserId.value
+          : this.soldByUserId,
+      qrCodeData:
+          data.qrCodeData.present ? data.qrCodeData.value : this.qrCodeData,
+      batchId: data.batchId.present ? data.batchId.value : this.batchId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Voucher(')
+          ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
+          ..write('code: $code, ')
+          ..write('packageId: $packageId, ')
+          ..write('siteId: $siteId, ')
+          ..write('price: $price, ')
+          ..write('validity: $validity, ')
+          ..write('speed: $speed, ')
+          ..write('status: $status, ')
+          ..write('soldAt: $soldAt, ')
+          ..write('soldByUserId: $soldByUserId, ')
+          ..write('qrCodeData: $qrCodeData, ')
+          ..write('batchId: $batchId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      serverId,
+      code,
+      packageId,
+      siteId,
+      price,
+      validity,
+      speed,
+      status,
+      soldAt,
+      soldByUserId,
+      qrCodeData,
+      batchId,
+      createdAt,
+      updatedAt,
+      isSynced,
+      lastSyncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Voucher &&
+          other.id == this.id &&
+          other.serverId == this.serverId &&
+          other.code == this.code &&
+          other.packageId == this.packageId &&
+          other.siteId == this.siteId &&
+          other.price == this.price &&
+          other.validity == this.validity &&
+          other.speed == this.speed &&
+          other.status == this.status &&
+          other.soldAt == this.soldAt &&
+          other.soldByUserId == this.soldByUserId &&
+          other.qrCodeData == this.qrCodeData &&
+          other.batchId == this.batchId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isSynced == this.isSynced &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class VouchersCompanion extends UpdateCompanion<Voucher> {
+  final Value<int> id;
+  final Value<String?> serverId;
+  final Value<String> code;
+  final Value<int?> packageId;
+  final Value<int?> siteId;
+  final Value<double?> price;
+  final Value<String?> validity;
+  final Value<String?> speed;
+  final Value<String> status;
+  final Value<DateTime?> soldAt;
+  final Value<int?> soldByUserId;
+  final Value<String?> qrCodeData;
+  final Value<String?> batchId;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<bool> isSynced;
+  final Value<DateTime?> lastSyncedAt;
+  const VouchersCompanion({
+    this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.code = const Value.absent(),
+    this.packageId = const Value.absent(),
+    this.siteId = const Value.absent(),
+    this.price = const Value.absent(),
+    this.validity = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.status = const Value.absent(),
+    this.soldAt = const Value.absent(),
+    this.soldByUserId = const Value.absent(),
+    this.qrCodeData = const Value.absent(),
+    this.batchId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  });
+  VouchersCompanion.insert({
+    this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
+    required String code,
+    this.packageId = const Value.absent(),
+    this.siteId = const Value.absent(),
+    this.price = const Value.absent(),
+    this.validity = const Value.absent(),
+    this.speed = const Value.absent(),
+    required String status,
+    this.soldAt = const Value.absent(),
+    this.soldByUserId = const Value.absent(),
+    this.qrCodeData = const Value.absent(),
+    this.batchId = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.isSynced = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  })  : code = Value(code),
+        status = Value(status),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<Voucher> custom({
+    Expression<int>? id,
+    Expression<String>? serverId,
+    Expression<String>? code,
+    Expression<int>? packageId,
+    Expression<int>? siteId,
+    Expression<double>? price,
+    Expression<String>? validity,
+    Expression<String>? speed,
+    Expression<String>? status,
+    Expression<DateTime>? soldAt,
+    Expression<int>? soldByUserId,
+    Expression<String>? qrCodeData,
+    Expression<String>? batchId,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<bool>? isSynced,
+    Expression<DateTime>? lastSyncedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (serverId != null) 'server_id': serverId,
+      if (code != null) 'code': code,
+      if (packageId != null) 'package_id': packageId,
+      if (siteId != null) 'site_id': siteId,
+      if (price != null) 'price': price,
+      if (validity != null) 'validity': validity,
+      if (speed != null) 'speed': speed,
+      if (status != null) 'status': status,
+      if (soldAt != null) 'sold_at': soldAt,
+      if (soldByUserId != null) 'sold_by_user_id': soldByUserId,
+      if (qrCodeData != null) 'qr_code_data': qrCodeData,
+      if (batchId != null) 'batch_id': batchId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+    });
+  }
+
+  VouchersCompanion copyWith(
+      {Value<int>? id,
+      Value<String?>? serverId,
+      Value<String>? code,
+      Value<int?>? packageId,
+      Value<int?>? siteId,
+      Value<double?>? price,
+      Value<String?>? validity,
+      Value<String?>? speed,
+      Value<String>? status,
+      Value<DateTime?>? soldAt,
+      Value<int?>? soldByUserId,
+      Value<String?>? qrCodeData,
+      Value<String?>? batchId,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<bool>? isSynced,
+      Value<DateTime?>? lastSyncedAt}) {
+    return VouchersCompanion(
+      id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
+      code: code ?? this.code,
+      packageId: packageId ?? this.packageId,
+      siteId: siteId ?? this.siteId,
+      price: price ?? this.price,
+      validity: validity ?? this.validity,
+      speed: speed ?? this.speed,
+      status: status ?? this.status,
+      soldAt: soldAt ?? this.soldAt,
+      soldByUserId: soldByUserId ?? this.soldByUserId,
+      qrCodeData: qrCodeData ?? this.qrCodeData,
+      batchId: batchId ?? this.batchId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isSynced: isSynced ?? this.isSynced,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
+    }
+    if (code.present) {
+      map['code'] = Variable<String>(code.value);
+    }
+    if (packageId.present) {
+      map['package_id'] = Variable<int>(packageId.value);
+    }
+    if (siteId.present) {
+      map['site_id'] = Variable<int>(siteId.value);
+    }
+    if (price.present) {
+      map['price'] = Variable<double>(price.value);
+    }
+    if (validity.present) {
+      map['validity'] = Variable<String>(validity.value);
+    }
+    if (speed.present) {
+      map['speed'] = Variable<String>(speed.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (soldAt.present) {
+      map['sold_at'] = Variable<DateTime>(soldAt.value);
+    }
+    if (soldByUserId.present) {
+      map['sold_by_user_id'] = Variable<int>(soldByUserId.value);
+    }
+    if (qrCodeData.present) {
+      map['qr_code_data'] = Variable<String>(qrCodeData.value);
+    }
+    if (batchId.present) {
+      map['batch_id'] = Variable<String>(batchId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VouchersCompanion(')
+          ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
+          ..write('code: $code, ')
+          ..write('packageId: $packageId, ')
+          ..write('siteId: $siteId, ')
+          ..write('price: $price, ')
+          ..write('validity: $validity, ')
+          ..write('speed: $speed, ')
+          ..write('status: $status, ')
+          ..write('soldAt: $soldAt, ')
+          ..write('soldByUserId: $soldByUserId, ')
+          ..write('qrCodeData: $qrCodeData, ')
+          ..write('batchId: $batchId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -2744,8 +4238,11 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
       const VerificationMeta('voucherId');
   @override
   late final GeneratedColumn<int> voucherId = GeneratedColumn<int>(
-      'voucher_id', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
+      'voucher_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES vouchers (id)'));
   static const VerificationMeta _clientIdMeta =
       const VerificationMeta('clientId');
   @override
@@ -2877,8 +4374,6 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
     if (data.containsKey('voucher_id')) {
       context.handle(_voucherIdMeta,
           voucherId.isAcceptableOrUnknown(data['voucher_id']!, _voucherIdMeta));
-    } else if (isInserting) {
-      context.missing(_voucherIdMeta);
     }
     if (data.containsKey('client_id')) {
       context.handle(_clientIdMeta,
@@ -2962,7 +4457,7 @@ class $SalesTable extends Sales with TableInfo<$SalesTable, Sale> {
       receiptNumber: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}receipt_number'])!,
       voucherId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}voucher_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}voucher_id']),
       clientId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}client_id']),
       agentId: attachedDatabase.typeMapping
@@ -3000,7 +4495,7 @@ class Sale extends DataClass implements Insertable<Sale> {
   final int id;
   final String? serverId;
   final String receiptNumber;
-  final int voucherId;
+  final int? voucherId;
   final int? clientId;
   final int agentId;
   final int? siteId;
@@ -3017,7 +4512,7 @@ class Sale extends DataClass implements Insertable<Sale> {
       {required this.id,
       this.serverId,
       required this.receiptNumber,
-      required this.voucherId,
+      this.voucherId,
       this.clientId,
       required this.agentId,
       this.siteId,
@@ -3038,7 +4533,9 @@ class Sale extends DataClass implements Insertable<Sale> {
       map['server_id'] = Variable<String>(serverId);
     }
     map['receipt_number'] = Variable<String>(receiptNumber);
-    map['voucher_id'] = Variable<int>(voucherId);
+    if (!nullToAbsent || voucherId != null) {
+      map['voucher_id'] = Variable<int>(voucherId);
+    }
     if (!nullToAbsent || clientId != null) {
       map['client_id'] = Variable<int>(clientId);
     }
@@ -3069,7 +4566,9 @@ class Sale extends DataClass implements Insertable<Sale> {
           ? const Value.absent()
           : Value(serverId),
       receiptNumber: Value(receiptNumber),
-      voucherId: Value(voucherId),
+      voucherId: voucherId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voucherId),
       clientId: clientId == null && nullToAbsent
           ? const Value.absent()
           : Value(clientId),
@@ -3098,7 +4597,7 @@ class Sale extends DataClass implements Insertable<Sale> {
       id: serializer.fromJson<int>(json['id']),
       serverId: serializer.fromJson<String?>(json['serverId']),
       receiptNumber: serializer.fromJson<String>(json['receiptNumber']),
-      voucherId: serializer.fromJson<int>(json['voucherId']),
+      voucherId: serializer.fromJson<int?>(json['voucherId']),
       clientId: serializer.fromJson<int?>(json['clientId']),
       agentId: serializer.fromJson<int>(json['agentId']),
       siteId: serializer.fromJson<int?>(json['siteId']),
@@ -3120,7 +4619,7 @@ class Sale extends DataClass implements Insertable<Sale> {
       'id': serializer.toJson<int>(id),
       'serverId': serializer.toJson<String?>(serverId),
       'receiptNumber': serializer.toJson<String>(receiptNumber),
-      'voucherId': serializer.toJson<int>(voucherId),
+      'voucherId': serializer.toJson<int?>(voucherId),
       'clientId': serializer.toJson<int?>(clientId),
       'agentId': serializer.toJson<int>(agentId),
       'siteId': serializer.toJson<int?>(siteId),
@@ -3140,7 +4639,7 @@ class Sale extends DataClass implements Insertable<Sale> {
           {int? id,
           Value<String?> serverId = const Value.absent(),
           String? receiptNumber,
-          int? voucherId,
+          Value<int?> voucherId = const Value.absent(),
           Value<int?> clientId = const Value.absent(),
           int? agentId,
           Value<int?> siteId = const Value.absent(),
@@ -3157,7 +4656,7 @@ class Sale extends DataClass implements Insertable<Sale> {
         id: id ?? this.id,
         serverId: serverId.present ? serverId.value : this.serverId,
         receiptNumber: receiptNumber ?? this.receiptNumber,
-        voucherId: voucherId ?? this.voucherId,
+        voucherId: voucherId.present ? voucherId.value : this.voucherId,
         clientId: clientId.present ? clientId.value : this.clientId,
         agentId: agentId ?? this.agentId,
         siteId: siteId.present ? siteId.value : this.siteId,
@@ -3267,7 +4766,7 @@ class SalesCompanion extends UpdateCompanion<Sale> {
   final Value<int> id;
   final Value<String?> serverId;
   final Value<String> receiptNumber;
-  final Value<int> voucherId;
+  final Value<int?> voucherId;
   final Value<int?> clientId;
   final Value<int> agentId;
   final Value<int?> siteId;
@@ -3302,7 +4801,7 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.id = const Value.absent(),
     this.serverId = const Value.absent(),
     required String receiptNumber,
-    required int voucherId,
+    this.voucherId = const Value.absent(),
     this.clientId = const Value.absent(),
     required int agentId,
     this.siteId = const Value.absent(),
@@ -3316,7 +4815,6 @@ class SalesCompanion extends UpdateCompanion<Sale> {
     this.isSynced = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
   })  : receiptNumber = Value(receiptNumber),
-        voucherId = Value(voucherId),
         agentId = Value(agentId),
         amount = Value(amount),
         paymentMethod = Value(paymentMethod),
@@ -3365,7 +4863,7 @@ class SalesCompanion extends UpdateCompanion<Sale> {
       {Value<int>? id,
       Value<String?>? serverId,
       Value<String>? receiptNumber,
-      Value<int>? voucherId,
+      Value<int?>? voucherId,
       Value<int?>? clientId,
       Value<int>? agentId,
       Value<int?>? siteId,
@@ -3467,808 +4965,6 @@ class SalesCompanion extends UpdateCompanion<Sale> {
           ..write('paymentMethod: $paymentMethod, ')
           ..write('notes: $notes, ')
           ..write('saleDate: $saleDate, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $VouchersTable extends Vouchers with TableInfo<$VouchersTable, Voucher> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $VouchersTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-      'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _serverIdMeta =
-      const VerificationMeta('serverId');
-  @override
-  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
-      'server_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _codeMeta = const VerificationMeta('code');
-  @override
-  late final GeneratedColumn<String> code = GeneratedColumn<String>(
-      'code', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'));
-  static const VerificationMeta _packageIdMeta =
-      const VerificationMeta('packageId');
-  @override
-  late final GeneratedColumn<int> packageId = GeneratedColumn<int>(
-      'package_id', aliasedName, true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES packages (id)'));
-  static const VerificationMeta _priceMeta = const VerificationMeta('price');
-  @override
-  late final GeneratedColumn<double> price = GeneratedColumn<double>(
-      'price', aliasedName, true,
-      type: DriftSqlType.double, requiredDuringInsert: false);
-  static const VerificationMeta _validityMeta =
-      const VerificationMeta('validity');
-  @override
-  late final GeneratedColumn<String> validity = GeneratedColumn<String>(
-      'validity', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
-  @override
-  late final GeneratedColumn<String> speed = GeneratedColumn<String>(
-      'speed', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _soldAtMeta = const VerificationMeta('soldAt');
-  @override
-  late final GeneratedColumn<DateTime> soldAt = GeneratedColumn<DateTime>(
-      'sold_at', aliasedName, true,
-      type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _soldByUserIdMeta =
-      const VerificationMeta('soldByUserId');
-  @override
-  late final GeneratedColumn<int> soldByUserId = GeneratedColumn<int>(
-      'sold_by_user_id', aliasedName, true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES users (id)'));
-  static const VerificationMeta _saleIdMeta = const VerificationMeta('saleId');
-  @override
-  late final GeneratedColumn<int> saleId = GeneratedColumn<int>(
-      'sale_id', aliasedName, true,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES sales (id)'));
-  static const VerificationMeta _qrCodeDataMeta =
-      const VerificationMeta('qrCodeData');
-  @override
-  late final GeneratedColumn<String> qrCodeData = GeneratedColumn<String>(
-      'qr_code_data', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _batchIdMeta =
-      const VerificationMeta('batchId');
-  @override
-  late final GeneratedColumn<String> batchId = GeneratedColumn<String>(
-      'batch_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
-  @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
-  @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _isSyncedMeta =
-      const VerificationMeta('isSynced');
-  @override
-  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
-      'is_synced', aliasedName, false,
-      type: DriftSqlType.bool,
-      requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_synced" IN (0, 1))'),
-      defaultValue: const Constant(false));
-  static const VerificationMeta _lastSyncedAtMeta =
-      const VerificationMeta('lastSyncedAt');
-  @override
-  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
-      'last_synced_at', aliasedName, true,
-      type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        serverId,
-        code,
-        packageId,
-        price,
-        validity,
-        speed,
-        status,
-        soldAt,
-        soldByUserId,
-        saleId,
-        qrCodeData,
-        batchId,
-        createdAt,
-        updatedAt,
-        isSynced,
-        lastSyncedAt
-      ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'vouchers';
-  @override
-  VerificationContext validateIntegrity(Insertable<Voucher> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('server_id')) {
-      context.handle(_serverIdMeta,
-          serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta));
-    }
-    if (data.containsKey('code')) {
-      context.handle(
-          _codeMeta, code.isAcceptableOrUnknown(data['code']!, _codeMeta));
-    } else if (isInserting) {
-      context.missing(_codeMeta);
-    }
-    if (data.containsKey('package_id')) {
-      context.handle(_packageIdMeta,
-          packageId.isAcceptableOrUnknown(data['package_id']!, _packageIdMeta));
-    }
-    if (data.containsKey('price')) {
-      context.handle(
-          _priceMeta, price.isAcceptableOrUnknown(data['price']!, _priceMeta));
-    }
-    if (data.containsKey('validity')) {
-      context.handle(_validityMeta,
-          validity.isAcceptableOrUnknown(data['validity']!, _validityMeta));
-    }
-    if (data.containsKey('speed')) {
-      context.handle(
-          _speedMeta, speed.isAcceptableOrUnknown(data['speed']!, _speedMeta));
-    }
-    if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
-    } else if (isInserting) {
-      context.missing(_statusMeta);
-    }
-    if (data.containsKey('sold_at')) {
-      context.handle(_soldAtMeta,
-          soldAt.isAcceptableOrUnknown(data['sold_at']!, _soldAtMeta));
-    }
-    if (data.containsKey('sold_by_user_id')) {
-      context.handle(
-          _soldByUserIdMeta,
-          soldByUserId.isAcceptableOrUnknown(
-              data['sold_by_user_id']!, _soldByUserIdMeta));
-    }
-    if (data.containsKey('sale_id')) {
-      context.handle(_saleIdMeta,
-          saleId.isAcceptableOrUnknown(data['sale_id']!, _saleIdMeta));
-    }
-    if (data.containsKey('qr_code_data')) {
-      context.handle(
-          _qrCodeDataMeta,
-          qrCodeData.isAcceptableOrUnknown(
-              data['qr_code_data']!, _qrCodeDataMeta));
-    }
-    if (data.containsKey('batch_id')) {
-      context.handle(_batchIdMeta,
-          batchId.isAcceptableOrUnknown(data['batch_id']!, _batchIdMeta));
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
-    } else if (isInserting) {
-      context.missing(_updatedAtMeta);
-    }
-    if (data.containsKey('is_synced')) {
-      context.handle(_isSyncedMeta,
-          isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta));
-    }
-    if (data.containsKey('last_synced_at')) {
-      context.handle(
-          _lastSyncedAtMeta,
-          lastSyncedAt.isAcceptableOrUnknown(
-              data['last_synced_at']!, _lastSyncedAtMeta));
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  Voucher map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Voucher(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      serverId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}server_id']),
-      code: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}code'])!,
-      packageId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}package_id']),
-      price: attachedDatabase.typeMapping
-          .read(DriftSqlType.double, data['${effectivePrefix}price']),
-      validity: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}validity']),
-      speed: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}speed']),
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      soldAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}sold_at']),
-      soldByUserId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}sold_by_user_id']),
-      saleId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}sale_id']),
-      qrCodeData: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}qr_code_data']),
-      batchId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}batch_id']),
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
-      isSynced: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_synced'])!,
-      lastSyncedAt: attachedDatabase.typeMapping.read(
-          DriftSqlType.dateTime, data['${effectivePrefix}last_synced_at']),
-    );
-  }
-
-  @override
-  $VouchersTable createAlias(String alias) {
-    return $VouchersTable(attachedDatabase, alias);
-  }
-}
-
-class Voucher extends DataClass implements Insertable<Voucher> {
-  final int id;
-  final String? serverId;
-  final String code;
-  final int? packageId;
-  final double? price;
-  final String? validity;
-  final String? speed;
-  final String status;
-  final DateTime? soldAt;
-  final int? soldByUserId;
-  final int? saleId;
-  final String? qrCodeData;
-  final String? batchId;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final bool isSynced;
-  final DateTime? lastSyncedAt;
-  const Voucher(
-      {required this.id,
-      this.serverId,
-      required this.code,
-      this.packageId,
-      this.price,
-      this.validity,
-      this.speed,
-      required this.status,
-      this.soldAt,
-      this.soldByUserId,
-      this.saleId,
-      this.qrCodeData,
-      this.batchId,
-      required this.createdAt,
-      required this.updatedAt,
-      required this.isSynced,
-      this.lastSyncedAt});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    if (!nullToAbsent || serverId != null) {
-      map['server_id'] = Variable<String>(serverId);
-    }
-    map['code'] = Variable<String>(code);
-    if (!nullToAbsent || packageId != null) {
-      map['package_id'] = Variable<int>(packageId);
-    }
-    if (!nullToAbsent || price != null) {
-      map['price'] = Variable<double>(price);
-    }
-    if (!nullToAbsent || validity != null) {
-      map['validity'] = Variable<String>(validity);
-    }
-    if (!nullToAbsent || speed != null) {
-      map['speed'] = Variable<String>(speed);
-    }
-    map['status'] = Variable<String>(status);
-    if (!nullToAbsent || soldAt != null) {
-      map['sold_at'] = Variable<DateTime>(soldAt);
-    }
-    if (!nullToAbsent || soldByUserId != null) {
-      map['sold_by_user_id'] = Variable<int>(soldByUserId);
-    }
-    if (!nullToAbsent || saleId != null) {
-      map['sale_id'] = Variable<int>(saleId);
-    }
-    if (!nullToAbsent || qrCodeData != null) {
-      map['qr_code_data'] = Variable<String>(qrCodeData);
-    }
-    if (!nullToAbsent || batchId != null) {
-      map['batch_id'] = Variable<String>(batchId);
-    }
-    map['created_at'] = Variable<DateTime>(createdAt);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
-    map['is_synced'] = Variable<bool>(isSynced);
-    if (!nullToAbsent || lastSyncedAt != null) {
-      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
-    }
-    return map;
-  }
-
-  VouchersCompanion toCompanion(bool nullToAbsent) {
-    return VouchersCompanion(
-      id: Value(id),
-      serverId: serverId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(serverId),
-      code: Value(code),
-      packageId: packageId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(packageId),
-      price:
-          price == null && nullToAbsent ? const Value.absent() : Value(price),
-      validity: validity == null && nullToAbsent
-          ? const Value.absent()
-          : Value(validity),
-      speed:
-          speed == null && nullToAbsent ? const Value.absent() : Value(speed),
-      status: Value(status),
-      soldAt:
-          soldAt == null && nullToAbsent ? const Value.absent() : Value(soldAt),
-      soldByUserId: soldByUserId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(soldByUserId),
-      saleId:
-          saleId == null && nullToAbsent ? const Value.absent() : Value(saleId),
-      qrCodeData: qrCodeData == null && nullToAbsent
-          ? const Value.absent()
-          : Value(qrCodeData),
-      batchId: batchId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(batchId),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
-      isSynced: Value(isSynced),
-      lastSyncedAt: lastSyncedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastSyncedAt),
-    );
-  }
-
-  factory Voucher.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Voucher(
-      id: serializer.fromJson<int>(json['id']),
-      serverId: serializer.fromJson<String?>(json['serverId']),
-      code: serializer.fromJson<String>(json['code']),
-      packageId: serializer.fromJson<int?>(json['packageId']),
-      price: serializer.fromJson<double?>(json['price']),
-      validity: serializer.fromJson<String?>(json['validity']),
-      speed: serializer.fromJson<String?>(json['speed']),
-      status: serializer.fromJson<String>(json['status']),
-      soldAt: serializer.fromJson<DateTime?>(json['soldAt']),
-      soldByUserId: serializer.fromJson<int?>(json['soldByUserId']),
-      saleId: serializer.fromJson<int?>(json['saleId']),
-      qrCodeData: serializer.fromJson<String?>(json['qrCodeData']),
-      batchId: serializer.fromJson<String?>(json['batchId']),
-      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
-      isSynced: serializer.fromJson<bool>(json['isSynced']),
-      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'serverId': serializer.toJson<String?>(serverId),
-      'code': serializer.toJson<String>(code),
-      'packageId': serializer.toJson<int?>(packageId),
-      'price': serializer.toJson<double?>(price),
-      'validity': serializer.toJson<String?>(validity),
-      'speed': serializer.toJson<String?>(speed),
-      'status': serializer.toJson<String>(status),
-      'soldAt': serializer.toJson<DateTime?>(soldAt),
-      'soldByUserId': serializer.toJson<int?>(soldByUserId),
-      'saleId': serializer.toJson<int?>(saleId),
-      'qrCodeData': serializer.toJson<String?>(qrCodeData),
-      'batchId': serializer.toJson<String?>(batchId),
-      'createdAt': serializer.toJson<DateTime>(createdAt),
-      'updatedAt': serializer.toJson<DateTime>(updatedAt),
-      'isSynced': serializer.toJson<bool>(isSynced),
-      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
-    };
-  }
-
-  Voucher copyWith(
-          {int? id,
-          Value<String?> serverId = const Value.absent(),
-          String? code,
-          Value<int?> packageId = const Value.absent(),
-          Value<double?> price = const Value.absent(),
-          Value<String?> validity = const Value.absent(),
-          Value<String?> speed = const Value.absent(),
-          String? status,
-          Value<DateTime?> soldAt = const Value.absent(),
-          Value<int?> soldByUserId = const Value.absent(),
-          Value<int?> saleId = const Value.absent(),
-          Value<String?> qrCodeData = const Value.absent(),
-          Value<String?> batchId = const Value.absent(),
-          DateTime? createdAt,
-          DateTime? updatedAt,
-          bool? isSynced,
-          Value<DateTime?> lastSyncedAt = const Value.absent()}) =>
-      Voucher(
-        id: id ?? this.id,
-        serverId: serverId.present ? serverId.value : this.serverId,
-        code: code ?? this.code,
-        packageId: packageId.present ? packageId.value : this.packageId,
-        price: price.present ? price.value : this.price,
-        validity: validity.present ? validity.value : this.validity,
-        speed: speed.present ? speed.value : this.speed,
-        status: status ?? this.status,
-        soldAt: soldAt.present ? soldAt.value : this.soldAt,
-        soldByUserId:
-            soldByUserId.present ? soldByUserId.value : this.soldByUserId,
-        saleId: saleId.present ? saleId.value : this.saleId,
-        qrCodeData: qrCodeData.present ? qrCodeData.value : this.qrCodeData,
-        batchId: batchId.present ? batchId.value : this.batchId,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-        isSynced: isSynced ?? this.isSynced,
-        lastSyncedAt:
-            lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
-      );
-  Voucher copyWithCompanion(VouchersCompanion data) {
-    return Voucher(
-      id: data.id.present ? data.id.value : this.id,
-      serverId: data.serverId.present ? data.serverId.value : this.serverId,
-      code: data.code.present ? data.code.value : this.code,
-      packageId: data.packageId.present ? data.packageId.value : this.packageId,
-      price: data.price.present ? data.price.value : this.price,
-      validity: data.validity.present ? data.validity.value : this.validity,
-      speed: data.speed.present ? data.speed.value : this.speed,
-      status: data.status.present ? data.status.value : this.status,
-      soldAt: data.soldAt.present ? data.soldAt.value : this.soldAt,
-      soldByUserId: data.soldByUserId.present
-          ? data.soldByUserId.value
-          : this.soldByUserId,
-      saleId: data.saleId.present ? data.saleId.value : this.saleId,
-      qrCodeData:
-          data.qrCodeData.present ? data.qrCodeData.value : this.qrCodeData,
-      batchId: data.batchId.present ? data.batchId.value : this.batchId,
-      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
-      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
-      lastSyncedAt: data.lastSyncedAt.present
-          ? data.lastSyncedAt.value
-          : this.lastSyncedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('Voucher(')
-          ..write('id: $id, ')
-          ..write('serverId: $serverId, ')
-          ..write('code: $code, ')
-          ..write('packageId: $packageId, ')
-          ..write('price: $price, ')
-          ..write('validity: $validity, ')
-          ..write('speed: $speed, ')
-          ..write('status: $status, ')
-          ..write('soldAt: $soldAt, ')
-          ..write('soldByUserId: $soldByUserId, ')
-          ..write('saleId: $saleId, ')
-          ..write('qrCodeData: $qrCodeData, ')
-          ..write('batchId: $batchId, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('isSynced: $isSynced, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-      id,
-      serverId,
-      code,
-      packageId,
-      price,
-      validity,
-      speed,
-      status,
-      soldAt,
-      soldByUserId,
-      saleId,
-      qrCodeData,
-      batchId,
-      createdAt,
-      updatedAt,
-      isSynced,
-      lastSyncedAt);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is Voucher &&
-          other.id == this.id &&
-          other.serverId == this.serverId &&
-          other.code == this.code &&
-          other.packageId == this.packageId &&
-          other.price == this.price &&
-          other.validity == this.validity &&
-          other.speed == this.speed &&
-          other.status == this.status &&
-          other.soldAt == this.soldAt &&
-          other.soldByUserId == this.soldByUserId &&
-          other.saleId == this.saleId &&
-          other.qrCodeData == this.qrCodeData &&
-          other.batchId == this.batchId &&
-          other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt &&
-          other.isSynced == this.isSynced &&
-          other.lastSyncedAt == this.lastSyncedAt);
-}
-
-class VouchersCompanion extends UpdateCompanion<Voucher> {
-  final Value<int> id;
-  final Value<String?> serverId;
-  final Value<String> code;
-  final Value<int?> packageId;
-  final Value<double?> price;
-  final Value<String?> validity;
-  final Value<String?> speed;
-  final Value<String> status;
-  final Value<DateTime?> soldAt;
-  final Value<int?> soldByUserId;
-  final Value<int?> saleId;
-  final Value<String?> qrCodeData;
-  final Value<String?> batchId;
-  final Value<DateTime> createdAt;
-  final Value<DateTime> updatedAt;
-  final Value<bool> isSynced;
-  final Value<DateTime?> lastSyncedAt;
-  const VouchersCompanion({
-    this.id = const Value.absent(),
-    this.serverId = const Value.absent(),
-    this.code = const Value.absent(),
-    this.packageId = const Value.absent(),
-    this.price = const Value.absent(),
-    this.validity = const Value.absent(),
-    this.speed = const Value.absent(),
-    this.status = const Value.absent(),
-    this.soldAt = const Value.absent(),
-    this.soldByUserId = const Value.absent(),
-    this.saleId = const Value.absent(),
-    this.qrCodeData = const Value.absent(),
-    this.batchId = const Value.absent(),
-    this.createdAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
-    this.isSynced = const Value.absent(),
-    this.lastSyncedAt = const Value.absent(),
-  });
-  VouchersCompanion.insert({
-    this.id = const Value.absent(),
-    this.serverId = const Value.absent(),
-    required String code,
-    this.packageId = const Value.absent(),
-    this.price = const Value.absent(),
-    this.validity = const Value.absent(),
-    this.speed = const Value.absent(),
-    required String status,
-    this.soldAt = const Value.absent(),
-    this.soldByUserId = const Value.absent(),
-    this.saleId = const Value.absent(),
-    this.qrCodeData = const Value.absent(),
-    this.batchId = const Value.absent(),
-    required DateTime createdAt,
-    required DateTime updatedAt,
-    this.isSynced = const Value.absent(),
-    this.lastSyncedAt = const Value.absent(),
-  })  : code = Value(code),
-        status = Value(status),
-        createdAt = Value(createdAt),
-        updatedAt = Value(updatedAt);
-  static Insertable<Voucher> custom({
-    Expression<int>? id,
-    Expression<String>? serverId,
-    Expression<String>? code,
-    Expression<int>? packageId,
-    Expression<double>? price,
-    Expression<String>? validity,
-    Expression<String>? speed,
-    Expression<String>? status,
-    Expression<DateTime>? soldAt,
-    Expression<int>? soldByUserId,
-    Expression<int>? saleId,
-    Expression<String>? qrCodeData,
-    Expression<String>? batchId,
-    Expression<DateTime>? createdAt,
-    Expression<DateTime>? updatedAt,
-    Expression<bool>? isSynced,
-    Expression<DateTime>? lastSyncedAt,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (serverId != null) 'server_id': serverId,
-      if (code != null) 'code': code,
-      if (packageId != null) 'package_id': packageId,
-      if (price != null) 'price': price,
-      if (validity != null) 'validity': validity,
-      if (speed != null) 'speed': speed,
-      if (status != null) 'status': status,
-      if (soldAt != null) 'sold_at': soldAt,
-      if (soldByUserId != null) 'sold_by_user_id': soldByUserId,
-      if (saleId != null) 'sale_id': saleId,
-      if (qrCodeData != null) 'qr_code_data': qrCodeData,
-      if (batchId != null) 'batch_id': batchId,
-      if (createdAt != null) 'created_at': createdAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-      if (isSynced != null) 'is_synced': isSynced,
-      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
-    });
-  }
-
-  VouchersCompanion copyWith(
-      {Value<int>? id,
-      Value<String?>? serverId,
-      Value<String>? code,
-      Value<int?>? packageId,
-      Value<double?>? price,
-      Value<String?>? validity,
-      Value<String?>? speed,
-      Value<String>? status,
-      Value<DateTime?>? soldAt,
-      Value<int?>? soldByUserId,
-      Value<int?>? saleId,
-      Value<String?>? qrCodeData,
-      Value<String?>? batchId,
-      Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt,
-      Value<bool>? isSynced,
-      Value<DateTime?>? lastSyncedAt}) {
-    return VouchersCompanion(
-      id: id ?? this.id,
-      serverId: serverId ?? this.serverId,
-      code: code ?? this.code,
-      packageId: packageId ?? this.packageId,
-      price: price ?? this.price,
-      validity: validity ?? this.validity,
-      speed: speed ?? this.speed,
-      status: status ?? this.status,
-      soldAt: soldAt ?? this.soldAt,
-      soldByUserId: soldByUserId ?? this.soldByUserId,
-      saleId: saleId ?? this.saleId,
-      qrCodeData: qrCodeData ?? this.qrCodeData,
-      batchId: batchId ?? this.batchId,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      isSynced: isSynced ?? this.isSynced,
-      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (serverId.present) {
-      map['server_id'] = Variable<String>(serverId.value);
-    }
-    if (code.present) {
-      map['code'] = Variable<String>(code.value);
-    }
-    if (packageId.present) {
-      map['package_id'] = Variable<int>(packageId.value);
-    }
-    if (price.present) {
-      map['price'] = Variable<double>(price.value);
-    }
-    if (validity.present) {
-      map['validity'] = Variable<String>(validity.value);
-    }
-    if (speed.present) {
-      map['speed'] = Variable<String>(speed.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (soldAt.present) {
-      map['sold_at'] = Variable<DateTime>(soldAt.value);
-    }
-    if (soldByUserId.present) {
-      map['sold_by_user_id'] = Variable<int>(soldByUserId.value);
-    }
-    if (saleId.present) {
-      map['sale_id'] = Variable<int>(saleId.value);
-    }
-    if (qrCodeData.present) {
-      map['qr_code_data'] = Variable<String>(qrCodeData.value);
-    }
-    if (batchId.present) {
-      map['batch_id'] = Variable<String>(batchId.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
-    }
-    if (isSynced.present) {
-      map['is_synced'] = Variable<bool>(isSynced.value);
-    }
-    if (lastSyncedAt.present) {
-      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('VouchersCompanion(')
-          ..write('id: $id, ')
-          ..write('serverId: $serverId, ')
-          ..write('code: $code, ')
-          ..write('packageId: $packageId, ')
-          ..write('price: $price, ')
-          ..write('validity: $validity, ')
-          ..write('speed: $speed, ')
-          ..write('status: $status, ')
-          ..write('soldAt: $soldAt, ')
-          ..write('soldByUserId: $soldByUserId, ')
-          ..write('saleId: $saleId, ')
-          ..write('qrCodeData: $qrCodeData, ')
-          ..write('batchId: $batchId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isSynced: $isSynced, ')
@@ -10515,9 +11211,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UsersTable users = $UsersTable(this);
   late final $SitesTable sites = $SitesTable(this);
   late final $ClientsTable clients = $ClientsTable(this);
+  late final $IspSubscriptionsTable ispSubscriptions =
+      $IspSubscriptionsTable(this);
   late final $PackagesTable packages = $PackagesTable(this);
-  late final $SalesTable sales = $SalesTable(this);
   late final $VouchersTable vouchers = $VouchersTable(this);
+  late final $SalesTable sales = $SalesTable(this);
   late final $ExpensesTable expenses = $ExpensesTable(this);
   late final $AssetsTable assets = $AssetsTable(this);
   late final $MaintenanceTable maintenance = $MaintenanceTable(this);
@@ -10538,9 +11236,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         users,
         sites,
         clients,
+        ispSubscriptions,
         packages,
-        sales,
         vouchers,
+        sales,
         expenses,
         assets,
         maintenance,
@@ -10627,20 +11326,6 @@ final class $$UsersTableReferences
     extends BaseReferences<_$AppDatabase, $UsersTable, User> {
   $$UsersTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static MultiTypedResultKey<$SalesTable, List<Sale>> _salesRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.sales,
-          aliasName: $_aliasNameGenerator(db.users.id, db.sales.agentId));
-
-  $$SalesTableProcessedTableManager get salesRefs {
-    final manager = $$SalesTableTableManager($_db, $_db.sales)
-        .filter((f) => f.agentId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_salesRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
   static MultiTypedResultKey<$VouchersTable, List<Voucher>> _vouchersRefsTable(
           _$AppDatabase db) =>
       MultiTypedResultKey.fromTable(db.vouchers,
@@ -10652,6 +11337,20 @@ final class $$UsersTableReferences
         .filter((f) => f.soldByUserId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_vouchersRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$SalesTable, List<Sale>> _salesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.sales,
+          aliasName: $_aliasNameGenerator(db.users.id, db.sales.agentId));
+
+  $$SalesTableProcessedTableManager get salesRefs {
+    final manager = $$SalesTableTableManager($_db, $_db.sales)
+        .filter((f) => f.agentId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_salesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -10760,27 +11459,6 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
   ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
 
-  Expression<bool> salesRefs(
-      Expression<bool> Function($$SalesTableFilterComposer f) f) {
-    final $$SalesTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.sales,
-        getReferencedColumn: (t) => t.agentId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SalesTableFilterComposer(
-              $db: $db,
-              $table: $db.sales,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
   Expression<bool> vouchersRefs(
       Expression<bool> Function($$VouchersTableFilterComposer f) f) {
     final $$VouchersTableFilterComposer composer = $composerBuilder(
@@ -10794,6 +11472,27 @@ class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
             $$VouchersTableFilterComposer(
               $db: $db,
               $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> salesRefs(
+      Expression<bool> Function($$SalesTableFilterComposer f) f) {
+    final $$SalesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.sales,
+        getReferencedColumn: (t) => t.agentId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SalesTableFilterComposer(
+              $db: $db,
+              $table: $db.sales,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -10980,27 +11679,6 @@ class $$UsersTableAnnotationComposer
   GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
       column: $table.lastSyncedAt, builder: (column) => column);
 
-  Expression<T> salesRefs<T extends Object>(
-      Expression<T> Function($$SalesTableAnnotationComposer a) f) {
-    final $$SalesTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.sales,
-        getReferencedColumn: (t) => t.agentId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SalesTableAnnotationComposer(
-              $db: $db,
-              $table: $db.sales,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
   Expression<T> vouchersRefs<T extends Object>(
       Expression<T> Function($$VouchersTableAnnotationComposer a) f) {
     final $$VouchersTableAnnotationComposer composer = $composerBuilder(
@@ -11014,6 +11692,27 @@ class $$UsersTableAnnotationComposer
             $$VouchersTableAnnotationComposer(
               $db: $db,
               $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> salesRefs<T extends Object>(
+      Expression<T> Function($$SalesTableAnnotationComposer a) f) {
+    final $$SalesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.sales,
+        getReferencedColumn: (t) => t.agentId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SalesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sales,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -11120,8 +11819,8 @@ class $$UsersTableTableManager extends RootTableManager<
     (User, $$UsersTableReferences),
     User,
     PrefetchHooks Function(
-        {bool salesRefs,
-        bool vouchersRefs,
+        {bool vouchersRefs,
+        bool salesRefs,
         bool expensesRefs,
         bool userRolesRefs,
         bool userSitesRefs,
@@ -11197,8 +11896,8 @@ class $$UsersTableTableManager extends RootTableManager<
                   (e.readTable(table), $$UsersTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {salesRefs = false,
-              vouchersRefs = false,
+              {vouchersRefs = false,
+              salesRefs = false,
               expensesRefs = false,
               userRolesRefs = false,
               userSitesRefs = false,
@@ -11206,8 +11905,8 @@ class $$UsersTableTableManager extends RootTableManager<
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
-                if (salesRefs) db.sales,
                 if (vouchersRefs) db.vouchers,
+                if (salesRefs) db.sales,
                 if (expensesRefs) db.expenses,
                 if (userRolesRefs) db.userRoles,
                 if (userSitesRefs) db.userSites,
@@ -11216,17 +11915,6 @@ class $$UsersTableTableManager extends RootTableManager<
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
                 return [
-                  if (salesRefs)
-                    await $_getPrefetchedData<User, $UsersTable, Sale>(
-                        currentTable: table,
-                        referencedTable:
-                            $$UsersTableReferences._salesRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$UsersTableReferences(db, table, p0).salesRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.agentId == item.id),
-                        typedResults: items),
                   if (vouchersRefs)
                     await $_getPrefetchedData<User, $UsersTable, Voucher>(
                         currentTable: table,
@@ -11237,6 +11925,17 @@ class $$UsersTableTableManager extends RootTableManager<
                         referencedItemsForCurrentItem:
                             (item, referencedItems) => referencedItems
                                 .where((e) => e.soldByUserId == item.id),
+                        typedResults: items),
+                  if (salesRefs)
+                    await $_getPrefetchedData<User, $UsersTable, Sale>(
+                        currentTable: table,
+                        referencedTable:
+                            $$UsersTableReferences._salesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$UsersTableReferences(db, table, p0).salesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.agentId == item.id),
                         typedResults: items),
                   if (expensesRefs)
                     await $_getPrefetchedData<User, $UsersTable, Expense>(
@@ -11303,8 +12002,8 @@ typedef $$UsersTableProcessedTableManager = ProcessedTableManager<
     (User, $$UsersTableReferences),
     User,
     PrefetchHooks Function(
-        {bool salesRefs,
-        bool vouchersRefs,
+        {bool vouchersRefs,
+        bool salesRefs,
         bool expensesRefs,
         bool userRolesRefs,
         bool userSitesRefs,
@@ -11358,6 +12057,37 @@ final class $$SitesTableReferences
         .filter((f) => f.siteId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_clientsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$IspSubscriptionsTable, List<IspSubscription>>
+      _ispSubscriptionsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.ispSubscriptions,
+              aliasName: $_aliasNameGenerator(
+                  db.sites.id, db.ispSubscriptions.siteId));
+
+  $$IspSubscriptionsTableProcessedTableManager get ispSubscriptionsRefs {
+    final manager =
+        $$IspSubscriptionsTableTableManager($_db, $_db.ispSubscriptions)
+            .filter((f) => f.siteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_ispSubscriptionsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$VouchersTable, List<Voucher>> _vouchersRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.vouchers,
+          aliasName: $_aliasNameGenerator(db.sites.id, db.vouchers.siteId));
+
+  $$VouchersTableProcessedTableManager get vouchersRefs {
+    final manager = $$VouchersTableTableManager($_db, $_db.vouchers)
+        .filter((f) => f.siteId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_vouchersRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -11502,6 +12232,48 @@ class $$SitesTableFilterComposer extends Composer<_$AppDatabase, $SitesTable> {
             $$ClientsTableFilterComposer(
               $db: $db,
               $table: $db.clients,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> ispSubscriptionsRefs(
+      Expression<bool> Function($$IspSubscriptionsTableFilterComposer f) f) {
+    final $$IspSubscriptionsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.ispSubscriptions,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$IspSubscriptionsTableFilterComposer(
+              $db: $db,
+              $table: $db.ispSubscriptions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> vouchersRefs(
+      Expression<bool> Function($$VouchersTableFilterComposer f) f) {
+    final $$VouchersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.vouchers,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VouchersTableFilterComposer(
+              $db: $db,
+              $table: $db.vouchers,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -11752,6 +12524,48 @@ class $$SitesTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> ispSubscriptionsRefs<T extends Object>(
+      Expression<T> Function($$IspSubscriptionsTableAnnotationComposer a) f) {
+    final $$IspSubscriptionsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.ispSubscriptions,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$IspSubscriptionsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.ispSubscriptions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> vouchersRefs<T extends Object>(
+      Expression<T> Function($$VouchersTableAnnotationComposer a) f) {
+    final $$VouchersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.vouchers,
+        getReferencedColumn: (t) => t.siteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VouchersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> salesRefs<T extends Object>(
       Expression<T> Function($$SalesTableAnnotationComposer a) f) {
     final $$SalesTableAnnotationComposer composer = $composerBuilder(
@@ -11871,6 +12685,8 @@ class $$SitesTableTableManager extends RootTableManager<
     Site,
     PrefetchHooks Function(
         {bool clientsRefs,
+        bool ispSubscriptionsRefs,
+        bool vouchersRefs,
         bool salesRefs,
         bool expensesRefs,
         bool assetsRefs,
@@ -11960,6 +12776,8 @@ class $$SitesTableTableManager extends RootTableManager<
               .toList(),
           prefetchHooksCallback: (
               {clientsRefs = false,
+              ispSubscriptionsRefs = false,
+              vouchersRefs = false,
               salesRefs = false,
               expensesRefs = false,
               assetsRefs = false,
@@ -11969,6 +12787,8 @@ class $$SitesTableTableManager extends RootTableManager<
               db: db,
               explicitlyWatchedTables: [
                 if (clientsRefs) db.clients,
+                if (ispSubscriptionsRefs) db.ispSubscriptions,
+                if (vouchersRefs) db.vouchers,
                 if (salesRefs) db.sales,
                 if (expensesRefs) db.expenses,
                 if (assetsRefs) db.assets,
@@ -11985,6 +12805,30 @@ class $$SitesTableTableManager extends RootTableManager<
                             $$SitesTableReferences._clientsRefsTable(db),
                         managerFromTypedResult: (p0) =>
                             $$SitesTableReferences(db, table, p0).clientsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.siteId == item.id),
+                        typedResults: items),
+                  if (ispSubscriptionsRefs)
+                    await $_getPrefetchedData<Site, $SitesTable,
+                            IspSubscription>(
+                        currentTable: table,
+                        referencedTable: $$SitesTableReferences
+                            ._ispSubscriptionsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SitesTableReferences(db, table, p0)
+                                .ispSubscriptionsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.siteId == item.id),
+                        typedResults: items),
+                  if (vouchersRefs)
+                    await $_getPrefetchedData<Site, $SitesTable, Voucher>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SitesTableReferences._vouchersRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SitesTableReferences(db, table, p0).vouchersRefs,
                         referencedItemsForCurrentItem: (item,
                                 referencedItems) =>
                             referencedItems.where((e) => e.siteId == item.id),
@@ -12066,6 +12910,8 @@ typedef $$SitesTableProcessedTableManager = ProcessedTableManager<
     Site,
     PrefetchHooks Function(
         {bool clientsRefs,
+        bool ispSubscriptionsRefs,
+        bool vouchersRefs,
         bool salesRefs,
         bool expensesRefs,
         bool assetsRefs,
@@ -12758,6 +13604,418 @@ typedef $$ClientsTableProcessedTableManager = ProcessedTableManager<
         bool salesRefs,
         bool smsLogsRefs,
         bool commissionSettingsRefs})>;
+typedef $$IspSubscriptionsTableCreateCompanionBuilder
+    = IspSubscriptionsCompanion Function({
+  Value<int> id,
+  required int siteId,
+  required String providerName,
+  Value<String?> paymentControlNumber,
+  Value<String?> registeredName,
+  Value<String?> serviceNumber,
+  required DateTime paidAt,
+  required DateTime endsAt,
+  Value<double?> amount,
+  Value<String?> notes,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<bool> isSynced,
+  Value<DateTime?> lastSyncedAt,
+});
+typedef $$IspSubscriptionsTableUpdateCompanionBuilder
+    = IspSubscriptionsCompanion Function({
+  Value<int> id,
+  Value<int> siteId,
+  Value<String> providerName,
+  Value<String?> paymentControlNumber,
+  Value<String?> registeredName,
+  Value<String?> serviceNumber,
+  Value<DateTime> paidAt,
+  Value<DateTime> endsAt,
+  Value<double?> amount,
+  Value<String?> notes,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<bool> isSynced,
+  Value<DateTime?> lastSyncedAt,
+});
+
+final class $$IspSubscriptionsTableReferences extends BaseReferences<
+    _$AppDatabase, $IspSubscriptionsTable, IspSubscription> {
+  $$IspSubscriptionsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $SitesTable _siteIdTable(_$AppDatabase db) => db.sites.createAlias(
+      $_aliasNameGenerator(db.ispSubscriptions.siteId, db.sites.id));
+
+  $$SitesTableProcessedTableManager get siteId {
+    final $_column = $_itemColumn<int>('site_id')!;
+
+    final manager = $$SitesTableTableManager($_db, $_db.sites)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_siteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$IspSubscriptionsTableFilterComposer
+    extends Composer<_$AppDatabase, $IspSubscriptionsTable> {
+  $$IspSubscriptionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get providerName => $composableBuilder(
+      column: $table.providerName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get paymentControlNumber => $composableBuilder(
+      column: $table.paymentControlNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get registeredName => $composableBuilder(
+      column: $table.registeredName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get serviceNumber => $composableBuilder(
+      column: $table.serviceNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get paidAt => $composableBuilder(
+      column: $table.paidAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get endsAt => $composableBuilder(
+      column: $table.endsAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+      column: $table.isSynced, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  $$SitesTableFilterComposer get siteId {
+    final $$SitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableFilterComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IspSubscriptionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $IspSubscriptionsTable> {
+  $$IspSubscriptionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get providerName => $composableBuilder(
+      column: $table.providerName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get paymentControlNumber => $composableBuilder(
+      column: $table.paymentControlNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get registeredName => $composableBuilder(
+      column: $table.registeredName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get serviceNumber => $composableBuilder(
+      column: $table.serviceNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get paidAt => $composableBuilder(
+      column: $table.paidAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get endsAt => $composableBuilder(
+      column: $table.endsAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+      column: $table.isSynced, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  $$SitesTableOrderingComposer get siteId {
+    final $$SitesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableOrderingComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IspSubscriptionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IspSubscriptionsTable> {
+  $$IspSubscriptionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get providerName => $composableBuilder(
+      column: $table.providerName, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentControlNumber => $composableBuilder(
+      column: $table.paymentControlNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get registeredName => $composableBuilder(
+      column: $table.registeredName, builder: (column) => column);
+
+  GeneratedColumn<String> get serviceNumber => $composableBuilder(
+      column: $table.serviceNumber, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get paidAt =>
+      $composableBuilder(column: $table.paidAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endsAt =>
+      $composableBuilder(column: $table.endsAt, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => column);
+
+  $$SitesTableAnnotationComposer get siteId {
+    final $$SitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$IspSubscriptionsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $IspSubscriptionsTable,
+    IspSubscription,
+    $$IspSubscriptionsTableFilterComposer,
+    $$IspSubscriptionsTableOrderingComposer,
+    $$IspSubscriptionsTableAnnotationComposer,
+    $$IspSubscriptionsTableCreateCompanionBuilder,
+    $$IspSubscriptionsTableUpdateCompanionBuilder,
+    (IspSubscription, $$IspSubscriptionsTableReferences),
+    IspSubscription,
+    PrefetchHooks Function({bool siteId})> {
+  $$IspSubscriptionsTableTableManager(
+      _$AppDatabase db, $IspSubscriptionsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IspSubscriptionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IspSubscriptionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IspSubscriptionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<int> siteId = const Value.absent(),
+            Value<String> providerName = const Value.absent(),
+            Value<String?> paymentControlNumber = const Value.absent(),
+            Value<String?> registeredName = const Value.absent(),
+            Value<String?> serviceNumber = const Value.absent(),
+            Value<DateTime> paidAt = const Value.absent(),
+            Value<DateTime> endsAt = const Value.absent(),
+            Value<double?> amount = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<bool> isSynced = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+          }) =>
+              IspSubscriptionsCompanion(
+            id: id,
+            siteId: siteId,
+            providerName: providerName,
+            paymentControlNumber: paymentControlNumber,
+            registeredName: registeredName,
+            serviceNumber: serviceNumber,
+            paidAt: paidAt,
+            endsAt: endsAt,
+            amount: amount,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isSynced: isSynced,
+            lastSyncedAt: lastSyncedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required int siteId,
+            required String providerName,
+            Value<String?> paymentControlNumber = const Value.absent(),
+            Value<String?> registeredName = const Value.absent(),
+            Value<String?> serviceNumber = const Value.absent(),
+            required DateTime paidAt,
+            required DateTime endsAt,
+            Value<double?> amount = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<bool> isSynced = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+          }) =>
+              IspSubscriptionsCompanion.insert(
+            id: id,
+            siteId: siteId,
+            providerName: providerName,
+            paymentControlNumber: paymentControlNumber,
+            registeredName: registeredName,
+            serviceNumber: serviceNumber,
+            paidAt: paidAt,
+            endsAt: endsAt,
+            amount: amount,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isSynced: isSynced,
+            lastSyncedAt: lastSyncedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$IspSubscriptionsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({siteId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (siteId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.siteId,
+                    referencedTable:
+                        $$IspSubscriptionsTableReferences._siteIdTable(db),
+                    referencedColumn:
+                        $$IspSubscriptionsTableReferences._siteIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$IspSubscriptionsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $IspSubscriptionsTable,
+    IspSubscription,
+    $$IspSubscriptionsTableFilterComposer,
+    $$IspSubscriptionsTableOrderingComposer,
+    $$IspSubscriptionsTableAnnotationComposer,
+    $$IspSubscriptionsTableCreateCompanionBuilder,
+    $$IspSubscriptionsTableUpdateCompanionBuilder,
+    (IspSubscription, $$IspSubscriptionsTableReferences),
+    IspSubscription,
+    PrefetchHooks Function({bool siteId})>;
 typedef $$PackagesTableCreateCompanionBuilder = PackagesCompanion Function({
   Value<int> id,
   Value<String?> serverId,
@@ -13170,756 +14428,18 @@ typedef $$PackagesTableProcessedTableManager = ProcessedTableManager<
     (Package, $$PackagesTableReferences),
     Package,
     PrefetchHooks Function({bool vouchersRefs, bool commissionSettingsRefs})>;
-typedef $$SalesTableCreateCompanionBuilder = SalesCompanion Function({
-  Value<int> id,
-  Value<String?> serverId,
-  required String receiptNumber,
-  required int voucherId,
-  Value<int?> clientId,
-  required int agentId,
-  Value<int?> siteId,
-  required double amount,
-  Value<double> commission,
-  required String paymentMethod,
-  Value<String?> notes,
-  required DateTime saleDate,
-  required DateTime createdAt,
-  required DateTime updatedAt,
-  Value<bool> isSynced,
-  Value<DateTime?> lastSyncedAt,
-});
-typedef $$SalesTableUpdateCompanionBuilder = SalesCompanion Function({
-  Value<int> id,
-  Value<String?> serverId,
-  Value<String> receiptNumber,
-  Value<int> voucherId,
-  Value<int?> clientId,
-  Value<int> agentId,
-  Value<int?> siteId,
-  Value<double> amount,
-  Value<double> commission,
-  Value<String> paymentMethod,
-  Value<String?> notes,
-  Value<DateTime> saleDate,
-  Value<DateTime> createdAt,
-  Value<DateTime> updatedAt,
-  Value<bool> isSynced,
-  Value<DateTime?> lastSyncedAt,
-});
-
-final class $$SalesTableReferences
-    extends BaseReferences<_$AppDatabase, $SalesTable, Sale> {
-  $$SalesTableReferences(super.$_db, super.$_table, super.$_typedResult);
-
-  static $ClientsTable _clientIdTable(_$AppDatabase db) => db.clients
-      .createAlias($_aliasNameGenerator(db.sales.clientId, db.clients.id));
-
-  $$ClientsTableProcessedTableManager? get clientId {
-    final $_column = $_itemColumn<int>('client_id');
-    if ($_column == null) return null;
-    final manager = $$ClientsTableTableManager($_db, $_db.clients)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_clientIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $UsersTable _agentIdTable(_$AppDatabase db) =>
-      db.users.createAlias($_aliasNameGenerator(db.sales.agentId, db.users.id));
-
-  $$UsersTableProcessedTableManager get agentId {
-    final $_column = $_itemColumn<int>('agent_id')!;
-
-    final manager = $$UsersTableTableManager($_db, $_db.users)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_agentIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static $SitesTable _siteIdTable(_$AppDatabase db) =>
-      db.sites.createAlias($_aliasNameGenerator(db.sales.siteId, db.sites.id));
-
-  $$SitesTableProcessedTableManager? get siteId {
-    final $_column = $_itemColumn<int>('site_id');
-    if ($_column == null) return null;
-    final manager = $$SitesTableTableManager($_db, $_db.sites)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_siteIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-
-  static MultiTypedResultKey<$VouchersTable, List<Voucher>> _vouchersRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.vouchers,
-          aliasName: $_aliasNameGenerator(db.sales.id, db.vouchers.saleId));
-
-  $$VouchersTableProcessedTableManager get vouchersRefs {
-    final manager = $$VouchersTableTableManager($_db, $_db.vouchers)
-        .filter((f) => f.saleId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_vouchersRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$CommissionHistoryTable,
-      List<CommissionHistoryData>> _commissionHistoryRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.commissionHistory,
-          aliasName:
-              $_aliasNameGenerator(db.sales.id, db.commissionHistory.saleId));
-
-  $$CommissionHistoryTableProcessedTableManager get commissionHistoryRefs {
-    final manager =
-        $$CommissionHistoryTableTableManager($_db, $_db.commissionHistory)
-            .filter((f) => f.saleId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_commissionHistoryRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-}
-
-class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
-  $$SalesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get serverId => $composableBuilder(
-      column: $table.serverId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get receiptNumber => $composableBuilder(
-      column: $table.receiptNumber, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get voucherId => $composableBuilder(
-      column: $table.voucherId, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<double> get commission => $composableBuilder(
-      column: $table.commission, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get paymentMethod => $composableBuilder(
-      column: $table.paymentMethod, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get notes => $composableBuilder(
-      column: $table.notes, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get saleDate => $composableBuilder(
-      column: $table.saleDate, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<bool> get isSynced => $composableBuilder(
-      column: $table.isSynced, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
-      column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
-
-  $$ClientsTableFilterComposer get clientId {
-    final $$ClientsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clientId,
-        referencedTable: $db.clients,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ClientsTableFilterComposer(
-              $db: $db,
-              $table: $db.clients,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$UsersTableFilterComposer get agentId {
-    final $$UsersTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.agentId,
-        referencedTable: $db.users,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UsersTableFilterComposer(
-              $db: $db,
-              $table: $db.users,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SitesTableFilterComposer get siteId {
-    final $$SitesTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.siteId,
-        referencedTable: $db.sites,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SitesTableFilterComposer(
-              $db: $db,
-              $table: $db.sites,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<bool> vouchersRefs(
-      Expression<bool> Function($$VouchersTableFilterComposer f) f) {
-    final $$VouchersTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.vouchers,
-        getReferencedColumn: (t) => t.saleId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$VouchersTableFilterComposer(
-              $db: $db,
-              $table: $db.vouchers,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<bool> commissionHistoryRefs(
-      Expression<bool> Function($$CommissionHistoryTableFilterComposer f) f) {
-    final $$CommissionHistoryTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.commissionHistory,
-        getReferencedColumn: (t) => t.saleId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$CommissionHistoryTableFilterComposer(
-              $db: $db,
-              $table: $db.commissionHistory,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-}
-
-class $$SalesTableOrderingComposer
-    extends Composer<_$AppDatabase, $SalesTable> {
-  $$SalesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get serverId => $composableBuilder(
-      column: $table.serverId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get receiptNumber => $composableBuilder(
-      column: $table.receiptNumber,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get voucherId => $composableBuilder(
-      column: $table.voucherId, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get amount => $composableBuilder(
-      column: $table.amount, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<double> get commission => $composableBuilder(
-      column: $table.commission, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get paymentMethod => $composableBuilder(
-      column: $table.paymentMethod,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get notes => $composableBuilder(
-      column: $table.notes, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get saleDate => $composableBuilder(
-      column: $table.saleDate, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<bool> get isSynced => $composableBuilder(
-      column: $table.isSynced, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
-      column: $table.lastSyncedAt,
-      builder: (column) => ColumnOrderings(column));
-
-  $$ClientsTableOrderingComposer get clientId {
-    final $$ClientsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clientId,
-        referencedTable: $db.clients,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ClientsTableOrderingComposer(
-              $db: $db,
-              $table: $db.clients,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$UsersTableOrderingComposer get agentId {
-    final $$UsersTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.agentId,
-        referencedTable: $db.users,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UsersTableOrderingComposer(
-              $db: $db,
-              $table: $db.users,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SitesTableOrderingComposer get siteId {
-    final $$SitesTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.siteId,
-        referencedTable: $db.sites,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SitesTableOrderingComposer(
-              $db: $db,
-              $table: $db.sites,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$SalesTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SalesTable> {
-  $$SalesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get serverId =>
-      $composableBuilder(column: $table.serverId, builder: (column) => column);
-
-  GeneratedColumn<String> get receiptNumber => $composableBuilder(
-      column: $table.receiptNumber, builder: (column) => column);
-
-  GeneratedColumn<int> get voucherId =>
-      $composableBuilder(column: $table.voucherId, builder: (column) => column);
-
-  GeneratedColumn<double> get amount =>
-      $composableBuilder(column: $table.amount, builder: (column) => column);
-
-  GeneratedColumn<double> get commission => $composableBuilder(
-      column: $table.commission, builder: (column) => column);
-
-  GeneratedColumn<String> get paymentMethod => $composableBuilder(
-      column: $table.paymentMethod, builder: (column) => column);
-
-  GeneratedColumn<String> get notes =>
-      $composableBuilder(column: $table.notes, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get saleDate =>
-      $composableBuilder(column: $table.saleDate, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get updatedAt =>
-      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
-
-  GeneratedColumn<bool> get isSynced =>
-      $composableBuilder(column: $table.isSynced, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
-      column: $table.lastSyncedAt, builder: (column) => column);
-
-  $$ClientsTableAnnotationComposer get clientId {
-    final $$ClientsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.clientId,
-        referencedTable: $db.clients,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ClientsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.clients,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$UsersTableAnnotationComposer get agentId {
-    final $$UsersTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.agentId,
-        referencedTable: $db.users,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$UsersTableAnnotationComposer(
-              $db: $db,
-              $table: $db.users,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SitesTableAnnotationComposer get siteId {
-    final $$SitesTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.siteId,
-        referencedTable: $db.sites,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SitesTableAnnotationComposer(
-              $db: $db,
-              $table: $db.sites,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  Expression<T> vouchersRefs<T extends Object>(
-      Expression<T> Function($$VouchersTableAnnotationComposer a) f) {
-    final $$VouchersTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.vouchers,
-        getReferencedColumn: (t) => t.saleId,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$VouchersTableAnnotationComposer(
-              $db: $db,
-              $table: $db.vouchers,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return f(composer);
-  }
-
-  Expression<T> commissionHistoryRefs<T extends Object>(
-      Expression<T> Function($$CommissionHistoryTableAnnotationComposer a) f) {
-    final $$CommissionHistoryTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.commissionHistory,
-            getReferencedColumn: (t) => t.saleId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$CommissionHistoryTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.commissionHistory,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
-  }
-}
-
-class $$SalesTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $SalesTable,
-    Sale,
-    $$SalesTableFilterComposer,
-    $$SalesTableOrderingComposer,
-    $$SalesTableAnnotationComposer,
-    $$SalesTableCreateCompanionBuilder,
-    $$SalesTableUpdateCompanionBuilder,
-    (Sale, $$SalesTableReferences),
-    Sale,
-    PrefetchHooks Function(
-        {bool clientId,
-        bool agentId,
-        bool siteId,
-        bool vouchersRefs,
-        bool commissionHistoryRefs})> {
-  $$SalesTableTableManager(_$AppDatabase db, $SalesTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$SalesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$SalesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$SalesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> serverId = const Value.absent(),
-            Value<String> receiptNumber = const Value.absent(),
-            Value<int> voucherId = const Value.absent(),
-            Value<int?> clientId = const Value.absent(),
-            Value<int> agentId = const Value.absent(),
-            Value<int?> siteId = const Value.absent(),
-            Value<double> amount = const Value.absent(),
-            Value<double> commission = const Value.absent(),
-            Value<String> paymentMethod = const Value.absent(),
-            Value<String?> notes = const Value.absent(),
-            Value<DateTime> saleDate = const Value.absent(),
-            Value<DateTime> createdAt = const Value.absent(),
-            Value<DateTime> updatedAt = const Value.absent(),
-            Value<bool> isSynced = const Value.absent(),
-            Value<DateTime?> lastSyncedAt = const Value.absent(),
-          }) =>
-              SalesCompanion(
-            id: id,
-            serverId: serverId,
-            receiptNumber: receiptNumber,
-            voucherId: voucherId,
-            clientId: clientId,
-            agentId: agentId,
-            siteId: siteId,
-            amount: amount,
-            commission: commission,
-            paymentMethod: paymentMethod,
-            notes: notes,
-            saleDate: saleDate,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            isSynced: isSynced,
-            lastSyncedAt: lastSyncedAt,
-          ),
-          createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> serverId = const Value.absent(),
-            required String receiptNumber,
-            required int voucherId,
-            Value<int?> clientId = const Value.absent(),
-            required int agentId,
-            Value<int?> siteId = const Value.absent(),
-            required double amount,
-            Value<double> commission = const Value.absent(),
-            required String paymentMethod,
-            Value<String?> notes = const Value.absent(),
-            required DateTime saleDate,
-            required DateTime createdAt,
-            required DateTime updatedAt,
-            Value<bool> isSynced = const Value.absent(),
-            Value<DateTime?> lastSyncedAt = const Value.absent(),
-          }) =>
-              SalesCompanion.insert(
-            id: id,
-            serverId: serverId,
-            receiptNumber: receiptNumber,
-            voucherId: voucherId,
-            clientId: clientId,
-            agentId: agentId,
-            siteId: siteId,
-            amount: amount,
-            commission: commission,
-            paymentMethod: paymentMethod,
-            notes: notes,
-            saleDate: saleDate,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            isSynced: isSynced,
-            lastSyncedAt: lastSyncedAt,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) =>
-                  (e.readTable(table), $$SalesTableReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: (
-              {clientId = false,
-              agentId = false,
-              siteId = false,
-              vouchersRefs = false,
-              commissionHistoryRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (vouchersRefs) db.vouchers,
-                if (commissionHistoryRefs) db.commissionHistory
-              ],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (clientId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.clientId,
-                    referencedTable: $$SalesTableReferences._clientIdTable(db),
-                    referencedColumn:
-                        $$SalesTableReferences._clientIdTable(db).id,
-                  ) as T;
-                }
-                if (agentId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.agentId,
-                    referencedTable: $$SalesTableReferences._agentIdTable(db),
-                    referencedColumn:
-                        $$SalesTableReferences._agentIdTable(db).id,
-                  ) as T;
-                }
-                if (siteId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.siteId,
-                    referencedTable: $$SalesTableReferences._siteIdTable(db),
-                    referencedColumn:
-                        $$SalesTableReferences._siteIdTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (vouchersRefs)
-                    await $_getPrefetchedData<Sale, $SalesTable, Voucher>(
-                        currentTable: table,
-                        referencedTable:
-                            $$SalesTableReferences._vouchersRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$SalesTableReferences(db, table, p0).vouchersRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.saleId == item.id),
-                        typedResults: items),
-                  if (commissionHistoryRefs)
-                    await $_getPrefetchedData<Sale, $SalesTable,
-                            CommissionHistoryData>(
-                        currentTable: table,
-                        referencedTable: $$SalesTableReferences
-                            ._commissionHistoryRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$SalesTableReferences(db, table, p0)
-                                .commissionHistoryRefs,
-                        referencedItemsForCurrentItem: (item,
-                                referencedItems) =>
-                            referencedItems.where((e) => e.saleId == item.id),
-                        typedResults: items)
-                ];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$SalesTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $SalesTable,
-    Sale,
-    $$SalesTableFilterComposer,
-    $$SalesTableOrderingComposer,
-    $$SalesTableAnnotationComposer,
-    $$SalesTableCreateCompanionBuilder,
-    $$SalesTableUpdateCompanionBuilder,
-    (Sale, $$SalesTableReferences),
-    Sale,
-    PrefetchHooks Function(
-        {bool clientId,
-        bool agentId,
-        bool siteId,
-        bool vouchersRefs,
-        bool commissionHistoryRefs})>;
 typedef $$VouchersTableCreateCompanionBuilder = VouchersCompanion Function({
   Value<int> id,
   Value<String?> serverId,
   required String code,
   Value<int?> packageId,
+  Value<int?> siteId,
   Value<double?> price,
   Value<String?> validity,
   Value<String?> speed,
   required String status,
   Value<DateTime?> soldAt,
   Value<int?> soldByUserId,
-  Value<int?> saleId,
   Value<String?> qrCodeData,
   Value<String?> batchId,
   required DateTime createdAt,
@@ -13932,13 +14452,13 @@ typedef $$VouchersTableUpdateCompanionBuilder = VouchersCompanion Function({
   Value<String?> serverId,
   Value<String> code,
   Value<int?> packageId,
+  Value<int?> siteId,
   Value<double?> price,
   Value<String?> validity,
   Value<String?> speed,
   Value<String> status,
   Value<DateTime?> soldAt,
   Value<int?> soldByUserId,
-  Value<int?> saleId,
   Value<String?> qrCodeData,
   Value<String?> batchId,
   Value<DateTime> createdAt,
@@ -13965,6 +14485,20 @@ final class $$VouchersTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
+  static $SitesTable _siteIdTable(_$AppDatabase db) => db.sites
+      .createAlias($_aliasNameGenerator(db.vouchers.siteId, db.sites.id));
+
+  $$SitesTableProcessedTableManager? get siteId {
+    final $_column = $_itemColumn<int>('site_id');
+    if ($_column == null) return null;
+    final manager = $$SitesTableTableManager($_db, $_db.sites)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_siteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
   static $UsersTable _soldByUserIdTable(_$AppDatabase db) => db.users
       .createAlias($_aliasNameGenerator(db.vouchers.soldByUserId, db.users.id));
 
@@ -13979,18 +14513,18 @@ final class $$VouchersTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static $SalesTable _saleIdTable(_$AppDatabase db) => db.sales
-      .createAlias($_aliasNameGenerator(db.vouchers.saleId, db.sales.id));
+  static MultiTypedResultKey<$SalesTable, List<Sale>> _salesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.sales,
+          aliasName: $_aliasNameGenerator(db.vouchers.id, db.sales.voucherId));
 
-  $$SalesTableProcessedTableManager? get saleId {
-    final $_column = $_itemColumn<int>('sale_id');
-    if ($_column == null) return null;
+  $$SalesTableProcessedTableManager get salesRefs {
     final manager = $$SalesTableTableManager($_db, $_db.sales)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_saleIdTable($_db));
-    if (item == null) return manager;
+        .filter((f) => f.voucherId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_salesRefsTable($_db));
     return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
+        manager.$state.copyWith(prefetchedData: cache));
   }
 }
 
@@ -14065,6 +14599,26 @@ class $$VouchersTableFilterComposer
     return composer;
   }
 
+  $$SitesTableFilterComposer get siteId {
+    final $$SitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableFilterComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
   $$UsersTableFilterComposer get soldByUserId {
     final $$UsersTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -14085,12 +14639,13 @@ class $$VouchersTableFilterComposer
     return composer;
   }
 
-  $$SalesTableFilterComposer get saleId {
+  Expression<bool> salesRefs(
+      Expression<bool> Function($$SalesTableFilterComposer f) f) {
     final $$SalesTableFilterComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.saleId,
+        getCurrentColumn: (t) => t.id,
         referencedTable: $db.sales,
-        getReferencedColumn: (t) => t.id,
+        getReferencedColumn: (t) => t.voucherId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -14102,7 +14657,7 @@ class $$VouchersTableFilterComposer
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
-    return composer;
+    return f(composer);
   }
 }
 
@@ -14178,6 +14733,26 @@ class $$VouchersTableOrderingComposer
     return composer;
   }
 
+  $$SitesTableOrderingComposer get siteId {
+    final $$SitesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableOrderingComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
   $$UsersTableOrderingComposer get soldByUserId {
     final $$UsersTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -14190,26 +14765,6 @@ class $$VouchersTableOrderingComposer
             $$UsersTableOrderingComposer(
               $db: $db,
               $table: $db.users,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-
-  $$SalesTableOrderingComposer get saleId {
-    final $$SalesTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.saleId,
-        referencedTable: $db.sales,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$SalesTableOrderingComposer(
-              $db: $db,
-              $table: $db.sales,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -14290,6 +14845,26 @@ class $$VouchersTableAnnotationComposer
     return composer;
   }
 
+  $$SitesTableAnnotationComposer get siteId {
+    final $$SitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
   $$UsersTableAnnotationComposer get soldByUserId {
     final $$UsersTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -14310,12 +14885,13 @@ class $$VouchersTableAnnotationComposer
     return composer;
   }
 
-  $$SalesTableAnnotationComposer get saleId {
+  Expression<T> salesRefs<T extends Object>(
+      Expression<T> Function($$SalesTableAnnotationComposer a) f) {
     final $$SalesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.saleId,
+        getCurrentColumn: (t) => t.id,
         referencedTable: $db.sales,
-        getReferencedColumn: (t) => t.id,
+        getReferencedColumn: (t) => t.voucherId,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
@@ -14327,7 +14903,7 @@ class $$VouchersTableAnnotationComposer
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
-    return composer;
+    return f(composer);
   }
 }
 
@@ -14342,7 +14918,8 @@ class $$VouchersTableTableManager extends RootTableManager<
     $$VouchersTableUpdateCompanionBuilder,
     (Voucher, $$VouchersTableReferences),
     Voucher,
-    PrefetchHooks Function({bool packageId, bool soldByUserId, bool saleId})> {
+    PrefetchHooks Function(
+        {bool packageId, bool siteId, bool soldByUserId, bool salesRefs})> {
   $$VouchersTableTableManager(_$AppDatabase db, $VouchersTable table)
       : super(TableManagerState(
           db: db,
@@ -14358,13 +14935,13 @@ class $$VouchersTableTableManager extends RootTableManager<
             Value<String?> serverId = const Value.absent(),
             Value<String> code = const Value.absent(),
             Value<int?> packageId = const Value.absent(),
+            Value<int?> siteId = const Value.absent(),
             Value<double?> price = const Value.absent(),
             Value<String?> validity = const Value.absent(),
             Value<String?> speed = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<DateTime?> soldAt = const Value.absent(),
             Value<int?> soldByUserId = const Value.absent(),
-            Value<int?> saleId = const Value.absent(),
             Value<String?> qrCodeData = const Value.absent(),
             Value<String?> batchId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -14377,13 +14954,13 @@ class $$VouchersTableTableManager extends RootTableManager<
             serverId: serverId,
             code: code,
             packageId: packageId,
+            siteId: siteId,
             price: price,
             validity: validity,
             speed: speed,
             status: status,
             soldAt: soldAt,
             soldByUserId: soldByUserId,
-            saleId: saleId,
             qrCodeData: qrCodeData,
             batchId: batchId,
             createdAt: createdAt,
@@ -14396,13 +14973,13 @@ class $$VouchersTableTableManager extends RootTableManager<
             Value<String?> serverId = const Value.absent(),
             required String code,
             Value<int?> packageId = const Value.absent(),
+            Value<int?> siteId = const Value.absent(),
             Value<double?> price = const Value.absent(),
             Value<String?> validity = const Value.absent(),
             Value<String?> speed = const Value.absent(),
             required String status,
             Value<DateTime?> soldAt = const Value.absent(),
             Value<int?> soldByUserId = const Value.absent(),
-            Value<int?> saleId = const Value.absent(),
             Value<String?> qrCodeData = const Value.absent(),
             Value<String?> batchId = const Value.absent(),
             required DateTime createdAt,
@@ -14415,13 +14992,13 @@ class $$VouchersTableTableManager extends RootTableManager<
             serverId: serverId,
             code: code,
             packageId: packageId,
+            siteId: siteId,
             price: price,
             validity: validity,
             speed: speed,
             status: status,
             soldAt: soldAt,
             soldByUserId: soldByUserId,
-            saleId: saleId,
             qrCodeData: qrCodeData,
             batchId: batchId,
             createdAt: createdAt,
@@ -14434,10 +15011,13 @@ class $$VouchersTableTableManager extends RootTableManager<
                   (e.readTable(table), $$VouchersTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {packageId = false, soldByUserId = false, saleId = false}) {
+              {packageId = false,
+              siteId = false,
+              soldByUserId = false,
+              salesRefs = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [],
+              explicitlyWatchedTables: [if (salesRefs) db.sales],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -14461,6 +15041,15 @@ class $$VouchersTableTableManager extends RootTableManager<
                         $$VouchersTableReferences._packageIdTable(db).id,
                   ) as T;
                 }
+                if (siteId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.siteId,
+                    referencedTable: $$VouchersTableReferences._siteIdTable(db),
+                    referencedColumn:
+                        $$VouchersTableReferences._siteIdTable(db).id,
+                  ) as T;
+                }
                 if (soldByUserId) {
                   state = state.withJoin(
                     currentTable: table,
@@ -14471,20 +15060,23 @@ class $$VouchersTableTableManager extends RootTableManager<
                         $$VouchersTableReferences._soldByUserIdTable(db).id,
                   ) as T;
                 }
-                if (saleId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.saleId,
-                    referencedTable: $$VouchersTableReferences._saleIdTable(db),
-                    referencedColumn:
-                        $$VouchersTableReferences._saleIdTable(db).id,
-                  ) as T;
-                }
 
                 return state;
               },
               getPrefetchedDataCallback: (items) async {
-                return [];
+                return [
+                  if (salesRefs)
+                    await $_getPrefetchedData<Voucher, $VouchersTable, Sale>(
+                        currentTable: table,
+                        referencedTable:
+                            $$VouchersTableReferences._salesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$VouchersTableReferences(db, table, p0).salesRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.voucherId == item.id),
+                        typedResults: items)
+                ];
               },
             );
           },
@@ -14502,7 +15094,752 @@ typedef $$VouchersTableProcessedTableManager = ProcessedTableManager<
     $$VouchersTableUpdateCompanionBuilder,
     (Voucher, $$VouchersTableReferences),
     Voucher,
-    PrefetchHooks Function({bool packageId, bool soldByUserId, bool saleId})>;
+    PrefetchHooks Function(
+        {bool packageId, bool siteId, bool soldByUserId, bool salesRefs})>;
+typedef $$SalesTableCreateCompanionBuilder = SalesCompanion Function({
+  Value<int> id,
+  Value<String?> serverId,
+  required String receiptNumber,
+  Value<int?> voucherId,
+  Value<int?> clientId,
+  required int agentId,
+  Value<int?> siteId,
+  required double amount,
+  Value<double> commission,
+  required String paymentMethod,
+  Value<String?> notes,
+  required DateTime saleDate,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<bool> isSynced,
+  Value<DateTime?> lastSyncedAt,
+});
+typedef $$SalesTableUpdateCompanionBuilder = SalesCompanion Function({
+  Value<int> id,
+  Value<String?> serverId,
+  Value<String> receiptNumber,
+  Value<int?> voucherId,
+  Value<int?> clientId,
+  Value<int> agentId,
+  Value<int?> siteId,
+  Value<double> amount,
+  Value<double> commission,
+  Value<String> paymentMethod,
+  Value<String?> notes,
+  Value<DateTime> saleDate,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<bool> isSynced,
+  Value<DateTime?> lastSyncedAt,
+});
+
+final class $$SalesTableReferences
+    extends BaseReferences<_$AppDatabase, $SalesTable, Sale> {
+  $$SalesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $VouchersTable _voucherIdTable(_$AppDatabase db) => db.vouchers
+      .createAlias($_aliasNameGenerator(db.sales.voucherId, db.vouchers.id));
+
+  $$VouchersTableProcessedTableManager? get voucherId {
+    final $_column = $_itemColumn<int>('voucher_id');
+    if ($_column == null) return null;
+    final manager = $$VouchersTableTableManager($_db, $_db.vouchers)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_voucherIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $ClientsTable _clientIdTable(_$AppDatabase db) => db.clients
+      .createAlias($_aliasNameGenerator(db.sales.clientId, db.clients.id));
+
+  $$ClientsTableProcessedTableManager? get clientId {
+    final $_column = $_itemColumn<int>('client_id');
+    if ($_column == null) return null;
+    final manager = $$ClientsTableTableManager($_db, $_db.clients)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_clientIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $UsersTable _agentIdTable(_$AppDatabase db) =>
+      db.users.createAlias($_aliasNameGenerator(db.sales.agentId, db.users.id));
+
+  $$UsersTableProcessedTableManager get agentId {
+    final $_column = $_itemColumn<int>('agent_id')!;
+
+    final manager = $$UsersTableTableManager($_db, $_db.users)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_agentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $SitesTable _siteIdTable(_$AppDatabase db) =>
+      db.sites.createAlias($_aliasNameGenerator(db.sales.siteId, db.sites.id));
+
+  $$SitesTableProcessedTableManager? get siteId {
+    final $_column = $_itemColumn<int>('site_id');
+    if ($_column == null) return null;
+    final manager = $$SitesTableTableManager($_db, $_db.sites)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_siteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$CommissionHistoryTable,
+      List<CommissionHistoryData>> _commissionHistoryRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.commissionHistory,
+          aliasName:
+              $_aliasNameGenerator(db.sales.id, db.commissionHistory.saleId));
+
+  $$CommissionHistoryTableProcessedTableManager get commissionHistoryRefs {
+    final manager =
+        $$CommissionHistoryTableTableManager($_db, $_db.commissionHistory)
+            .filter((f) => f.saleId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_commissionHistoryRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SalesTableFilterComposer extends Composer<_$AppDatabase, $SalesTable> {
+  $$SalesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+      column: $table.serverId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get commission => $composableBuilder(
+      column: $table.commission, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get paymentMethod => $composableBuilder(
+      column: $table.paymentMethod, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get saleDate => $composableBuilder(
+      column: $table.saleDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+      column: $table.isSynced, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => ColumnFilters(column));
+
+  $$VouchersTableFilterComposer get voucherId {
+    final $$VouchersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.voucherId,
+        referencedTable: $db.vouchers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VouchersTableFilterComposer(
+              $db: $db,
+              $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ClientsTableFilterComposer get clientId {
+    final $$ClientsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.clientId,
+        referencedTable: $db.clients,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ClientsTableFilterComposer(
+              $db: $db,
+              $table: $db.clients,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableFilterComposer get agentId {
+    final $$UsersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.agentId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableFilterComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableFilterComposer get siteId {
+    final $$SitesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableFilterComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> commissionHistoryRefs(
+      Expression<bool> Function($$CommissionHistoryTableFilterComposer f) f) {
+    final $$CommissionHistoryTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.commissionHistory,
+        getReferencedColumn: (t) => t.saleId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CommissionHistoryTableFilterComposer(
+              $db: $db,
+              $table: $db.commissionHistory,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SalesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SalesTable> {
+  $$SalesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+      column: $table.serverId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+      column: $table.amount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get commission => $composableBuilder(
+      column: $table.commission, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get paymentMethod => $composableBuilder(
+      column: $table.paymentMethod,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+      column: $table.notes, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get saleDate => $composableBuilder(
+      column: $table.saleDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+      column: $table.isSynced, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  $$VouchersTableOrderingComposer get voucherId {
+    final $$VouchersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.voucherId,
+        referencedTable: $db.vouchers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VouchersTableOrderingComposer(
+              $db: $db,
+              $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ClientsTableOrderingComposer get clientId {
+    final $$ClientsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.clientId,
+        referencedTable: $db.clients,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ClientsTableOrderingComposer(
+              $db: $db,
+              $table: $db.clients,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableOrderingComposer get agentId {
+    final $$UsersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.agentId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableOrderingComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableOrderingComposer get siteId {
+    final $$SitesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableOrderingComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SalesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SalesTable> {
+  $$SalesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<String> get receiptNumber => $composableBuilder(
+      column: $table.receiptNumber, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<double> get commission => $composableBuilder(
+      column: $table.commission, builder: (column) => column);
+
+  GeneratedColumn<String> get paymentMethod => $composableBuilder(
+      column: $table.paymentMethod, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get saleDate =>
+      $composableBuilder(column: $table.saleDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+      column: $table.lastSyncedAt, builder: (column) => column);
+
+  $$VouchersTableAnnotationComposer get voucherId {
+    final $$VouchersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.voucherId,
+        referencedTable: $db.vouchers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$VouchersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.vouchers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ClientsTableAnnotationComposer get clientId {
+    final $$ClientsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.clientId,
+        referencedTable: $db.clients,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ClientsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.clients,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$UsersTableAnnotationComposer get agentId {
+    final $$UsersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.agentId,
+        referencedTable: $db.users,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$UsersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.users,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SitesTableAnnotationComposer get siteId {
+    final $$SitesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.siteId,
+        referencedTable: $db.sites,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SitesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sites,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> commissionHistoryRefs<T extends Object>(
+      Expression<T> Function($$CommissionHistoryTableAnnotationComposer a) f) {
+    final $$CommissionHistoryTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.commissionHistory,
+            getReferencedColumn: (t) => t.saleId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$CommissionHistoryTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.commissionHistory,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+}
+
+class $$SalesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SalesTable,
+    Sale,
+    $$SalesTableFilterComposer,
+    $$SalesTableOrderingComposer,
+    $$SalesTableAnnotationComposer,
+    $$SalesTableCreateCompanionBuilder,
+    $$SalesTableUpdateCompanionBuilder,
+    (Sale, $$SalesTableReferences),
+    Sale,
+    PrefetchHooks Function(
+        {bool voucherId,
+        bool clientId,
+        bool agentId,
+        bool siteId,
+        bool commissionHistoryRefs})> {
+  $$SalesTableTableManager(_$AppDatabase db, $SalesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SalesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SalesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SalesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String?> serverId = const Value.absent(),
+            Value<String> receiptNumber = const Value.absent(),
+            Value<int?> voucherId = const Value.absent(),
+            Value<int?> clientId = const Value.absent(),
+            Value<int> agentId = const Value.absent(),
+            Value<int?> siteId = const Value.absent(),
+            Value<double> amount = const Value.absent(),
+            Value<double> commission = const Value.absent(),
+            Value<String> paymentMethod = const Value.absent(),
+            Value<String?> notes = const Value.absent(),
+            Value<DateTime> saleDate = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<bool> isSynced = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+          }) =>
+              SalesCompanion(
+            id: id,
+            serverId: serverId,
+            receiptNumber: receiptNumber,
+            voucherId: voucherId,
+            clientId: clientId,
+            agentId: agentId,
+            siteId: siteId,
+            amount: amount,
+            commission: commission,
+            paymentMethod: paymentMethod,
+            notes: notes,
+            saleDate: saleDate,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isSynced: isSynced,
+            lastSyncedAt: lastSyncedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String?> serverId = const Value.absent(),
+            required String receiptNumber,
+            Value<int?> voucherId = const Value.absent(),
+            Value<int?> clientId = const Value.absent(),
+            required int agentId,
+            Value<int?> siteId = const Value.absent(),
+            required double amount,
+            Value<double> commission = const Value.absent(),
+            required String paymentMethod,
+            Value<String?> notes = const Value.absent(),
+            required DateTime saleDate,
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<bool> isSynced = const Value.absent(),
+            Value<DateTime?> lastSyncedAt = const Value.absent(),
+          }) =>
+              SalesCompanion.insert(
+            id: id,
+            serverId: serverId,
+            receiptNumber: receiptNumber,
+            voucherId: voucherId,
+            clientId: clientId,
+            agentId: agentId,
+            siteId: siteId,
+            amount: amount,
+            commission: commission,
+            paymentMethod: paymentMethod,
+            notes: notes,
+            saleDate: saleDate,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isSynced: isSynced,
+            lastSyncedAt: lastSyncedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$SalesTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: (
+              {voucherId = false,
+              clientId = false,
+              agentId = false,
+              siteId = false,
+              commissionHistoryRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (commissionHistoryRefs) db.commissionHistory
+              ],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (voucherId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.voucherId,
+                    referencedTable: $$SalesTableReferences._voucherIdTable(db),
+                    referencedColumn:
+                        $$SalesTableReferences._voucherIdTable(db).id,
+                  ) as T;
+                }
+                if (clientId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.clientId,
+                    referencedTable: $$SalesTableReferences._clientIdTable(db),
+                    referencedColumn:
+                        $$SalesTableReferences._clientIdTable(db).id,
+                  ) as T;
+                }
+                if (agentId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.agentId,
+                    referencedTable: $$SalesTableReferences._agentIdTable(db),
+                    referencedColumn:
+                        $$SalesTableReferences._agentIdTable(db).id,
+                  ) as T;
+                }
+                if (siteId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.siteId,
+                    referencedTable: $$SalesTableReferences._siteIdTable(db),
+                    referencedColumn:
+                        $$SalesTableReferences._siteIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (commissionHistoryRefs)
+                    await $_getPrefetchedData<Sale, $SalesTable,
+                            CommissionHistoryData>(
+                        currentTable: table,
+                        referencedTable: $$SalesTableReferences
+                            ._commissionHistoryRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SalesTableReferences(db, table, p0)
+                                .commissionHistoryRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.saleId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SalesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SalesTable,
+    Sale,
+    $$SalesTableFilterComposer,
+    $$SalesTableOrderingComposer,
+    $$SalesTableAnnotationComposer,
+    $$SalesTableCreateCompanionBuilder,
+    $$SalesTableUpdateCompanionBuilder,
+    (Sale, $$SalesTableReferences),
+    Sale,
+    PrefetchHooks Function(
+        {bool voucherId,
+        bool clientId,
+        bool agentId,
+        bool siteId,
+        bool commissionHistoryRefs})>;
 typedef $$ExpensesTableCreateCompanionBuilder = ExpensesCompanion Function({
   Value<int> id,
   Value<String?> serverId,
@@ -19386,12 +20723,14 @@ class $AppDatabaseManager {
       $$SitesTableTableManager(_db, _db.sites);
   $$ClientsTableTableManager get clients =>
       $$ClientsTableTableManager(_db, _db.clients);
+  $$IspSubscriptionsTableTableManager get ispSubscriptions =>
+      $$IspSubscriptionsTableTableManager(_db, _db.ispSubscriptions);
   $$PackagesTableTableManager get packages =>
       $$PackagesTableTableManager(_db, _db.packages);
-  $$SalesTableTableManager get sales =>
-      $$SalesTableTableManager(_db, _db.sales);
   $$VouchersTableTableManager get vouchers =>
       $$VouchersTableTableManager(_db, _db.vouchers);
+  $$SalesTableTableManager get sales =>
+      $$SalesTableTableManager(_db, _db.sales);
   $$ExpensesTableTableManager get expenses =>
       $$ExpensesTableTableManager(_db, _db.expenses);
   $$AssetsTableTableManager get assets =>

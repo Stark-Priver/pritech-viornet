@@ -241,7 +241,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         saleId = await database.into(database.sales).insert(
               SalesCompanion.insert(
                 receiptNumber: receiptNo,
-                voucherId: _selectedVoucher?.id ?? 1,
+                voucherId: drift.Value(_selectedVoucher?.id),
                 agentId: currentUser.id,
                 siteId: drift.Value(_selectedSite!.id),
                 clientId: drift.Value(null), // Walk-in customer
@@ -275,7 +275,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         await voucherService.markVoucherAsSold(
           voucherId: _selectedVoucher!.id,
           soldByUserId: currentUser.id,
-          saleId: saleId,
         );
       }
 
@@ -288,65 +287,79 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         packageId: _selectedPackage?.id,
       );
 
-      if (mounted) {
-        // Show success with option to send SMS
-        final shouldSendSms = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Sale Completed!'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_showNewClientForm
-                    ? 'Sale recorded and client added successfully!'
-                    : 'Sale recorded successfully!'),
-                if (_saleType == 'VOUCHER' && _selectedVoucher != null) ...[
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text('Voucher Details:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  SelectableText('Code: ${_selectedVoucher!.code}',
-                      style: const TextStyle(
-                          fontFamily: 'monospace', fontSize: 18)),
-                  if (_selectedVoucher!.validity != null)
-                    Text('Validity: ${_selectedVoucher!.validity}'),
-                  if (_selectedVoucher!.speed != null)
-                    Text('Speed: ${_selectedVoucher!.speed}'),
-                  const SizedBox(height: 16),
-                  if (clientForSale != null)
-                    const Text('Send voucher code via SMS to client?'),
-                ],
+      if (!mounted) return;
+
+      // Show success with option to send SMS
+      final shouldSendSms = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Sale Completed!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_showNewClientForm
+                  ? 'Sale recorded and client added successfully!'
+                  : 'Sale recorded successfully!'),
+              if (_saleType == 'VOUCHER' && _selectedVoucher != null) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text('Voucher Details:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                SelectableText('Code: ${_selectedVoucher!.code}',
+                    style:
+                        const TextStyle(fontFamily: 'monospace', fontSize: 18)),
+                if (_selectedVoucher!.validity != null)
+                  Text('Validity: ${_selectedVoucher!.validity}'),
+                if (_selectedVoucher!.speed != null)
+                  Text('Speed: ${_selectedVoucher!.speed}'),
+                const SizedBox(height: 16),
+                if (clientForSale != null)
+                  const Text('Send voucher code via SMS to client?'),
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Close'),
-              ),
-              if (_saleType == 'VOUCHER' && clientForSale != null)
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context, true),
-                  icon: const Icon(Icons.sms),
-                  label: const Text('Send SMS'),
-                ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Close'),
+            ),
+            if (_saleType == 'VOUCHER' && clientForSale != null)
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                icon: const Icon(Icons.sms),
+                label: const Text('Send SMS'),
+              ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
+
+      // Send SMS if requested
+      if (shouldSendSms == true &&
+          clientForSale != null &&
+          _selectedVoucher != null) {
+        await _sendVoucherSms(clientForSale, _selectedVoucher!);
+      }
+
+      if (!mounted) return;
+
+      // Reset form to allow another sale
+      _resetForm();
+
+      // Show a snackbar confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Sale completed! Ready for next transaction.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
-
-        if (shouldSendSms == true &&
-            clientForSale != null &&
-            _selectedVoucher != null) {
-          await _sendVoucherSms(clientForSale, _selectedVoucher!);
-        }
-
-        _resetForm();
-        // Navigate back to sales list
-        if (mounted) {
-          Navigator.of(context).pop();
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -425,22 +438,24 @@ Thank you!
   }
 
   void _resetForm() {
-    setState(() {
-      _selectedClient = null;
-      _selectedVoucher = null;
-      _selectedPackage = null;
-      _amountController.clear();
-      _commissionController.clear();
-      _searchController.clear();
-      _voucherCodeController.clear();
-      _clientNameController.clear();
-      _clientPhoneController.clear();
-      _clientEmailController.clear();
-      _paymentMethod = 'CASH';
-      _saleType = 'VOUCHER';
-      _isWalkIn = false;
-      _showNewClientForm = false;
-    });
+    if (mounted) {
+      setState(() {
+        _selectedClient = null;
+        _selectedVoucher = null;
+        _selectedPackage = null;
+        _amountController.clear();
+        _commissionController.clear();
+        _searchController.clear();
+        _voucherCodeController.clear();
+        _clientNameController.clear();
+        _clientPhoneController.clear();
+        _clientEmailController.clear();
+        _paymentMethod = 'CASH';
+        _saleType = 'VOUCHER';
+        _isWalkIn = false;
+        _showNewClientForm = false;
+      });
+    }
   }
 
   @override
@@ -460,9 +475,11 @@ Thank you!
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Customer Information',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Expanded(
+                          child: Text('Customer Information',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
                         Row(
                           children: [
                             FilterChip(

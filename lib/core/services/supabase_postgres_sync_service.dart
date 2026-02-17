@@ -389,7 +389,6 @@ class SupabaseSyncService {
           'status': voucher.status,
           'sold_at': voucher.soldAt?.toIso8601String(),
           'sold_by_user_id': voucher.soldByUserId,
-          'sale_id': voucher.saleId,
           'qr_code_data': voucher.qrCodeData,
           'batch_id': voucher.batchId,
           'created_at': voucher.createdAt.toIso8601String(),
@@ -1085,7 +1084,6 @@ class SupabaseSyncService {
                   ? Value(DateTime.parse(voucherData['sold_at']))
                   : const Value(null),
               soldByUserId: Value(voucherData['sold_by_user_id']),
-              saleId: Value(voucherData['sale_id']),
               qrCodeData: Value(voucherData['qr_code_data']),
               batchId: Value(voucherData['batch_id']),
               updatedAt: Value(DateTime.parse(voucherData['updated_at'])),
@@ -1106,7 +1104,6 @@ class SupabaseSyncService {
                       ? Value(DateTime.parse(voucherData['sold_at']))
                       : const Value(null),
                   soldByUserId: Value(voucherData['sold_by_user_id']),
-                  saleId: Value(voucherData['sale_id']),
                   qrCodeData: Value(voucherData['qr_code_data']),
                   batchId: Value(voucherData['batch_id']),
                   updatedAt: Value(DateTime.parse(voucherData['updated_at'])),

@@ -6,6 +6,24 @@ import 'package:path/path.dart' as p;
 
 part 'database.g.dart';
 
+// ISP Subscriptions Table (for resellers to track their own ISP payments per site)
+class IspSubscriptions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get siteId => integer().references(Sites, #id)();
+  TextColumn get providerName => text()();
+  TextColumn get paymentControlNumber => text().nullable()();
+  TextColumn get registeredName => text().nullable()();
+  TextColumn get serviceNumber => text().nullable()();
+  DateTimeColumn get paidAt => dateTime()();
+  DateTimeColumn get endsAt => dateTime()();
+  RealColumn get amount => real().nullable()();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+}
+
 // Users Table
 class Users extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -69,7 +87,7 @@ class Sales extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get serverId => text().nullable()();
   TextColumn get receiptNumber => text().unique()();
-  IntColumn get voucherId => integer().references(Vouchers, #id)();
+  IntColumn get voucherId => integer().nullable().references(Vouchers, #id)();
   IntColumn get clientId => integer().nullable().references(Clients, #id)();
   IntColumn get agentId => integer().references(Users, #id)();
   IntColumn get siteId => integer().nullable().references(Sites, #id)();
@@ -238,6 +256,7 @@ class Vouchers extends Table {
   TextColumn get serverId => text().nullable()();
   TextColumn get code => text().unique()();
   IntColumn get packageId => integer().nullable().references(Packages, #id)();
+  IntColumn get siteId => integer().nullable().references(Sites, #id)();
   RealColumn get price => real().nullable()();
   TextColumn get validity =>
       text().nullable()(); // e.g., "12Hours", "1Day", "1Week"
@@ -245,7 +264,7 @@ class Vouchers extends Table {
   TextColumn get status => text()(); // AVAILABLE, SOLD, USED, EXPIRED
   DateTimeColumn get soldAt => dateTime().nullable()();
   IntColumn get soldByUserId => integer().nullable().references(Users, #id)();
-  IntColumn get saleId => integer().nullable().references(Sales, #id)();
+  // Note: saleId removed to avoid circular reference. Find sales via Sales.voucherId
   TextColumn get qrCodeData => text().nullable()();
   TextColumn get batchId => text().nullable()(); // For bulk uploads
   DateTimeColumn get createdAt => dateTime()();
@@ -307,6 +326,7 @@ class CommissionHistory extends Table {
     Users,
     Sites,
     Clients,
+    IspSubscriptions,
     Vouchers,
     Sales,
     Expenses,

@@ -38,9 +38,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     final checker = PermissionChecker(userRoles);
 
-    final filteredItems = _allNavigationItems
-        .where((item) => checker.canAccessRoute(item.route))
-        .toList();
+    final filteredItems = _allNavigationItems.where((item) {
+      // Restrict ISP Subscription to FINANCE and SUPER_ADMIN only
+      if (item.route == '/isp-subscription') {
+        return checker.hasAnyRole(['FINANCE', 'SUPER_ADMIN']);
+      }
+      return checker.canAccessRoute(item.route);
+    }).toList();
 
     // Ensure minimum items even with roles
     if (filteredItems.length < 2) {
@@ -71,6 +75,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     NavigationItem(icon: Icons.receipt_long, label: 'Sales', route: '/sales'),
     NavigationItem(icon: Icons.location_on, label: 'Sites', route: '/sites'),
     NavigationItem(icon: Icons.devices, label: 'Assets', route: '/assets'),
+    NavigationItem(
+      icon: Icons.wifi,
+      label: 'ISP Subscription',
+      route: '/isp-subscription',
+    ),
     NavigationItem(
       icon: Icons.build,
       label: 'Maintenance',

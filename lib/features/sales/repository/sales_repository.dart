@@ -27,7 +27,7 @@ class SalesRepository {
     return await _database.into(_database.sales).insert(
           SalesCompanion.insert(
             receiptNumber: receiptNumber,
-            voucherId: voucherId,
+            voucherId: Value(voucherId),
             clientId: clientId != null ? Value(clientId) : const Value.absent(),
             agentId: agentId,
             siteId: siteId != null ? Value(siteId) : const Value.absent(),

@@ -3,6 +3,36 @@ import 'package:uuid/uuid.dart';
 import '../database/database.dart';
 
 class VoucherService {
+  /// Get ISP subscription info for a client (admin/finance only)
+  /// Returns: { 'lastPaid': DateTime?, 'subscriptionEnds': DateTime? }
+  /// Only to be shown to admin/finance users in the UI
+  Future<Map<String, DateTime?>> getClientSubscriptionInfo(int clientId) async {
+    // Get last purchase date and expiry date from Clients table
+    final client = await (db.select(db.clients)
+          ..where((tbl) => tbl.id.equals(clientId)))
+        .getSingleOrNull();
+    if (client == null) {
+      return {'lastPaid': null, 'subscriptionEnds': null};
+    }
+    return {
+      'lastPaid': client.lastPurchaseDate,
+      'subscriptionEnds': client.expiryDate,
+    };
+  }
+
+  /// Get all clients with their subscription info (admin/finance only)
+  /// Returns a list of { 'client': Client, 'lastPaid': DateTime?, 'subscriptionEnds': DateTime? }
+  Future<List<Map<String, dynamic>>> getAllClientsSubscriptionInfo() async {
+    final clients = await db.select(db.clients).get();
+    return clients
+        .map((client) => {
+              'client': client,
+              'lastPaid': client.lastPurchaseDate,
+              'subscriptionEnds': client.expiryDate,
+            })
+        .toList();
+  }
+
   final AppDatabase db;
   final _uuid = const Uuid();
 
@@ -80,6 +110,7 @@ class VoucherService {
   Future<int> bulkInsertVouchers({
     required String htmlContent,
     int? packageId,
+    int? siteId,
     String? batchId,
   }) async {
     final parsedVouchers = await parseHtmlVouchers(htmlContent);
@@ -94,6 +125,7 @@ class VoucherService {
                 serverId: Value(_uuid.v4()),
                 code: voucherData['code'] as String,
                 packageId: Value(packageId),
+                siteId: Value(siteId),
                 price: Value(voucherData['price'] as double?),
                 validity: Value(voucherData['validity'] as String?),
                 speed: Value(voucherData['speed'] as String?),
@@ -119,6 +151,7 @@ class VoucherService {
   Future<int> addVoucher({
     required String code,
     int? packageId,
+    int? siteId,
     double? price,
     String? validity,
     String? speed,
@@ -129,6 +162,7 @@ class VoucherService {
             serverId: Value(_uuid.v4()),
             code: code,
             packageId: Value(packageId),
+            siteId: Value(siteId),
             price: Value(price),
             validity: Value(validity),
             speed: Value(speed),
@@ -164,7 +198,6 @@ class VoucherService {
   Future<bool> markVoucherAsSold({
     required int voucherId,
     required int soldByUserId,
-    int? saleId,
   }) async {
     final updated = await (db.update(db.vouchers)
           ..where((tbl) => tbl.id.equals(voucherId)))
@@ -173,7 +206,6 @@ class VoucherService {
         status: const Value('SOLD'),
         soldAt: Value(DateTime.now()),
         soldByUserId: Value(soldByUserId),
-        saleId: Value(saleId),
         updatedAt: Value(DateTime.now()),
         isSynced: const Value(false),
       ),
@@ -201,6 +233,7 @@ class VoucherService {
   Stream<List<Voucher>> watchVouchers({
     String? status,
     int? packageId,
+    int? siteId,
     String? batchId,
   }) {
     final query = db.select(db.vouchers);
@@ -211,6 +244,10 @@ class VoucherService {
 
     if (packageId != null) {
       query.where((tbl) => tbl.packageId.equals(packageId));
+    }
+
+    if (siteId != null) {
+      query.where((tbl) => tbl.siteId.equals(siteId));
     }
 
     if (batchId != null) {
