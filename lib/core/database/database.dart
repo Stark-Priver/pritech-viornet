@@ -346,7 +346,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -629,6 +629,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 7) {
           // Add Vouchers table for version 7
           await m.createTable(vouchers);
+        }
+        if (from < 8) {
+          // Add IspSubscriptions table for version 8
+          await m.createTable(ispSubscriptions);
         }
       },
     );

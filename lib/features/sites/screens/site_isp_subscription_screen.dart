@@ -306,6 +306,7 @@ class _IspSubscriptionDialogState extends State<_IspSubscriptionDialog> {
               );
             }
             if (!mounted) return;
+            // ignore: use_build_context_synchronously
             Navigator.pop(context);
           },
           child: const Text('Save'),
