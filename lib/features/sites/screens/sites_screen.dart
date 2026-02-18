@@ -108,7 +108,7 @@ class _SitesScreenState extends ConsumerState<SitesScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => SiteIspSubscriptionScreen(site: site),
+              builder: (context) => AddEditSiteScreen(site: site),
             ),
           ).then((_) => setState(() {}));
         },

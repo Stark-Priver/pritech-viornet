@@ -95,6 +95,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   ];
 
   int _getSelectedIndex(List<NavigationItem> items) {
+    // Special case: highlight ISP Subscription if on /isp-subscription/:siteId
+    if (widget.currentRoute.startsWith('/isp-subscription')) {
+      final idx = items.indexWhere((item) => item.label == 'ISP Subscription');
+      if (idx != -1) return idx;
+    }
     final index = items.indexWhere(
       (item) => item.route == widget.currentRoute,
     );

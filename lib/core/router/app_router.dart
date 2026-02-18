@@ -1,9 +1,10 @@
+import '../../features/sites/screens/isp_subscription_overview_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../layout/main_layout.dart';
 import '../screens/splash_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+
 import './_site_isp_subscription_screen_loader.dart';
 import '../rbac/permissions.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -179,8 +180,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: '/isp-subscription/:siteId',
+            path: '/isp-subscription',
             name: 'isp-subscription',
+            builder: (context, state) => const IspSubscriptionOverviewScreen(),
+          ),
+          GoRoute(
+            path: '/isp-subscription/:siteId',
+            name: 'isp-subscription-detail',
             builder: (context, state) {
               final siteIdStr = state.pathParameters['siteId'];
               if (siteIdStr == null) {
@@ -195,7 +201,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 );
               }
               // Use a FutureBuilder to fetch the Site by ID
-              return _SiteIspSubscriptionScreenLoader(siteId: siteId);
+              return SiteIspSubscriptionScreenLoader(siteId: siteId);
             },
           ),
         ],
