@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' hide Column;
 import '../../../core/database/database.dart';
 import '../../../core/providers/providers.dart';
+import '../../../core/services/sms_manager_service.dart';
 
 class SmsScreen extends ConsumerStatefulWidget {
   const SmsScreen({super.key});
@@ -57,62 +58,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
   }
 
   Widget _buildSendSmsTab() {
-    final messageController = TextEditingController();
-    final phoneController = TextEditingController();
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          TextField(
-            controller: phoneController,
-            decoration: const InputDecoration(
-              labelText: 'Phone Number',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.phone),
-            ),
-            keyboardType: TextInputType.phone,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: messageController,
-            decoration: const InputDecoration(
-              labelText: 'Message',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.message),
-            ),
-            maxLines: 5,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () =>
-                      _sendSms(phoneController.text, messageController.text),
-                  icon: const Icon(Icons.send),
-                  label: const Text('Send SMS'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _sendBulkSms(),
-                  icon: const Icon(Icons.people),
-                  label: const Text('Send to All Clients'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    return const SendSmsScreen();
   }
 
   Widget _buildTemplatesTab() {
@@ -1083,6 +1029,782 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Professional Send SMS Screen
+class SendSmsScreen extends ConsumerStatefulWidget {
+  const SendSmsScreen({super.key});
+
+  @override
+  ConsumerState<SendSmsScreen> createState() => _SendSmsScreenState();
+}
+
+class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
+  String _sendMode = 'manual'; // 'manual' or 'client'
+  Client? _selectedClient;
+  final _phoneController = TextEditingController();
+  final _messageController = TextEditingController();
+  bool _isLoading = false;
+  bool _permissionsGranted = false;
+  bool _checkingPermissions = true;
+  List<SimCard> _simCards = [];
+  SimCard? _selectedSimCard;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializePermissionsAndSim();
+  }
+
+  Future<void> _initializePermissionsAndSim() async {
+    try {
+      final smsManager = SmsManagerService();
+
+      // Check permissions
+      final hasPermissions = await smsManager.hasSmsPermissions();
+
+      if (mounted) {
+        setState(() {
+          _permissionsGranted = hasPermissions;
+          _checkingPermissions = false;
+        });
+      }
+
+      // Get SIM cards if permissions granted
+      if (hasPermissions) {
+        final simCards = await smsManager.getAvailableSimCards();
+        if (mounted) {
+          setState(() {
+            _simCards = simCards;
+            _selectedSimCard = simCards.isNotEmpty ? simCards.first : null;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _checkingPermissions = false);
+      }
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    try {
+      final smsManager = SmsManagerService();
+      final granted = await smsManager.requestSmsPermissions();
+
+      if (mounted) {
+        setState(() => _permissionsGranted = granted);
+
+        if (granted) {
+          // Get SIM cards after permissions granted
+          final simCards = await smsManager.getAvailableSimCards();
+          if (mounted) {
+            setState(() {
+              _simCards = simCards;
+              _selectedSimCard = simCards.isNotEmpty ? simCards.first : null;
+            });
+          }
+          _showSuccess('Permissions granted successfully!');
+        } else {
+          _showError('SMS permissions are required to send messages');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Error requesting permissions: $e');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final database = ref.watch(databaseProvider);
+
+    return Scaffold(
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.blue.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.sms,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Send SMS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Choose recipient and compose message',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Permission Status
+          if (_checkingPermissions)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.blue.withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Checking permissions...',
+                    style: TextStyle(color: Colors.blue),
+                  ),
+                ],
+              ),
+            )
+          else if (!_permissionsGranted)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber,
+                        color: Colors.orange.shade600,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'SMS permissions required',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'This app needs SMS permissions to send messages. Please grant the required permissions to continue.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _requestPermissions,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Grant Permissions'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'SMS permissions granted',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 24),
+
+          // SIM Card Selection
+          if (_permissionsGranted) ...[
+            _buildSectionHeader('SIM Card', Icons.sim_card),
+            const SizedBox(height: 12),
+            if (_simCards.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: const Text(
+                  'No SIM cards detected',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<SimCard>(
+                  value: _selectedSimCard,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  items: _simCards.map((sim) {
+                    return DropdownMenuItem(
+                      value: sim,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.sim_card,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  sim.displayName ?? 'SIM ${sim.slotId + 1}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (sim.phoneNumber != null)
+                                  Text(
+                                    sim.phoneNumber!,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (sim) {
+                    if (sim != null) {
+                      setState(() => _selectedSimCard = sim);
+                    }
+                  },
+                ),
+              ),
+            const SizedBox(height: 24),
+          ],
+
+          // Send Mode Selection
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[300]!, width: 1),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildModeButton(
+                    'Manual Phone',
+                    'manual',
+                    Icons.phone,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildModeButton(
+                    'Select Client',
+                    'client',
+                    Icons.person,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Recipient Section
+          _buildSectionHeader('Recipient', Icons.person_outline),
+          const SizedBox(height: 12),
+          if (_sendMode == 'manual') ...[
+            TextFormField(
+              controller: _phoneController,
+              decoration: InputDecoration(
+                labelText: 'Phone Number *',
+                hintText: '+255 or 0...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                prefixIcon: const Icon(Icons.phone),
+                suffixIcon: _phoneController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _phoneController.clear();
+                          setState(() {});
+                        },
+                      )
+                    : null,
+              ),
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => setState(() {}),
+            ),
+          ] else ...[
+            FutureBuilder<List<Client>>(
+              future: database.select(database.clients).get(),
+              builder: (context, snapshot) {
+                final clients = snapshot.data ?? [];
+                return DropdownButtonFormField<Client?>(
+                  initialValue: _selectedClient,
+                  decoration: InputDecoration(
+                    labelText: 'Select Client *',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.person),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Choose a client...'),
+                    ),
+                    ...clients.map((client) => DropdownMenuItem(
+                          value: client,
+                          child: Row(
+                            children: [
+                              Text(client.name),
+                              const SizedBox(width: 8),
+                              Text(
+                                client.phone,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedClient = value);
+                  },
+                );
+              },
+            ),
+            if (_selectedClient != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.blue.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.blue, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedClient!.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            _selectedClient!.phone,
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 24),
+
+          // Message Section
+          _buildSectionHeader('Message', Icons.message_outlined),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _messageController,
+            decoration: InputDecoration(
+              labelText: 'Message *',
+              hintText: 'Type your SMS message here...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              prefixIcon: const Icon(Icons.edit),
+              counterText: '${_messageController.text.length}/160',
+            ),
+            maxLines: 5,
+            maxLength: 160,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 24),
+
+          // Character Count
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Characters: ${_messageController.text.length}/160',
+                  style: TextStyle(
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (_messageController.text.length > 160)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Message too long',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Send Button
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green.shade400, Colors.green.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _isLoading ? null : _sendSms,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Send SMS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Cancel Button
+          OutlinedButton(
+            onPressed: _isLoading ? null : _clearForm,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.all(16),
+              side: BorderSide(color: Colors.grey[300]!),
+            ),
+            child: const Text('Clear'),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeButton(String label, String mode, IconData icon) {
+    final isSelected = _sendMode == mode;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => setState(() => _sendMode = mode),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blue : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey[600],
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey[600],
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: Colors.blue, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _sendSms() async {
+    // Validation
+    String? phone;
+    int? clientId;
+
+    if (_sendMode == 'manual') {
+      phone = _phoneController.text.trim();
+      if (phone.isEmpty) {
+        _showError('Please enter a phone number');
+        return;
+      }
+    } else {
+      if (_selectedClient == null) {
+        _showError('Please select a client');
+        return;
+      }
+      phone = _selectedClient!.phone;
+      clientId = _selectedClient!.id;
+    }
+
+    if (_messageController.text.trim().isEmpty) {
+      _showError('Please enter a message');
+      return;
+    }
+
+    if (_messageController.text.length > 160) {
+      _showError('Message is too long (max 160 characters)');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final database = ref.read(databaseProvider);
+      await database.into(database.smsLogs).insert(
+            SmsLogsCompanion.insert(
+              recipient: phone,
+              message: _messageController.text.trim(),
+              status: 'PENDING',
+              type: _sendMode == 'manual' ? 'MANUAL' : 'NOTIFICATION',
+              clientId:
+                  clientId != null ? Value(clientId) : const Value.absent(),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+
+      if (mounted) {
+        _showSuccess('SMS queued for sending successfully!');
+        _clearForm();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('Error sending SMS: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _clearForm() {
+    _phoneController.clear();
+    _messageController.clear();
+    _selectedClient = null;
+    setState(() {});
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
