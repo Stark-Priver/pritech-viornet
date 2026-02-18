@@ -308,37 +308,6 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
     }
   }
 
-  Future<void> _sendSms(String phone, String message) async {
-    if (phone.isEmpty || message.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
-      );
-      return;
-    }
-
-    final database = ref.read(databaseProvider);
-    await database.into(database.smsLogs).insert(
-          SmsLogsCompanion.insert(
-            recipient: phone,
-            message: message,
-            status: 'PENDING',
-            type: 'NOTIFICATION',
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('SMS queued for sending'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      setState(() {});
-    }
-  }
-
   Widget _buildContactsTab() {
     final database = ref.watch(databaseProvider);
 
@@ -641,63 +610,6 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
                     SnackBar(
                       content:
                           Text('${contacts.length} SMS queued for sending'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Send'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _sendBulkSms() async {
-    final database = ref.read(databaseProvider);
-    final clients = await database.select(database.clients).get();
-
-    final messageController = TextEditingController();
-
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Send to ${clients.length} clients'),
-        content: TextField(
-          controller: messageController,
-          decoration: const InputDecoration(labelText: 'Message'),
-          maxLines: 5,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (messageController.text.isNotEmpty) {
-                final messenger = ScaffoldMessenger.of(context);
-                for (final client in clients) {
-                  await database.into(database.smsLogs).insert(
-                        SmsLogsCompanion.insert(
-                          recipient: client.phone,
-                          message: messageController.text,
-                          status: 'PENDING',
-                          type: 'MARKETING',
-                          clientId: Value(client.id),
-                          createdAt: DateTime.now(),
-                          updatedAt: DateTime.now(),
-                        ),
-                      );
-                }
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                  setState(() {});
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('${clients.length} SMS queued for sending'),
                       backgroundColor: Colors.green,
                     ),
                   );
