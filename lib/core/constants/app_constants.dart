@@ -91,8 +91,33 @@ class AppConstants {
   static const String maintenanceStatusCompleted = 'COMPLETED';
   static const String maintenanceStatusCancelled = 'CANCELLED';
 
+  // SMS Channel Selection (stored in SharedPreferences)
+  static const String smsChannelPrefKey = 'sms_channel';
+  static const String smsChannelNative = 'thisPhone';
+  static const String smsChannelQuickSms = 'quickSMS';
+
+  // QuickSMS API (configurable via --dart-define or app settings)
+  static const String quickSmsBaseUrl = String.fromEnvironment(
+    'QUICKSMS_URL',
+    defaultValue: 'https://api.quicksms.com.ng/v1',
+  );
+  static const String quickSmsApiKey = String.fromEnvironment(
+    'QUICKSMS_API_KEY',
+    defaultValue: '',
+  );
+  static const String quickSmsSenderId = String.fromEnvironment(
+    'QUICKSMS_SENDER_ID',
+    defaultValue: 'VIORNET',
+  );
+
+  // Native Android SMS – same platform channel as sms_getway-1.1.0
+  static const String smsPlatformChannel = 'com.lwenatech.sms_gateway/sms';
+
   // SMS Status
   static const String smsStatusPending = 'PENDING';
   static const String smsStatusSent = 'SENT';
   static const String smsStatusFailed = 'FAILED';
+
+  // Phone formatting
+  static const String defaultCountryCode = '+255'; // Tanzania
 }

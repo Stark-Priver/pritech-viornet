@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -130,10 +130,8 @@ class AgentCommissionWidget extends ConsumerWidget {
   }
 
   Future<Map<String, dynamic>> _getCommissionSummary(
-      AppDatabase db, int agentId) async {
-    final commissions = await (db.select(db.commissionHistory)
-          ..where((tbl) => tbl.agentId.equals(agentId)))
-        .get();
+      SupabaseDataService db, int agentId) async {
+    final commissions = await db.getCommissionHistoryByAgent(agentId);
 
     double pending = 0.0;
     double approved = 0.0;
@@ -162,7 +160,7 @@ class AgentCommissionWidget extends ConsumerWidget {
   }
 
   void _showCommissionDetails(
-      BuildContext context, AppDatabase db, int agentId) {
+      BuildContext context, SupabaseDataService db, int agentId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -184,7 +182,7 @@ class AgentCommissionWidget extends ConsumerWidget {
 }
 
 class CommissionDetailsSheet extends StatelessWidget {
-  final AppDatabase db;
+  final SupabaseDataService db;
   final int agentId;
   final ScrollController scrollController;
 
@@ -229,7 +227,7 @@ class CommissionDetailsSheet extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
+            child: FutureBuilder<List<CommissionHistory>>(
               future: _getCommissionHistory(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -260,10 +258,7 @@ class CommissionDetailsSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   itemCount: commissions.length,
                   itemBuilder: (context, index) {
-                    final item = commissions[index];
-                    final commission =
-                        item['commission'] as CommissionHistoryData;
-                    final sale = item['sale'] as Sale?;
+                    final commission = commissions[index];
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -292,7 +287,7 @@ class CommissionDetailsSheet extends StatelessWidget {
                             Text(
                                 'Rate: ${commission.commissionRate?.toStringAsFixed(1)}%'),
                             Text('Date: ${_formatDate(commission.createdAt)}'),
-                            if (sale != null) Text('Ref: Sale #${sale.id}'),
+                            Text('Ref: Sale #${commission.saleId}'),
                           ],
                         ),
                         trailing: Chip(
@@ -318,21 +313,8 @@ class CommissionDetailsSheet extends StatelessWidget {
     );
   }
 
-  Future<List<Map<String, dynamic>>> _getCommissionHistory() async {
-    final results = await (db.select(db.commissionHistory).join([
-      leftOuterJoin(
-          db.sales, db.sales.id.equalsExp(db.commissionHistory.saleId)),
-    ])
-          ..where(db.commissionHistory.agentId.equals(agentId))
-          ..orderBy([OrderingTerm.desc(db.commissionHistory.createdAt)]))
-        .get();
-
-    return results.map((row) {
-      return {
-        'commission': row.readTable(db.commissionHistory),
-        'sale': row.readTableOrNull(db.sales),
-      };
-    }).toList();
+  Future<List<CommissionHistory>> _getCommissionHistory() async {
+    return db.getCommissionHistoryByAgent(agentId);
   }
 
   Color _getStatusColor(String status) {

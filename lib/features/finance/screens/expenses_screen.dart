@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 
@@ -205,10 +205,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Future<List<Expense>> _getFilteredExpenses(AppDatabase database) async {
-    final allExpenses = await (database.select(database.expenses)
-          ..orderBy([(t) => OrderingTerm.desc(t.expenseDate)]))
-        .get();
+  Future<List<Expense>> _getFilteredExpenses(
+      SupabaseDataService database) async {
+    final allExpenses = await database.getAllExpenses();
 
     if (_categoryFilter == 'All') {
       return allExpenses;
@@ -217,7 +216,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return allExpenses.where((e) => e.category == _categoryFilter).toList();
   }
 
-  Future<void> _showAddExpenseDialog(AppDatabase database) async {
+  Future<void> _showAddExpenseDialog(SupabaseDataService database) async {
     final descController = TextEditingController();
     final amountController = TextEditingController();
     final notesController = TextEditingController();
@@ -548,21 +547,16 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           final nav = Navigator.of(context);
 
                           // Get current user from database
-                          final users =
-                              await database.select(database.users).get();
+                          final users = await database.getAllUsers();
                           final currentUser = users.first;
 
-                          await database.into(database.expenses).insert(
-                                ExpensesCompanion.insert(
-                                  category: category,
-                                  description: descController.text,
-                                  amount: double.parse(amountController.text),
-                                  createdBy: currentUser.id,
-                                  expenseDate: expenseDate,
-                                  createdAt: DateTime.now(),
-                                  updatedAt: DateTime.now(),
-                                ),
-                              );
+                          await database.createExpense({
+                            'category': category,
+                            'description': descController.text,
+                            'amount': double.parse(amountController.text),
+                            'created_by': currentUser.id,
+                            'expense_date': expenseDate.toIso8601String(),
+                          });
 
                           nav.pop(true);
                           messenger.showSnackBar(

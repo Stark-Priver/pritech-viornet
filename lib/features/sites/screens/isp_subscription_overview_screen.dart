@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/database/database.dart';
-import '../../../core/providers/providers.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/services/isp_subscription_service.dart';
 import 'site_isp_subscription_screen.dart';
 
@@ -10,8 +10,6 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final db = ref.watch(databaseProvider);
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('ISP Subscriptions Overview'),
@@ -22,7 +20,8 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -41,7 +40,7 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
         ],
       ),
       body: FutureBuilder<List<Site>>(
-        future: db.select(db.sites).get(),
+        future: SupabaseDataService().getAllSites(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -87,7 +86,7 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
             itemCount: sites.length,
             itemBuilder: (context, index) {
               final site = sites[index];
-              return _buildSiteCard(context, db, site);
+              return _buildSiteCard(context, site);
             },
           );
         },
@@ -95,31 +94,29 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSiteCard(BuildContext context, AppDatabase db, Site site) {
+  Widget _buildSiteCard(BuildContext context, Site site) {
     return FutureBuilder<List<IspSubscription>>(
-      future: IspSubscriptionService(db).getIspSubscriptionsForSite(site.id),
+      future: IspSubscriptionService(SupabaseDataService())
+          .getIspSubscriptionsForSite(site.id),
       builder: (context, snapshot) {
         final subscriptions = snapshot.data ?? [];
-        
+
         // Calculate statistics
         final totalAmount = subscriptions.fold<double>(
           0,
           (sum, s) => sum + (s.amount ?? 0),
         );
-        
+
         final now = DateTime.now();
-        final activeCount = subscriptions
-            .where((s) => s.endsAt.isAfter(now))
-            .length;
-        
-        final expiredCount = subscriptions
-            .where((s) => s.endsAt.isBefore(now))
-            .length;
-        
+        final activeCount =
+            subscriptions.where((s) => s.endsAt.isAfter(now)).length;
+
+        final expiredCount =
+            subscriptions.where((s) => s.endsAt.isBefore(now)).length;
+
         final urgentCount = subscriptions
             .where((s) =>
-                s.endsAt.isAfter(now) &&
-                s.endsAt.difference(now).inDays <= 7)
+                s.endsAt.isAfter(now) && s.endsAt.difference(now).inDays <= 7)
             .length;
 
         // Find next due subscription
@@ -154,8 +151,7 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        SiteIspSubscriptionScreen(site: site),
+                    builder: (context) => SiteIspSubscriptionScreen(site: site),
                   ),
                 );
               },
@@ -427,7 +423,8 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                                         .toString()
                                         .split(' ')[0],
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.8),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.8),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -460,12 +457,12 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                          colors: [
-                          Colors.green.shade400,
-                          Colors.green.shade600,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                            colors: [
+                              Colors.green.shade400,
+                              Colors.green.shade600,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
@@ -531,7 +528,8 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             if (site.contactPerson != null) ...[
-                              Icon(Icons.person, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.person,
+                                  size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -545,7 +543,8 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                               const SizedBox(width: 12),
                             ],
                             if (site.contactPhone != null) ...[
-                              Icon(Icons.phone, size: 16, color: Colors.grey[600]),
+                              Icon(Icons.phone,
+                                  size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:drift/drift.dart' as drift hide Column;
-import 'package:drift/drift.dart' show Expression;
 import '../../../core/utils/currency_formatter.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../widgets/agent_commission_widget.dart';
@@ -134,137 +133,13 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Future<DashboardData> _fetchDashboardData(
-    AppDatabase database,
+    SupabaseDataService database,
     bool canAccessAllSites,
     List<int> userSites,
   ) async {
-    // Site filter for queries
-    Expression<bool>? siteFilter;
-    if (!canAccessAllSites && userSites.isNotEmpty) {
-      siteFilter = database.clients.siteId.isIn(userSites);
-    }
-
-    // Total clients
-    final clientsQuery = database.selectOnly(database.clients)
-      ..addColumns([database.clients.id.count()]);
-    if (siteFilter != null) {
-      clientsQuery.where(siteFilter);
-    }
-    final totalClients = await clientsQuery
-        .map((row) => row.read(database.clients.id.count()) ?? 0)
-        .getSingle();
-
-    // Available vouchers count
-    final vouchersQuery = database.select(database.vouchers)
-      ..where((tbl) => tbl.status.equals('AVAILABLE'));
-    final activeVouchers = await vouchersQuery.get().then((v) => v.length);
-
-    // Today's sales - filter by client's site
-    final today = DateTime.now();
-    final startOfDay = DateTime(today.year, today.month, today.day);
-    final todaySalesJoin = database.selectOnly(database.sales).join([
-      drift.innerJoin(
-        database.clients,
-        database.clients.id.equalsExp(database.sales.clientId),
-      ),
-    ]);
-    todaySalesJoin.addColumns([database.sales.amount.sum()]);
-    todaySalesJoin
-        .where(database.sales.saleDate.isBiggerOrEqualValue(startOfDay));
-    if (siteFilter != null) {
-      todaySalesJoin.where(siteFilter);
-    }
-    final todaySalesAmount = await todaySalesJoin
-        .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
-        .getSingle();
-
-    // Total revenue - filter by client's site
-    final revenueJoin = database.selectOnly(database.sales).join([
-      drift.innerJoin(
-        database.clients,
-        database.clients.id.equalsExp(database.sales.clientId),
-      ),
-    ]);
-    revenueJoin.addColumns([database.sales.amount.sum()]);
-    if (siteFilter != null) {
-      revenueJoin.where(siteFilter);
-    }
-    final totalRevenue = await revenueJoin
-        .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
-        .getSingle();
-
-    // Last 7 days sales - filter by client's site
-    final last7Days = <DateTime>[];
-    for (int i = 6; i >= 0; i--) {
-      last7Days.add(DateTime(today.year, today.month, today.day - i));
-    }
-
-    final dailySales = <double>[];
-    for (final day in last7Days) {
-      final nextDay = day.add(const Duration(days: 1));
-      final dayJoin = database.selectOnly(database.sales).join([
-        drift.innerJoin(
-          database.clients,
-          database.clients.id.equalsExp(database.sales.clientId),
-        ),
-      ]);
-      dayJoin.addColumns([database.sales.amount.sum()]);
-      dayJoin.where(database.sales.saleDate.isBiggerOrEqualValue(day) &
-          database.sales.saleDate.isSmallerThanValue(nextDay));
-      if (siteFilter != null) {
-        dayJoin.where(siteFilter);
-      }
-      final amount = await dayJoin
-          .map((row) => row.read(database.sales.amount.sum()) ?? 0.0)
-          .getSingle();
-      dailySales.add(amount);
-    }
-
-    // Voucher stats by status
-    Future<int> voucherStatusQuery(String status) async {
-      final query = database.selectOnly(database.vouchers);
-      query.addColumns([database.vouchers.id.count()]);
-      query.where(database.vouchers.status.equals(status));
-      return await query
-          .map((row) => row.read(database.vouchers.id.count()) ?? 0)
-          .getSingle();
-    }
-
-    final voucherCounts = await Future.wait([
-      voucherStatusQuery('ACTIVE'),
-      voucherStatusQuery('SOLD'),
-      voucherStatusQuery('EXPIRED'),
-      voucherStatusQuery('UNUSED'),
-    ]);
-
-    // Recent sales - filter by client's site
-    final recentSalesJoin = database.select(database.sales).join([
-      drift.innerJoin(
-        database.clients,
-        database.clients.id.equalsExp(database.sales.clientId),
-      ),
-    ]);
-    recentSalesJoin.orderBy([drift.OrderingTerm.desc(database.sales.saleDate)]);
-    recentSalesJoin.limit(5);
-    if (siteFilter != null) {
-      recentSalesJoin.where(siteFilter);
-    }
-    final recentSales =
-        await recentSalesJoin.map((row) => row.readTable(database.sales)).get();
-
-    return DashboardData(
-      totalClients: totalClients,
-      activeVouchers: activeVouchers,
-      todaySales: todaySalesAmount,
-      totalRevenue: totalRevenue,
-      last7DaysSales: dailySales,
-      voucherStats: VoucherStats(
-        active: voucherCounts[0],
-        sold: voucherCounts[1],
-        expired: voucherCounts[2],
-        unused: voucherCounts[3],
-      ),
-      recentSales: recentSales,
+    return database.getDashboardData(
+      canAccessAllSites: canAccessAllSites,
+      userSites: userSites,
     );
   }
 
@@ -580,51 +455,4 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-// Data models
-class DashboardData {
-  final int totalClients;
-  final int activeVouchers;
-  final double todaySales;
-  final double totalRevenue;
-  final List<double> last7DaysSales;
-  final VoucherStats voucherStats;
-  final List<Sale> recentSales;
-
-  DashboardData({
-    required this.totalClients,
-    required this.activeVouchers,
-    required this.todaySales,
-    required this.totalRevenue,
-    required this.last7DaysSales,
-    required this.voucherStats,
-    required this.recentSales,
-  });
-
-  factory DashboardData.empty() {
-    return DashboardData(
-      totalClients: 0,
-      activeVouchers: 0,
-      todaySales: 0,
-      totalRevenue: 0,
-      last7DaysSales: List.filled(7, 0),
-      voucherStats: VoucherStats(active: 0, sold: 0, expired: 0, unused: 0),
-      recentSales: [],
-    );
-  }
-}
-
-class VoucherStats {
-  final int active;
-  final int sold;
-  final int expired;
-  final int unused;
-
-  VoucherStats({
-    required this.active,
-    required this.sold,
-    required this.expired,
-    required this.unused,
-  });
 }

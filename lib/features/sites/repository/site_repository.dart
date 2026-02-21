@@ -1,69 +1,27 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class SiteRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  SiteRepository(this._database);
+  SiteRepository(this._service);
 
-  // Create site
-  Future<int> createSite(SitesCompanion site) async {
-    return await _database.into(_database.sites).insert(site);
-  }
+  Future<List<Site>> getAllSites() => _service.getAllSites();
 
-  // Get all sites
-  Future<List<Site>> getAllSites() async {
-    return await _database.select(_database.sites).get();
-  }
+  Future<List<Site>> getActiveSites() => _service.getActiveSites();
 
-  // Get active sites
-  Future<List<Site>> getActiveSites() async {
-    return await (_database.select(
-      _database.sites,
-    )..where((tbl) => tbl.isActive.equals(true)))
-        .get();
-  }
+  Future<Site?> getSiteById(int id) => _service.getSiteById(id);
 
-  // Get site by ID
-  Future<Site?> getSiteById(int id) async {
-    return await (_database.select(
-      _database.sites,
-    )..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<List<Site>> searchSites(String query) => _service.searchSites(query);
 
-  // Search sites
-  Future<List<Site>> searchSites(String query) async {
-    return await (_database.select(_database.sites)
-          ..where(
-            (tbl) => tbl.name.contains(query) | tbl.location.contains(query),
-          ))
-        .get();
-  }
+  Future<Site> createSite(Map<String, dynamic> fields) =>
+      _service.createSite(fields);
 
-  // Update site
-  Future<bool> updateSite(int id, SitesCompanion site) async {
-    return await (_database.update(
-          _database.sites,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          site.copyWith(
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<bool> updateSite(int id, Map<String, dynamic> fields) =>
+      _service.updateSite(id, fields);
 
-  // Delete site
-  Future<int> deleteSite(int id) async {
-    return await (_database.delete(
-      _database.sites,
-    )..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<void> deleteSite(int id) => _service.deleteSite(id);
 
-  // Get site count
   Future<int> getSiteCount() async {
     final sites = await getAllSites();
     return sites.length;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -58,7 +58,7 @@ class _CommissionSettingsScreenState
       ),
       body: FutureBuilder<List<CommissionSetting>>(
         key: ValueKey(_rebuildKey),
-        future: db.select(db.commissionSettings).get(),
+        future: db.getAllCommissionSettings(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -137,7 +137,7 @@ class _CommissionSettingsScreenState
   }
 
   Widget _buildCommissionCard(
-      BuildContext context, AppDatabase db, CommissionSetting setting) {
+      BuildContext context, SupabaseDataService db, CommissionSetting setting) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -272,14 +272,13 @@ class _CommissionSettingsScreenState
     }
   }
 
-  void _toggleActive(AppDatabase db, CommissionSetting setting, bool value) {
-    db
-        .update(db.commissionSettings)
-        .replace(setting.copyWith(isActive: value, updatedAt: DateTime.now()));
+  void _toggleActive(
+      SupabaseDataService db, CommissionSetting setting, bool value) {
+    db.updateCommissionSetting(setting.id, {'is_active': value});
     _refresh();
   }
 
-  void _showAddCommissionDialog(BuildContext context, AppDatabase db) {
+  void _showAddCommissionDialog(BuildContext context, SupabaseDataService db) {
     showDialog(
       context: context,
       builder: (context) => CommissionDialog(db: db),
@@ -287,7 +286,7 @@ class _CommissionSettingsScreenState
   }
 
   void _showEditCommissionDialog(
-      BuildContext context, AppDatabase db, CommissionSetting setting) {
+      BuildContext context, SupabaseDataService db, CommissionSetting setting) {
     showDialog(
       context: context,
       builder: (context) => CommissionDialog(db: db, setting: setting),
@@ -295,7 +294,7 @@ class _CommissionSettingsScreenState
   }
 
   void _deleteCommission(
-      BuildContext context, AppDatabase db, CommissionSetting setting) {
+      BuildContext context, SupabaseDataService db, CommissionSetting setting) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -308,9 +307,7 @@ class _CommissionSettingsScreenState
           ),
           TextButton(
             onPressed: () {
-              (db.delete(db.commissionSettings)
-                    ..where((tbl) => tbl.id.equals(setting.id)))
-                  .go();
+              db.deleteCommissionSetting(setting.id);
               Navigator.pop(context);
               _refresh();
             },
@@ -323,7 +320,7 @@ class _CommissionSettingsScreenState
 }
 
 class CommissionDialog extends StatefulWidget {
-  final AppDatabase db;
+  final SupabaseDataService db;
   final CommissionSetting? setting;
 
   const CommissionDialog({
@@ -496,8 +493,8 @@ class _CommissionDialogState extends State<CommissionDialog> {
               const SizedBox(height: 12),
               // Show specific user dropdown
               if (_applicableTo == 'SPECIFIC_USER')
-                FutureBuilder<List<User>>(
-                  future: widget.db.select(widget.db.users).get(),
+                FutureBuilder<List<AppUser>>(
+                  future: widget.db.getAllUsers(),
                   builder: (context, snapshot) {
                     final users = snapshot.data ?? [];
                     return DropdownButtonFormField<int>(
@@ -521,7 +518,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
               // Show specific package dropdown
               if (_applicableTo == 'SPECIFIC_PACKAGE')
                 FutureBuilder<List<Package>>(
-                  future: widget.db.select(widget.db.packages).get(),
+                  future: widget.db.getAllPackages(),
                   builder: (context, snapshot) {
                     final packages = snapshot.data ?? [];
                     return DropdownButtonFormField<int>(
@@ -572,37 +569,30 @@ class _CommissionDialogState extends State<CommissionDialog> {
   void _saveCommission() {
     if (!_formKey.currentState!.validate()) return;
 
-    final companion = CommissionSettingsCompanion(
-      id: widget.setting != null
-          ? Value(widget.setting!.id)
-          : const Value.absent(),
-      name: Value(_nameController.text),
-      description: Value(_descriptionController.text),
-      commissionType: Value(_commissionType),
-      rate: Value(double.parse(_rateController.text)),
-      minSaleAmount: Value(double.parse(_minSaleController.text)),
-      maxSaleAmount: Value(_maxSaleController.text.isEmpty
+    final fields = {
+      'name': _nameController.text,
+      'description': _descriptionController.text,
+      'commission_type': _commissionType,
+      'rate': double.parse(_rateController.text),
+      'min_sale_amount': double.parse(_minSaleController.text),
+      'max_sale_amount': _maxSaleController.text.isEmpty
           ? null
-          : double.parse(_maxSaleController.text)),
-      applicableTo: Value(_applicableTo),
-      roleId: Value(_selectedRoleId),
-      userId: Value(_selectedUserId),
-      clientId: Value(_selectedClientId),
-      packageId: Value(_selectedPackageId),
-      priority: Value(int.parse(_priorityController.text)),
-      startDate: widget.setting != null
-          ? Value(widget.setting!.startDate)
-          : Value(DateTime.now()),
-      createdAt: widget.setting != null
-          ? Value(widget.setting!.createdAt)
-          : Value(DateTime.now()),
-      updatedAt: Value(DateTime.now()),
-    );
+          : double.parse(_maxSaleController.text),
+      'applicable_to': _applicableTo,
+      'role_id': _selectedRoleId,
+      'user_id': _selectedUserId,
+      'client_id': _selectedClientId,
+      'package_id': _selectedPackageId,
+      'priority': int.parse(_priorityController.text),
+      'start_date': widget.setting?.startDate.toIso8601String() ??
+          DateTime.now().toIso8601String(),
+      'is_active': true,
+    };
 
     if (widget.setting == null) {
-      widget.db.into(widget.db.commissionSettings).insert(companion);
+      widget.db.createCommissionSetting(fields);
     } else {
-      widget.db.update(widget.db.commissionSettings).replace(companion);
+      widget.db.updateCommissionSetting(widget.setting!.id, fields);
     }
 
     Navigator.pop(context);

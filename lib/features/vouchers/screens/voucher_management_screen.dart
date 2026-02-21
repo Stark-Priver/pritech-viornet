@@ -3,11 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/rbac/permissions.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+bool _canDeleteVouchers(List<String> roles) =>
+    roles.any((r) => r == 'ADMIN' || r == 'SUPER_ADMIN' || r == 'FINANCE');
+
+bool _canViewSummary(List<String> roles) =>
+    roles.any((r) => r == 'ADMIN' || r == 'SUPER_ADMIN' || r == 'FINANCE');
+// ─────────────────────────────────────────────────────────────────────────────
 
 class VoucherManagementScreen extends ConsumerStatefulWidget {
   const VoucherManagementScreen({super.key});
@@ -18,30 +27,111 @@ class VoucherManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _VoucherManagementScreenState
-    extends ConsumerState<VoucherManagementScreen> {
+    extends ConsumerState<VoucherManagementScreen>
+    with SingleTickerProviderStateMixin {
   String _statusFilter = 'ALL';
   int? _packageFilter;
   int? _siteFilter;
   String? _batchFilter;
   int _rebuildKey = 0;
 
+  // multi-select
+  bool _selectionMode = false;
+  final Set<int> _selectedIds = {};
+
+  // tabs
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   void _refresh() {
     setState(() {
       _rebuildKey++;
+      _selectedIds.clear();
+      _selectionMode = false;
     });
+  }
+
+  void _exitSelection() => setState(() {
+        _selectedIds.clear();
+        _selectionMode = false;
+      });
+
+  // ── Bulk delete ──────────────────────────────────────────────────────────
+  Future<void> _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Vouchers'),
+        content:
+            Text('Delete $count selected voucher${count == 1 ? '' : 's'}?\n'
+                'This cannot be undone.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final progressNotifier = ValueNotifier<(int, int)>((0, count));
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('Deleting…'),
+          content: ValueListenableBuilder<(int, int)>(
+            valueListenable: progressNotifier,
+            builder: (_, v, __) =>
+                LinearProgressIndicator(value: v.$2 > 0 ? v.$1 / v.$2 : 0),
+          ),
+        ),
+      ),
+    );
+
+    final svc = ref.read(voucherServiceProvider);
+    int done = 0;
+    for (final id in List<int>.from(_selectedIds)) {
+      await svc.deleteVoucher(id);
+      done++;
+      progressNotifier.value = (done, count);
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$count voucher${count == 1 ? '' : 's'} deleted'),
+        backgroundColor: Colors.red));
+    _refresh();
   }
 
   Future<List<Voucher>> _loadVouchers() async {
     final voucherService = ref.read(voucherServiceProvider);
-    final vouchers = await voucherService
-        .watchVouchers(
-          status: _statusFilter == 'ALL' ? null : _statusFilter,
-          packageId: _packageFilter,
-          siteId: _siteFilter,
-          batchId: _batchFilter,
-        )
-        .first;
-    return vouchers;
+    return voucherService.watchVouchers(
+      status: _statusFilter == 'ALL' ? null : _statusFilter,
+      packageId: _packageFilter,
+      siteId: _siteFilter,
+      batchId: _batchFilter,
+    );
   }
 
   Future<void> _showAddVoucherDialog() async {
@@ -52,15 +142,9 @@ class _VoucherManagementScreenState
     int? selectedPackageId;
     int? selectedSiteId;
 
-    final packages = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).packages)
-        .get();
+    final packages = await SupabaseDataService().getAllPackages();
 
-    final sites = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).sites)
-        .get();
+    final sites = await SupabaseDataService().getAllSites();
 
     if (!mounted) return;
 
@@ -184,26 +268,20 @@ class _VoucherManagementScreenState
   Future<void> _showBulkUploadDialog() async {
     int? selectedPackageId;
     int? selectedSiteId;
-    final packages = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).packages)
-        .get();
-    final sites = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).sites)
-        .get();
-
+    final packages = await SupabaseDataService().getAllPackages();
+    final sites = await SupabaseDataService().getAllSites();
     if (!mounted) return;
 
-    await showDialog(
+    // ── Step 1: site / package selection ──────────────────────────────────
+    final shouldContinue = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDlgState) => AlertDialog(
           title: const Text('Bulk Upload Vouchers'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Upload Mikrotik HTML voucher file'),
+              const Text('Upload a Mikrotik HTML voucher file'),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Site (Required)'),
@@ -214,7 +292,7 @@ class _VoucherManagementScreenState
                           child: Text(site.name),
                         ))
                     .toList(),
-                onChanged: (value) => setState(() => selectedSiteId = value),
+                onChanged: (v) => setDlgState(() => selectedSiteId = v),
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
@@ -227,93 +305,24 @@ class _VoucherManagementScreenState
                           child: Text(pkg.name),
                         ))
                     .toList(),
-                onChanged: (value) => setState(() => selectedPackageId = value),
+                onChanged: (v) => setDlgState(() => selectedPackageId = v),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogCtx, false),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: () {
                 if (selectedSiteId == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please select a site')),
+                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                    const SnackBar(content: Text('Please select a site first')),
                   );
                   return;
                 }
-
-                final result = await FilePicker.platform.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['html', 'htm'],
-                );
-
-                if (result != null && result.files.single.path != null) {
-                  try {
-                    final file = File(result.files.single.path!);
-                    final htmlContent = await file.readAsString();
-
-                    if (context.mounted) {
-                      Navigator.pop(context);
-
-                      // Show loading dialog
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Uploading vouchers...'),
-                            ],
-                          ),
-                        ),
-                      );
-
-                      try {
-                        final voucherService = ref.read(voucherServiceProvider);
-                        final count = await voucherService.bulkInsertVouchers(
-                          htmlContent: htmlContent,
-                          packageId: selectedPackageId,
-                          siteId: selectedSiteId,
-                        );
-
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    '$count vouchers uploaded successfully')),
-                          );
-                          _refresh();
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error uploading vouchers: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error reading file: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                }
+                Navigator.pop(dialogCtx, true);
               },
               child: const Text('Select File'),
             ),
@@ -321,17 +330,124 @@ class _VoucherManagementScreenState
         ),
       ),
     );
+
+    if (shouldContinue != true || !mounted) return;
+
+    // ── Step 2: pick file ─────────────────────────────────────────────────
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['html', 'htm'],
+    );
+    if (result == null || result.files.single.path == null || !mounted) return;
+
+    final String htmlContent;
+    try {
+      htmlContent = await File(result.files.single.path!).readAsString();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error reading file: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    // ── Step 3: progress dialog ───────────────────────────────────────────
+    final progressNotifier = ValueNotifier<(int, int)>((0, 0));
+    bool cancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (progressCtx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('Uploading Vouchers'),
+          content: ValueListenableBuilder<(int, int)>(
+            valueListenable: progressNotifier,
+            builder: (_, progress, __) {
+              final done = progress.$1;
+              final total = progress.$2;
+              final pct = total > 0 ? done / total : 0.0;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  total == 0
+                      ? const LinearProgressIndicator()
+                      : LinearProgressIndicator(value: pct),
+                  const SizedBox(height: 10),
+                  total == 0
+                      ? const Text('Parsing file…')
+                      : Text(
+                          '$done / $total vouchers  •  '
+                          '${(pct * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () {
+                cancelled = true;
+                Navigator.pop(progressCtx);
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // ── Step 4: run upload ────────────────────────────────────────────────
+    try {
+      final voucherService = ref.read(voucherServiceProvider);
+      final count = await voucherService.bulkInsertVouchers(
+        htmlContent: htmlContent,
+        packageId: selectedPackageId,
+        siteId: selectedSiteId,
+        onProgress: (done, total) {
+          if (!cancelled) progressNotifier.value = (done, total);
+        },
+        isCancelled: () => cancelled,
+      );
+
+      if (!mounted) return;
+      if (!cancelled) {
+        Navigator.of(context).pop(); // close progress dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$count vouchers uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _refresh();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Upload cancelled')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (!cancelled) Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error uploading vouchers: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _showFilterDialog() async {
-    final packages = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).packages)
-        .get();
-    final sites = await ref
-        .read(databaseProvider)
-        .select(ref.read(databaseProvider).sites)
-        .get();
+    final packages = await SupabaseDataService().getAllPackages();
+    final sites = await SupabaseDataService().getAllSites();
 
     if (!mounted) return;
 
@@ -412,192 +528,520 @@ class _VoucherManagementScreenState
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final userRoles = authState.userRoles;
+    final canDelete = _canDeleteVouchers(userRoles);
+    final canSummary = _canViewSummary(userRoles);
+    final canCreate = PermissionChecker([authState.user?.role ?? ''])
+        .hasPermission(Permissions.createVoucher);
+    final canBulkUpload = authState.user?.role == 'SUPER_ADMIN' ||
+        authState.user?.role == 'MARKETING' ||
+        authState.user?.role == 'ADMIN';
+
+    final vouchersTab = _VouchersTab(
+      rebuildKey: _rebuildKey,
+      loadVouchers: _loadVouchers,
+      selectionMode: _selectionMode,
+      selectedIds: _selectedIds,
+      canDelete: canDelete,
+      onRefresh: _refresh,
+      onEnterSelection: () => setState(() => _selectionMode = true),
+      onToggleSelect: (id) => setState(() {
+        if (_selectedIds.contains(id)) {
+          _selectedIds.remove(id);
+          if (_selectedIds.isEmpty) _selectionMode = false;
+        } else {
+          _selectedIds.add(id);
+        }
+      }),
+      onSelectAll: (all) => setState(() {
+        if (_selectedIds.length == all.length) {
+          _selectedIds.clear();
+          _selectionMode = false;
+        } else {
+          _selectedIds
+            ..clear()
+            ..addAll(all.map((v) => v.id));
+        }
+      }),
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Voucher Management'),
+        title: _selectionMode
+            ? Text('${_selectedIds.length} selected')
+            : const Text('Voucher Management'),
+        leading: _selectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close), onPressed: _exitSelection)
+            : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refresh,
-          ),
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _packageFilter != null || _siteFilter != null,
-              child: const Icon(Icons.filter_alt),
+          if (_selectionMode && canDelete)
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              tooltip: 'Delete selected',
+              onPressed: _deleteSelected,
             ),
-            onPressed: _showFilterDialog,
-          ),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              setState(() {
-                _statusFilter = value;
+          if (!_selectionMode) ...[
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+            IconButton(
+              icon: Badge(
+                isLabelVisible: _packageFilter != null || _siteFilter != null,
+                child: const Icon(Icons.filter_alt),
+              ),
+              onPressed: _showFilterDialog,
+            ),
+            PopupMenuButton<String>(
+              onSelected: (v) => setState(() {
+                _statusFilter = v;
                 _refresh();
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'ALL', child: Text('All Status')),
-              const PopupMenuItem(value: 'AVAILABLE', child: Text('Available')),
-              const PopupMenuItem(value: 'SOLD', child: Text('Sold')),
-              const PopupMenuItem(value: 'USED', child: Text('Used')),
-              const PopupMenuItem(value: 'EXPIRED', child: Text('Expired')),
-            ],
-            child: Chip(
-              label: Text(_statusFilter),
-              avatar: const Icon(Icons.assessment, size: 18),
+              }),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'ALL', child: Text('All Status')),
+                PopupMenuItem(value: 'AVAILABLE', child: Text('Available')),
+                PopupMenuItem(value: 'SOLD', child: Text('Sold')),
+                PopupMenuItem(value: 'USED', child: Text('Used')),
+                PopupMenuItem(value: 'EXPIRED', child: Text('Expired')),
+              ],
+              child: Chip(
+                label: Text(_statusFilter),
+                avatar: const Icon(Icons.assessment, size: 18),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
         ],
+        bottom: canSummary
+            ? TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(icon: Icon(Icons.receipt_long), text: 'Vouchers'),
+                  Tab(icon: Icon(Icons.bar_chart), text: 'Summary'),
+                ],
+              )
+            : null,
       ),
-      body: Column(
-        children: [
-          // Stats Card
-          FutureBuilder<Map<String, int>>(
-            key: ValueKey(_rebuildKey),
-            future: ref.read(voucherServiceProvider).getVoucherStats(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const SizedBox();
-
-              final stats = snapshot.data!;
-              return Card(
-                margin: const EdgeInsets.all(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _StatItem(
-                        label: 'Total',
-                        value: stats['total']!,
-                        color: Colors.blue,
+      body: canSummary
+          ? TabBarView(
+              controller: _tabController,
+              children: [
+                vouchersTab,
+                _SummaryTab(rebuildKey: _rebuildKey),
+              ],
+            )
+          : vouchersTab,
+      floatingActionButton: _selectionMode
+          ? null
+          : (canCreate
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (canBulkUpload) ...[
+                      FloatingActionButton.extended(
+                        onPressed: _showBulkUploadDialog,
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Bulk Upload'),
+                        heroTag: 'bulk',
                       ),
-                      _StatItem(
-                        label: 'Available',
-                        value: stats['available']!,
-                        color: Colors.green,
-                      ),
-                      _StatItem(
-                        label: 'Sold',
-                        value: stats['sold']!,
-                        color: Colors.orange,
-                      ),
-                      _StatItem(
-                        label: 'Used',
-                        value: stats['used']!,
-                        color: Colors.purple,
-                      ),
+                      const SizedBox(height: 8),
                     ],
-                  ),
+                    FloatingActionButton(
+                      onPressed: _showAddVoucherDialog,
+                      heroTag: 'add',
+                      child: const Icon(Icons.add),
+                    ),
+                  ],
+                )
+              : null),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vouchers Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VouchersTab extends StatelessWidget {
+  final int rebuildKey;
+  final Future<List<Voucher>> Function() loadVouchers;
+  final bool selectionMode;
+  final Set<int> selectedIds;
+  final bool canDelete;
+  final VoidCallback onRefresh;
+  final VoidCallback onEnterSelection;
+  final void Function(int id) onToggleSelect;
+  final void Function(List<Voucher> all) onSelectAll;
+
+  const _VouchersTab({
+    required this.rebuildKey,
+    required this.loadVouchers,
+    required this.selectionMode,
+    required this.selectedIds,
+    required this.canDelete,
+    required this.onRefresh,
+    required this.onEnterSelection,
+    required this.onToggleSelect,
+    required this.onSelectAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Stats row (computed from loaded vouchers)
+        FutureBuilder<List<Voucher>>(
+          key: ValueKey(rebuildKey),
+          future: loadVouchers(),
+          builder: (_, snap) {
+            final vs = snap.data ?? [];
+            final av = vs.where((v) => v.status == 'AVAILABLE').length;
+            final so = vs.where((v) => v.status == 'SOLD').length;
+            final us = vs.where((v) => v.status == 'USED').length;
+            return Card(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _StatItem(
+                        label: 'Total', value: vs.length, color: Colors.blue),
+                    _StatItem(
+                        label: 'Available', value: av, color: Colors.green),
+                    _StatItem(label: 'Sold', value: so, color: Colors.orange),
+                    _StatItem(label: 'Used', value: us, color: Colors.purple),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+
+        // Select-all banner
+        if (selectionMode)
+          FutureBuilder<List<Voucher>>(
+            key: ValueKey(rebuildKey),
+            future: loadVouchers(),
+            builder: (ctx, snap) {
+              final all = snap.data ?? [];
+              final allSel = all.isNotEmpty && selectedIds.length == all.length;
+              return Container(
+                color: Theme.of(ctx).colorScheme.primaryContainer,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Checkbox(
+                        value: allSel,
+                        tristate: true,
+                        onChanged: (_) => onSelectAll(all)),
+                    Text(
+                        allSel ? 'Deselect all' : 'Select all (${all.length})'),
+                  ],
                 ),
               );
             },
           ),
 
-          // Voucher List
-          Expanded(
-            child: FutureBuilder<List<Voucher>>(
-              key: ValueKey(_rebuildKey),
-              future: _loadVouchers(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline,
-                            size: 48, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text('Error: ${snapshot.error}'),
-                        ElevatedButton(
-                          onPressed: _refresh,
-                          child: const Text('Try Again'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final vouchers = snapshot.data ?? [];
-
-                if (vouchers.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.receipt_long,
-                            size: 48, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        Text(
-                          _statusFilter == 'ALL'
-                              ? 'No vouchers yet'
-                              : 'No $_statusFilter vouchers',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text('Upload vouchers to get started'),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: vouchers.length,
-                  itemBuilder: (context, index) {
-                    final voucher = vouchers[index];
-                    return _VoucherListItem(
-                      voucher: voucher,
-                      onRefresh: _refresh,
-                    );
-                  },
+        // Voucher list
+        Expanded(
+          child: FutureBuilder<List<Voucher>>(
+            key: ValueKey(rebuildKey),
+            future: loadVouchers(),
+            builder: (ctx, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
+                      const SizedBox(height: 16),
+                      Text('Error: ${snapshot.error}'),
+                      ElevatedButton(
+                          onPressed: onRefresh, child: const Text('Try Again')),
+                    ],
+                  ),
                 );
-              },
+              }
+              final vouchers = snapshot.data ?? [];
+              if (vouchers.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.receipt_long,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('No vouchers found',
+                          style: TextStyle(fontSize: 18)),
+                      const SizedBox(height: 8),
+                      const Text('Upload vouchers to get started'),
+                    ],
+                  ),
+                );
+              }
+              return ListView.builder(
+                itemCount: vouchers.length,
+                itemBuilder: (_, i) {
+                  final v = vouchers[i];
+                  return _VoucherListItem(
+                    voucher: v,
+                    selectionMode: selectionMode,
+                    isSelected: selectedIds.contains(v.id),
+                    canDelete: canDelete,
+                    onLongPress: onEnterSelection,
+                    onToggleSelect: () => onToggleSelect(v.id),
+                    onRefresh: onRefresh,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary Tab  (ADMIN / FINANCE / SUPER_ADMIN)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SummaryTab extends ConsumerWidget {
+  final int rebuildKey;
+  const _SummaryTab({required this.rebuildKey});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<List<Voucher>>(
+      key: ValueKey(rebuildKey),
+      future: ref.read(voucherServiceProvider).watchVouchers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        final vouchers = snapshot.data ?? [];
+
+        // Group by package_id + site_id
+        final groups = <String, _GroupStats>{};
+        for (final v in vouchers) {
+          final key = '${v.packageId ?? 0}_${v.siteId ?? 0}';
+          groups.putIfAbsent(
+              key,
+              () => _GroupStats(
+                    packageId: v.packageId,
+                    siteId: v.siteId,
+                    validity: v.validity,
+                    speed: v.speed,
+                  ));
+          groups[key]!.add(v);
+        }
+        final sortedGroups = groups.values.toList()
+          ..sort((a, b) =>
+              (a.packageId ?? 999999).compareTo(b.packageId ?? 999999));
+
+        final grandRevenue = vouchers
+            .where((v) => v.status == 'SOLD' || v.status == 'USED')
+            .fold<double>(0, (s, v) => s + (v.price ?? 0));
+        final grandSold = vouchers.where((v) => v.status == 'SOLD').length;
+        final grandAvail =
+            vouchers.where((v) => v.status == 'AVAILABLE').length;
+
+        if (sortedGroups.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.bar_chart, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('No vouchers to summarize',
+                    style: TextStyle(fontSize: 18)),
+              ],
+            ),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Grand totals
+            Card(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Overall',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _SummaryCell(
+                            'Total', '${vouchers.length}', Colors.blue),
+                        _SummaryCell('Available', '$grandAvail', Colors.green),
+                        _SummaryCell('Sold', '$grandSold', Colors.orange),
+                        _SummaryCell(
+                            'Revenue',
+                            CurrencyFormatter.format(grandRevenue),
+                            Colors.teal),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('By Package / Site',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            ...sortedGroups.map((g) => _GroupCard(group: g)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GroupStats {
+  final int? packageId;
+  final int? siteId;
+  final String? validity;
+  final String? speed;
+  int total = 0, available = 0, sold = 0, used = 0;
+  double revenue = 0;
+
+  _GroupStats({
+    required this.packageId,
+    required this.siteId,
+    this.validity,
+    this.speed,
+  });
+
+  void add(Voucher v) {
+    total++;
+    switch (v.status) {
+      case 'AVAILABLE':
+        available++;
+        break;
+      case 'SOLD':
+        sold++;
+        revenue += v.price ?? 0;
+        break;
+      case 'USED':
+        used++;
+        revenue += v.price ?? 0;
+        break;
+    }
+  }
+}
+
+class _GroupCard extends ConsumerWidget {
+  final _GroupStats group;
+  const _GroupCard({required this.group});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<List<dynamic>>(
+      future: Future.wait([
+        group.packageId != null
+            ? ref.read(databaseProvider).getPackageById(group.packageId!)
+            : Future<Package?>.value(null),
+        group.siteId != null
+            ? ref.read(databaseProvider).getSiteById(group.siteId!)
+            : Future<Site?>.value(null),
+      ]),
+      builder: (context, snap) {
+        final pkg = snap.data != null ? snap.data![0] as Package? : null;
+        final site = snap.data != null ? snap.data![1] as Site? : null;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.receipt_long, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        pkg?.name ?? 'No Package',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ),
+                    if (site != null)
+                      Chip(
+                        label: Text(site.name,
+                            style: const TextStyle(fontSize: 11)),
+                        padding: EdgeInsets.zero,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                  ],
+                ),
+                if (group.validity != null || group.speed != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (group.validity != null) group.validity!,
+                      if (group.speed != null) group.speed!,
+                    ].join(' • '),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+                const Divider(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _SummaryCell('Total', '${group.total}', Colors.blue),
+                    _SummaryCell(
+                        'Available', '${group.available}', Colors.green),
+                    _SummaryCell('Sold', '${group.sold}', Colors.orange),
+                    _SummaryCell('Used', '${group.used}', Colors.purple),
+                    _SummaryCell('Revenue',
+                        CurrencyFormatter.format(group.revenue), Colors.teal),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-      floatingActionButton: Consumer(
-        builder: (context, ref, _) {
-          final authState = ref.watch(authProvider);
-          final user = authState.user;
+        );
+      },
+    );
+  }
+}
 
-          if (user == null) return const SizedBox();
+class _SummaryCell extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _SummaryCell(this.label, this.value, this.color);
 
-          // Check permissions
-          final permissionChecker = PermissionChecker([user.role]);
-          final canCreate =
-              permissionChecker.hasPermission(Permissions.createVoucher);
-
-          // Only Super Admin and Marketing can bulk upload
-          final canBulkUpload =
-              user.role == 'SUPER_ADMIN' || user.role == 'MARKETING';
-
-          if (!canCreate) return const SizedBox();
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (canBulkUpload) ...[
-                FloatingActionButton.extended(
-                  onPressed: _showBulkUploadDialog,
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Bulk Upload'),
-                  heroTag: 'bulk',
-                ),
-                const SizedBox(height: 8),
-              ],
-              FloatingActionButton(
-                onPressed: _showAddVoucherDialog,
-                heroTag: 'add',
-                child: const Icon(Icons.add),
-              ),
-            ],
-          );
-        },
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value,
+            style: TextStyle(
+                fontWeight: FontWeight.bold, fontSize: 13, color: color)),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
     );
   }
 }
@@ -606,32 +1050,17 @@ class _StatItem extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-
-  const _StatItem({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _StatItem(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          value.toString(),
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
+        Text('$value',
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
   }
@@ -639,15 +1068,25 @@ class _StatItem extends StatelessWidget {
 
 class _VoucherListItem extends ConsumerWidget {
   final Voucher voucher;
+  final bool selectionMode;
+  final bool isSelected;
+  final bool canDelete;
+  final VoidCallback onLongPress;
+  final VoidCallback onToggleSelect;
   final VoidCallback onRefresh;
 
   const _VoucherListItem({
     required this.voucher,
+    required this.selectionMode,
+    required this.isSelected,
+    required this.canDelete,
+    required this.onLongPress,
+    required this.onToggleSelect,
     required this.onRefresh,
   });
 
-  Color _getStatusColor(String status) {
-    switch (status) {
+  Color _statusColor(String s) {
+    switch (s) {
       case 'AVAILABLE':
         return Colors.green;
       case 'SOLD':
@@ -663,27 +1102,27 @@ class _VoucherListItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final color = _statusColor(voucher.status);
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      color: isSelected
+          ? Theme.of(context)
+              .colorScheme
+              .primaryContainer
+              .withValues(alpha: 0.5)
+          : null,
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              _getStatusColor(voucher.status).withValues(alpha: 0.2),
-          child: Text(
-            voucher.code.substring(0, 2),
-            style: TextStyle(
-              color: _getStatusColor(voucher.status),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        title: Text(
-          voucher.code,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'monospace',
-          ),
-        ),
+        leading: selectionMode
+            ? Checkbox(value: isSelected, onChanged: (_) => onToggleSelect())
+            : CircleAvatar(
+                backgroundColor: color.withValues(alpha: 0.2),
+                child: Text(voucher.code.substring(0, 2),
+                    style:
+                        TextStyle(color: color, fontWeight: FontWeight.bold)),
+              ),
+        title: Text(voucher.code,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, fontFamily: 'monospace')),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -694,90 +1133,110 @@ class _VoucherListItem extends ConsumerWidget {
           ],
         ),
         trailing: Chip(
-          label: Text(
-            voucher.status,
-            style: const TextStyle(fontSize: 10),
-          ),
-          backgroundColor:
-              _getStatusColor(voucher.status).withValues(alpha: 0.2),
-          side: BorderSide(color: _getStatusColor(voucher.status)),
+          label: Text(voucher.status, style: const TextStyle(fontSize: 10)),
+          backgroundColor: color.withValues(alpha: 0.15),
+          side: BorderSide(color: color),
         ),
-        onTap: () {
-          // Show voucher details
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Voucher: ${voucher.code}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Status: ${voucher.status}'),
-                  if (voucher.price != null)
-                    Text('Price: ${CurrencyFormatter.format(voucher.price!)}'),
-                  if (voucher.validity != null)
-                    Text('Validity: ${voucher.validity}'),
-                  if (voucher.speed != null) Text('Speed: ${voucher.speed}'),
-                  if (voucher.soldAt != null)
-                    Text('Sold At: ${voucher.soldAt}'),
-                  if (voucher.qrCodeData != null)
-                    Text(
-                      'QR: ${voucher.qrCodeData}',
-                      style: const TextStyle(fontSize: 10),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
-              actions: [
-                if (voucher.status == 'AVAILABLE')
-                  TextButton(
-                    onPressed: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Delete Voucher'),
-                          content: const Text(
-                              'Are you sure you want to delete this voucher?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              style: TextButton.styleFrom(
-                                  foregroundColor: Colors.red),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
+        onLongPress: selectionMode ? null : onLongPress,
+        onTap:
+            selectionMode ? onToggleSelect : () => _showDetails(context, ref),
+      ),
+    );
+  }
 
-                      if (confirmed == true) {
-                        if (!context.mounted) return;
-                        await ref
-                            .read(voucherServiceProvider)
-                            .deleteVoucher(voucher.id);
-                        if (!context.mounted) return;
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Voucher deleted')),
-                        );
-                        onRefresh();
-                      }
-                    },
-                    child: const Text('Delete',
-                        style: TextStyle(color: Colors.red)),
+  void _showDetails(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Voucher: ${voucher.code}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DetailRow('Status', voucher.status),
+            if (voucher.price != null)
+              _DetailRow('Price', CurrencyFormatter.format(voucher.price!)),
+            if (voucher.validity != null)
+              _DetailRow('Validity', voucher.validity!),
+            if (voucher.speed != null) _DetailRow('Speed', voucher.speed!),
+            if (voucher.soldAt != null)
+              _DetailRow('Sold At', voucher.soldAt.toString()),
+            if (voucher.batchId != null) _DetailRow('Batch', voucher.batchId!),
+            if (voucher.qrCodeData != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text('QR: ${voucher.qrCodeData}',
+                    style: const TextStyle(fontSize: 10),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ),
+          ],
+        ),
+        actions: [
+          if (canDelete && voucher.status == 'AVAILABLE')
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: ctx,
+                  builder: (c2) => AlertDialog(
+                    title: const Text('Delete Voucher'),
+                    content:
+                        const Text('Delete this voucher? Cannot be undone.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(c2, false),
+                          child: const Text('Cancel')),
+                      FilledButton(
+                        style:
+                            FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(c2, true),
+                        child: const Text('Delete'),
+                      ),
+                    ],
                   ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
-              ],
+                );
+                if (confirmed == true) {
+                  await ref
+                      .read(voucherServiceProvider)
+                      .deleteVoucher(voucher.id);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Voucher deleted')));
+                    onRefresh();
+                  }
+                }
+              },
+              child: const Text('Delete'),
             ),
-          );
-        },
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+              width: 70,
+              child: Text('$label:',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
       ),
     );
   }

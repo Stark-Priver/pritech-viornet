@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/database/database.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 
@@ -153,15 +153,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Future<_ReportData> _generateReportData(AppDatabase database) async {
+  Future<_ReportData> _generateReportData(SupabaseDataService database) async {
     // Get clients data
-    final allClients = await database.select(database.clients).get();
+    final allClients = await database.getAllClients();
     final activeClients = allClients.where((c) {
       return c.isActive && (c.expiryDate?.isAfter(DateTime.now()) ?? false);
     }).length;
 
     // Get sales data
-    final allSales = await database.select(database.sales).get();
+    final allSales = await database.getAllSales();
     final totalSales =
         allSales.fold<double>(0, (sum, sale) => sum + sale.amount);
 
@@ -180,12 +180,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
 
     // Get expenses
-    final allExpenses = await database.select(database.expenses).get();
+    final allExpenses = await database.getAllExpenses();
     final totalExpenses =
         allExpenses.fold<double>(0, (sum, e) => sum + e.amount);
 
     // Top sites by sales
-    final sites = await database.select(database.sites).get();
+    final sites = await database.getAllSites();
     final topSites = <String, double>{};
     for (final site in sites) {
       final siteSales = allSales.where((s) => s.siteId == site.id);

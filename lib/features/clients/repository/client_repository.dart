@@ -1,128 +1,41 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class ClientRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  ClientRepository(this._database);
+  ClientRepository(this._service);
 
-  // Create client
-  Future<int> createClient(ClientsCompanion client) async {
-    return await _database.into(_database.clients).insert(client);
-  }
+  Future<Client> createClient(Map<String, dynamic> fields) =>
+      _service.createClient(fields);
 
-  // Get all clients
-  Future<List<Client>> getAllClients() async {
-    return await _database.select(_database.clients).get();
-  }
+  Future<List<Client>> getAllClients() => _service.getAllClients();
 
-  // Get client by ID
-  Future<Client?> getClientById(int id) async {
-    return await (_database.select(
-      _database.clients,
-    )..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<Client?> getClientById(int id) => _service.getClientById(id);
 
-  // Get clients by site
-  Future<List<Client>> getClientsBySite(int siteId) async {
-    return await (_database.select(
-      _database.clients,
-    )..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
+  Future<List<Client>> getClientsBySite(int siteId) =>
+      _service.getClientsBySite(siteId);
 
-  // Search clients
-  Future<List<Client>> searchClients(String query) async {
-    return await (_database.select(_database.clients)
-          ..where(
-            (tbl) =>
-                tbl.name.contains(query) |
-                tbl.phone.contains(query) |
-                tbl.email.contains(query),
-          ))
-        .get();
-  }
+  Future<List<Client>> searchClients(String query) =>
+      _service.searchClients(query);
 
-  // Get active clients
-  Future<List<Client>> getActiveClients() async {
-    return await (_database.select(
-      _database.clients,
-    )..where((tbl) => tbl.isActive.equals(true)))
-        .get();
-  }
+  Future<List<Client>> getActiveClients() => _service.getActiveClients();
 
-  // Get expiring clients (within days)
-  Future<List<Client>> getExpiringClients(int days) async {
-    final now = DateTime.now();
-    final futureDate = now.add(Duration(days: days));
+  Future<List<Client>> getExpiringClients(int days) =>
+      _service.getExpiringClients(days);
 
-    return await (_database.select(_database.clients)
-          ..where(
-            (tbl) =>
-                tbl.expiryDate.isSmallerOrEqualValue(futureDate) &
-                tbl.expiryDate.isBiggerOrEqualValue(now) &
-                tbl.isActive.equals(true),
-          ))
-        .get();
-  }
+  Future<List<Client>> getExpiredClients() => _service.getExpiredClients();
 
-  // Get expired clients
-  Future<List<Client>> getExpiredClients() async {
-    final now = DateTime.now();
+  Future<bool> updateClient(int id, Map<String, dynamic> fields) =>
+      _service.updateClient(id, fields);
 
-    return await (_database.select(
-      _database.clients,
-    )..where((tbl) => tbl.expiryDate.isSmallerThanValue(now)))
-        .get();
-  }
+  Future<void> deleteClient(int id) => _service.deleteClient(id);
 
-  // Update client
-  Future<bool> updateClient(int id, ClientsCompanion client) async {
-    return await (_database.update(
-          _database.clients,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          client.copyWith(
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<int> getClientCount() => _service.getClientCount();
 
-  // Delete client
-  Future<int> deleteClient(int id) async {
-    return await (_database.delete(
-      _database.clients,
-    )..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<int> getActiveClientCount() => _service.getActiveClientCount();
 
-  // Get client count
-  Future<int> getClientCount() async {
-    final count = await _database.select(_database.clients).get();
-    return count.length;
-  }
-
-  // Get active client count
-  Future<int> getActiveClientCount() async {
-    final count = await (_database.select(
-      _database.clients,
-    )..where((tbl) => tbl.isActive.equals(true)))
-        .get();
-    return count.length;
-  }
-
-  // Get clients with pagination
-  Future<List<Client>> getClientsPaginated({
-    required int page,
-    required int pageSize,
-  }) async {
-    final offset = (page - 1) * pageSize;
-    return await (_database.select(_database.clients)
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
-          ..limit(pageSize, offset: offset))
-        .get();
-  }
+  Future<List<Client>> getClientsPaginated(
+          {required int page, required int pageSize}) =>
+      _service.getClientsPaginated(page: page, pageSize: pageSize);
 }

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'add_edit_client_screen.dart';
@@ -282,24 +283,22 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Future<List<Client>> _getFilteredClients(AppDatabase database) async {
+  Future<List<Client>> _getFilteredClients(SupabaseDataService database) async {
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAllSites = authNotifier.canAccessAllSites;
     final userSites = authNotifier.currentUserSites;
 
-    // Fetch clients based on site access
+    // Fetch all clients then filter by site access
     List<Client> allClients;
-    if (!canAccessAllSites && userSites.isNotEmpty) {
-      // Filter to only show clients from assigned sites
-      allClients = await (database.select(database.clients)
-            ..where((tbl) => tbl.siteId.isIn(userSites)))
-          .get();
-    } else if (!canAccessAllSites && userSites.isEmpty) {
-      // User has no assigned sites
+    if (!canAccessAllSites && userSites.isEmpty) {
       return [];
-    } else {
-      // User can see all clients
-      allClients = await database.select(database.clients).get();
+    }
+
+    allClients = await database.getAllClients();
+
+    if (!canAccessAllSites && userSites.isNotEmpty) {
+      allClients =
+          allClients.where((c) => userSites.contains(c.siteId)).toList();
     }
 
     // Apply search filter first if needed

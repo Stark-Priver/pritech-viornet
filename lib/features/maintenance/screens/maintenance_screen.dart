@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:drift/drift.dart' as drift;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../repository/maintenance_repository.dart';
 
@@ -21,8 +21,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final database = ref.watch(databaseProvider);
-    final repository = MaintenanceRepository(database);
+    final repository = ref.watch(maintenanceRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -52,7 +51,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         children: [
           _buildFilterBar(),
           Expanded(
-            child: FutureBuilder<List<MaintenanceData>>(
+            child: FutureBuilder<List<MaintenanceRecord>>(
               key: ValueKey(_rebuildKey),
               future: _getFilteredMaintenance(repository),
               builder: (context, snapshot) {
@@ -102,7 +101,6 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
   }
 
   Widget _buildFilterBar() {
-    final database = ref.watch(databaseProvider);
     return Container(
       padding: const EdgeInsets.all(16),
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -135,7 +133,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 }),
                 const SizedBox(width: 8),
                 FutureBuilder<List<Site>>(
-                  future: database.select(database.sites).get(),
+                  future: SupabaseDataService().getAllSites(),
                   builder: (context, snapshot) {
                     final sites = snapshot.data ?? [];
                     if (sites.isEmpty) return const SizedBox.shrink();
@@ -180,10 +178,10 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
     );
   }
 
-  Future<List<MaintenanceData>> _getFilteredMaintenance(
+  Future<List<MaintenanceRecord>> _getFilteredMaintenance(
     MaintenanceRepository repository,
   ) async {
-    List<MaintenanceData> maintenances;
+    List<MaintenanceRecord> maintenances;
 
     if (_statusFilter == 'ALL') {
       maintenances = await repository.getAllMaintenance();
@@ -211,10 +209,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   Widget _buildMaintenanceCard(
     BuildContext context,
-    MaintenanceData maintenance,
+    MaintenanceRecord maintenance,
     MaintenanceRepository repository,
   ) {
-    final database = ref.watch(databaseProvider);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -257,10 +254,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                   ),
                   if (maintenance.siteId != null)
                     FutureBuilder<Site?>(
-                      future: (database.select(database.sites)
-                            ..where(
-                                (tbl) => tbl.id.equals(maintenance.siteId!)))
-                          .getSingleOrNull(),
+                      future: SupabaseDataService()
+                          .getSiteById(maintenance.siteId!),
                       builder: (context, snapshot) {
                         if (snapshot.hasData) {
                           return _buildInfoChip(
@@ -408,12 +403,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 ),
                 const SizedBox(height: 16),
                 FutureBuilder<List<Site>>(
-                  future: ref
-                      .read(databaseProvider)
-                      .select(
-                        ref.read(databaseProvider).sites,
-                      )
-                      .get(),
+                  future: SupabaseDataService().getAllSites(),
                   builder: (context, snapshot) {
                     final sites = snapshot.data ?? [];
                     return DropdownButtonFormField<int?>(
@@ -441,11 +431,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 const SizedBox(height: 16),
                 if (selectedSiteId != null)
                   FutureBuilder<List<Asset>>(
-                    future: (ref.read(databaseProvider).select(
-                              ref.read(databaseProvider).assets,
-                            )
-                          ..where((tbl) => tbl.siteId.equals(selectedSiteId!)))
-                        .get(),
+                    future:
+                        SupabaseDataService().getAssetsBySite(selectedSiteId!),
                     builder: (context, snapshot) {
                       final assets = snapshot.data ?? [];
                       if (assets.isEmpty) return const SizedBox.shrink();
@@ -526,30 +513,25 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 final messenger = ScaffoldMessenger.of(context);
                 final nav = Navigator.of(context);
 
-                final users = await ref
-                    .read(databaseProvider)
-                    .select(ref.read(databaseProvider).users)
-                    .get();
+                final users = await SupabaseDataService().getAllUsers();
                 final currentUser = users.first;
 
-                final maintenance = MaintenanceCompanion(
-                  title: drift.Value(titleController.text),
-                  description: drift.Value(descriptionController.text),
-                  priority: drift.Value(priority),
-                  status: const drift.Value('PENDING'),
-                  siteId: drift.Value(selectedSiteId),
-                  assetId: drift.Value(selectedAssetId),
-                  reportedBy: drift.Value(currentUser.id),
-                  reportedDate: drift.Value(DateTime.now()),
-                  scheduledDate: drift.Value(scheduledDate),
-                  notes: drift.Value(notesController.text.isEmpty
-                      ? null
-                      : notesController.text),
-                  createdAt: drift.Value(DateTime.now()),
-                  updatedAt: drift.Value(DateTime.now()),
-                );
-
-                await repository.createMaintenance(maintenance);
+                await repository.createMaintenance({
+                  'title': titleController.text,
+                  'description': descriptionController.text,
+                  'priority': priority,
+                  'status': 'PENDING',
+                  if (selectedSiteId != null) 'site_id': selectedSiteId,
+                  if (selectedAssetId != null) 'asset_id': selectedAssetId,
+                  'reported_by': currentUser.id,
+                  'reported_date': DateTime.now().toIso8601String(),
+                  if (scheduledDate != null)
+                    'scheduled_date': scheduledDate!.toIso8601String(),
+                  if (notesController.text.isNotEmpty)
+                    'notes': notesController.text,
+                  'created_at': DateTime.now().toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                });
 
                 nav.pop();
                 messenger.showSnackBar(
@@ -573,10 +555,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   void _showMaintenanceDetails(
     BuildContext context,
-    MaintenanceData maintenance,
+    MaintenanceRecord maintenance,
     MaintenanceRepository repository,
   ) {
-    final database = ref.watch(databaseProvider);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -592,9 +573,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               _buildDetailRow('Description', maintenance.description),
               if (maintenance.siteId != null)
                 FutureBuilder<Site?>(
-                  future: (database.select(database.sites)
-                        ..where((tbl) => tbl.id.equals(maintenance.siteId!)))
-                      .getSingleOrNull(),
+                  future:
+                      SupabaseDataService().getSiteById(maintenance.siteId!),
                   builder: (context, snapshot) {
                     if (snapshot.hasData) {
                       return _buildDetailRow('Site', snapshot.data!.name);
@@ -685,7 +665,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   void _showUpdateStatusDialog(
     BuildContext context,
-    MaintenanceData maintenance,
+    MaintenanceRecord maintenance,
     MaintenanceRepository repository,
   ) {
     String newStatus = maintenance.status;
@@ -716,13 +696,8 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              FutureBuilder<List<User>>(
-                future: ref
-                    .read(databaseProvider)
-                    .select(
-                      ref.read(databaseProvider).users,
-                    )
-                    .get(),
+              FutureBuilder<List<AppUser>>(
+                future: SupabaseDataService().getAllUsers(),
                 builder: (context, snapshot) {
                   final users = snapshot.data ?? [];
                   return DropdownButtonFormField<int?>(
@@ -761,10 +736,11 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
                 await repository.updateMaintenance(
                   maintenance.id,
-                  MaintenanceCompanion(
-                    status: drift.Value(newStatus),
-                    assignedTo: drift.Value(assignedTo),
-                  ),
+                  {
+                    'status': newStatus,
+                    if (assignedTo != null) 'assigned_to': assignedTo,
+                    'updated_at': DateTime.now().toIso8601String(),
+                  },
                 );
 
                 nav.pop();
@@ -785,7 +761,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
   void _showCompleteMaintenanceDialog(
     BuildContext context,
-    MaintenanceData maintenance,
+    MaintenanceRecord maintenance,
     MaintenanceRepository repository,
   ) {
     final resolutionController = TextEditingController();

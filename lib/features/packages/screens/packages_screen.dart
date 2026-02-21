@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
 import '../../../core/utils/currency_formatter.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
 
 class PackagesScreen extends ConsumerStatefulWidget {
@@ -23,47 +22,43 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
 
   Future<void> _initializeDefaultPackages() async {
     final database = ref.read(databaseProvider);
-    final existingPackages = await database.select(database.packages).get();
+    final existingPackages = await database.getAllPackages();
 
     // Only create defaults if no packages exist
     if (existingPackages.isEmpty) {
       final defaultPackages = [
-        PackagesCompanion.insert(
-          name: '1 Week',
-          duration: 7,
-          price: 5000.0,
-          description: drift.Value('Access for 7 days'),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        PackagesCompanion.insert(
-          name: '2 Weeks',
-          duration: 14,
-          price: 9000.0,
-          description: drift.Value('Access for 14 days'),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        PackagesCompanion.insert(
-          name: '1 Month',
-          duration: 30,
-          price: 15000.0,
-          description: drift.Value('Access for 30 days'),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
-        PackagesCompanion.insert(
-          name: '3 Months',
-          duration: 90,
-          price: 40000.0,
-          description: drift.Value('Access for 3 months'),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
+        {
+          'name': '1 Week',
+          'duration': 7,
+          'price': 5000.0,
+          'description': 'Access for 7 days',
+          'is_active': true
+        },
+        {
+          'name': '2 Weeks',
+          'duration': 14,
+          'price': 9000.0,
+          'description': 'Access for 14 days',
+          'is_active': true
+        },
+        {
+          'name': '1 Month',
+          'duration': 30,
+          'price': 15000.0,
+          'description': 'Access for 30 days',
+          'is_active': true
+        },
+        {
+          'name': '3 Months',
+          'duration': 90,
+          'price': 40000.0,
+          'description': 'Access for 3 months',
+          'is_active': true
+        },
       ];
 
-      for (final package in defaultPackages) {
-        await database.into(database.packages).insert(package);
+      for (final pkg in defaultPackages) {
+        await database.createPackage(pkg);
       }
 
       if (mounted) {
@@ -84,7 +79,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
       ),
       body: FutureBuilder<List<Package>>(
         key: ValueKey(_rebuildKey),
-        future: database.select(database.packages).get(),
+        future: database.getAllPackages(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -439,22 +434,17 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                             durationController.text.isNotEmpty &&
                             priceController.text.isNotEmpty) {
                           final database = ref.read(databaseProvider);
-                          await database.into(database.packages).insert(
-                                PackagesCompanion.insert(
-                                  name: nameController.text.trim(),
-                                  duration:
-                                      int.parse(durationController.text.trim()),
-                                  price:
-                                      double.parse(priceController.text.trim()),
-                                  description: drift.Value(
-                                      descriptionController.text.trim().isEmpty
-                                          ? null
-                                          : descriptionController.text.trim()),
-                                  isActive: const drift.Value(true),
-                                  createdAt: DateTime.now(),
-                                  updatedAt: DateTime.now(),
-                                ),
-                              );
+                          await database.createPackage({
+                            'name': nameController.text.trim(),
+                            'duration':
+                                int.parse(durationController.text.trim()),
+                            'price': double.parse(priceController.text.trim()),
+                            'description':
+                                descriptionController.text.trim().isEmpty
+                                    ? null
+                                    : descriptionController.text.trim(),
+                            'is_active': true,
+                          });
 
                           if (!mounted) return;
                           setState(() {
@@ -790,10 +780,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                                   ),
                                   onPressed: () async {
                                     final database = ref.read(databaseProvider);
-                                    await (database.delete(database.packages)
-                                          ..where((tbl) =>
-                                              tbl.id.equals(package.id)))
-                                        .go();
+                                    await database.deletePackage(package.id);
 
                                     if (!mounted) return;
                                     setState(() {
@@ -829,88 +816,88 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                         icon: const Icon(Icons.delete_outline),
                         label: const Text('Delete'),
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 14,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(fontSize: 16),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () async {
-                          if (nameController.text.isEmpty ||
-                              durationController.text.isEmpty ||
-                              priceController.text.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Please fill in all required fields'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          if (nameController.text.isNotEmpty &&
-                              durationController.text.isNotEmpty &&
-                              priceController.text.isNotEmpty) {
-                            final database = ref.read(databaseProvider);
-                            await (database.update(database.packages)
-                                  ..where((tbl) => tbl.id.equals(package.id)))
-                                .write(
-                              PackagesCompanion(
-                                name: drift.Value(nameController.text.trim()),
-                                duration: drift.Value(
-                                    int.parse(durationController.text.trim())),
-                                price: drift.Value(
-                                    double.parse(priceController.text.trim())),
-                                description: drift.Value(
-                                    descriptionController.text.trim().isEmpty
-                                        ? null
-                                        : descriptionController.text.trim()),
-                                isActive: drift.Value(isActive),
-                                updatedAt: drift.Value(DateTime.now()),
-                              ),
-                            );
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            onPressed: () async {
+                              if (nameController.text.isEmpty ||
+                                  durationController.text.isEmpty ||
+                                  priceController.text.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Please fill in all required fields'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (nameController.text.isNotEmpty &&
+                                  durationController.text.isNotEmpty &&
+                                  priceController.text.isNotEmpty) {
+                                final database = ref.read(databaseProvider);
+                                await database.updatePackage(package.id, {
+                                  'name': nameController.text.trim(),
+                                  'duration':
+                                      int.parse(durationController.text.trim()),
+                                  'price':
+                                      double.parse(priceController.text.trim()),
+                                  'description':
+                                      descriptionController.text.trim().isEmpty
+                                          ? null
+                                          : descriptionController.text.trim(),
+                                  'is_active': isActive,
+                                });
 
-                            if (!mounted) return;
-                            setState(() {
-                              _rebuildKey++;
-                            });
-                            if (!context.mounted) return;
-                            Navigator.pop(dialogContext);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    const Icon(Icons.check_circle,
-                                        color: Colors.white),
-                                    const SizedBox(width: 12),
-                                    const Text('Package updated successfully'),
-                                  ],
-                                ),
-                                backgroundColor: Colors.green,
+                                if (!mounted) return;
+                                setState(() {
+                                  _rebuildKey++;
+                                });
+                                if (!context.mounted) return;
+                                Navigator.pop(dialogContext);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle,
+                                            color: Colors.white),
+                                        const SizedBox(width: 12),
+                                        const Text(
+                                            'Package updated successfully'),
+                                      ],
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                                vertical: 14,
                               ),
-                            );
-                          }
-                        },
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 14,
+                            ),
+                            child: const Text(
+                              'Update',
+                              style: TextStyle(fontSize: 16),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          'Update',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                        ],
                       ),
                     ],
                   ),

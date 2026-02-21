@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/sites/screens/site_isp_subscription_screen.dart';
-import '../database/database.dart';
+import '../models/app_models.dart';
 import '../providers/providers.dart';
 
 class SiteIspSubscriptionScreenLoader extends ConsumerWidget {
@@ -12,8 +12,7 @@ class SiteIspSubscriptionScreenLoader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(databaseProvider);
     return FutureBuilder<Site?>(
-      future: (db.select(db.sites)..where((tbl) => tbl.id.equals(siteId)))
-          .getSingleOrNull(),
+      future: db.getSiteById(siteId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

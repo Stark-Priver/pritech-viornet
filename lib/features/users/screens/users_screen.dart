@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 
 class UsersScreen extends ConsumerStatefulWidget {
@@ -45,7 +45,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<User>>(
+      body: FutureBuilder<List<AppUser>>(
         key: ValueKey(_rebuildKey),
         future: _getFilteredUsers(database),
         builder: (context, snapshot) {
@@ -80,17 +80,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     );
   }
 
-  Future<List<User>> _getFilteredUsers(AppDatabase database) async {
-    final query = database.select(database.users);
-
-    if (_roleFilter != 'ALL') {
-      query.where((tbl) => tbl.role.equals(_roleFilter));
-    }
-
-    return await query.get();
+  Future<List<AppUser>> _getFilteredUsers(SupabaseDataService database) async {
+    final allUsers = await database.getAllUsers();
+    if (_roleFilter == 'ALL') return allUsers;
+    return allUsers.where((u) => u.role == _roleFilter).toList();
   }
 
-  Widget _buildUserCard(BuildContext context, User user, AppDatabase database) {
+  Widget _buildUserCard(
+      BuildContext context, AppUser user, SupabaseDataService database) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -265,7 +262,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     return role.replaceAll('_', ' ');
   }
 
-  void _showAddUserDialog(BuildContext context, AppDatabase database) {
+  void _showAddUserDialog(BuildContext context, SupabaseDataService database) {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final phoneController = TextEditingController();
@@ -614,18 +611,15 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                               .convert(utf8.encode(passwordController.text))
                               .toString();
 
-                          await database.into(database.users).insert(
-                                UsersCompanion.insert(
-                                  name: nameController.text,
-                                  email: emailController.text,
-                                  phone: drift.Value(phoneController.text),
-                                  passwordHash: hashedPassword,
-                                  role: role,
-                                  isActive: drift.Value(isActive),
-                                  createdAt: DateTime.now(),
-                                  updatedAt: DateTime.now(),
-                                ),
-                              );
+                          await database.createUser(
+                            name: nameController.text,
+                            email: emailController.text,
+                            phone: phoneController.text.isEmpty
+                                ? null
+                                : phoneController.text,
+                            passwordHash: hashedPassword,
+                            role: role,
+                          );
 
                           nav.pop();
                           messenger.showSnackBar(
@@ -669,25 +663,16 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 
   void _showEditUserDialog(
     BuildContext context,
-    User user,
-    AppDatabase database,
+    AppUser user,
+    SupabaseDataService database,
   ) async {
     final nameController = TextEditingController(text: user.name);
     final emailController = TextEditingController(text: user.email);
     final phoneController = TextEditingController(text: user.phone);
 
     // Load current user roles
-    final currentRolesQuery = database.select(database.userRoles).join([
-      drift.innerJoin(
-        database.roles,
-        database.roles.id.equalsExp(database.userRoles.roleId),
-      ),
-    ]);
-    currentRolesQuery.where(database.userRoles.userId.equals(user.id));
-    final currentRoles = await currentRolesQuery.get();
-
-    final selectedRoles =
-        currentRoles.map((row) => row.readTable(database.roles).name).toSet();
+    final currentRoleNames = await database.getUserRoleNames(user.id);
+    final selectedRoles = Set<String>.from(currentRoleNames);
 
     bool isActive = user.isActive;
 
@@ -984,38 +969,32 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                           final nav = Navigator.of(context);
 
                           // Update user basic info
-                          await (database.update(database.users)
-                                ..where((tbl) => tbl.id.equals(user.id)))
-                              .write(
-                            UsersCompanion(
-                              name: drift.Value(nameController.text),
-                              email: drift.Value(emailController.text),
-                              phone: drift.Value(phoneController.text),
-                              role: drift.Value(selectedRoles.first),
-                              isActive: drift.Value(isActive),
-                              updatedAt: drift.Value(DateTime.now()),
-                            ),
-                          );
+                          await database.updateUser(user.id, {
+                            'name': nameController.text,
+                            'email': emailController.text,
+                            'phone': phoneController.text,
+                            'role': selectedRoles.first,
+                            'is_active': isActive,
+                          });
 
                           // Update user roles
-                          // First, delete existing roles
-                          await (database.delete(database.userRoles)
-                                ..where((tbl) => tbl.userId.equals(user.id)))
-                              .go();
-
-                          // Then, insert new roles
+                          final allRoles = await database.getAllRoles();
+                          final roleNameToId = {
+                            for (final r in allRoles) r.name: r.id
+                          };
+                          // Remove current roles
+                          for (final roleName in currentRoleNames) {
+                            final roleId = roleNameToId[roleName];
+                            if (roleId != null) {
+                              await database.removeUserRole(user.id, roleId);
+                            }
+                          }
+                          // Assign new roles
                           for (final roleName in selectedRoles) {
-                            final role = await (database.select(database.roles)
-                                  ..where((tbl) => tbl.name.equals(roleName)))
-                                .getSingle();
-
-                            await database.into(database.userRoles).insert(
-                                  UserRolesCompanion.insert(
-                                    userId: user.id,
-                                    roleId: role.id,
-                                    assignedAt: DateTime.now(),
-                                  ),
-                                );
+                            final roleId = roleNameToId[roleName];
+                            if (roleId != null) {
+                              await database.assignUserRole(user.id, roleId);
+                            }
                           }
 
                           nav.pop();
@@ -1057,17 +1036,11 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     );
   }
 
-  Future<void> _toggleUserStatus(User user, AppDatabase database) async {
+  Future<void> _toggleUserStatus(
+      AppUser user, SupabaseDataService database) async {
     final messenger = ScaffoldMessenger.of(context);
 
-    await (database.update(database.users)
-          ..where((tbl) => tbl.id.equals(user.id)))
-        .write(
-      UsersCompanion(
-        isActive: drift.Value(!user.isActive),
-        updatedAt: drift.Value(DateTime.now()),
-      ),
-    );
+    await database.updateUser(user.id, {'is_active': !user.isActive});
 
     messenger.showSnackBar(
       SnackBar(
@@ -1086,8 +1059,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
 
   void _showResetPasswordDialog(
     BuildContext context,
-    User user,
-    AppDatabase database,
+    AppUser user,
+    SupabaseDataService database,
   ) {
     final passwordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
@@ -1192,14 +1165,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   .convert(utf8.encode(passwordController.text))
                   .toString();
 
-              await (database.update(database.users)
-                    ..where((tbl) => tbl.id.equals(user.id)))
-                  .write(
-                UsersCompanion(
-                  passwordHash: drift.Value(hashedPassword),
-                  updatedAt: drift.Value(DateTime.now()),
-                ),
-              );
+              await database
+                  .updateUser(user.id, {'password_hash': hashedPassword});
 
               nav.pop();
               messenger.showSnackBar(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/services/sms_manager_service.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class SmsScreen extends ConsumerStatefulWidget {
   const SmsScreen({super.key});
@@ -65,7 +65,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
     final database = ref.watch(databaseProvider);
 
     return FutureBuilder<List<SmsTemplate>>(
-      future: database.select(database.smsTemplates).get(),
+      future: database.getAllSmsTemplates(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -338,7 +338,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
                 ),
                 const SizedBox(height: 12),
                 FutureBuilder<List<Site>>(
-                  future: database.select(database.sites).get(),
+                  future: database.getAllSites(),
                   builder: (context, snapshot) {
                     final sites = snapshot.data ?? [];
                     if (sites.isEmpty) return const SizedBox();
@@ -479,15 +479,15 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Future<List<Client>> _getFilteredContacts(AppDatabase database) async {
-    var query = database.select(database.clients);
+  Future<List<Client>> _getFilteredContacts(
+      SupabaseDataService database) async {
+    List<Client> allClients;
 
-    // Filter by site if selected
     if (_selectedSiteId != null) {
-      query.where((tbl) => tbl.siteId.equals(_selectedSiteId!));
+      allClients = await database.getClientsBySite(_selectedSiteId!);
+    } else {
+      allClients = await database.getAllClients();
     }
-
-    final allClients = await query.get();
 
     // Apply status filter
     var filteredClients = allClients;
@@ -538,17 +538,13 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
               if (messageController.text.isNotEmpty) {
                 final database = ref.read(databaseProvider);
                 final messenger = ScaffoldMessenger.of(context);
-                await database.into(database.smsLogs).insert(
-                      SmsLogsCompanion.insert(
-                        recipient: contact.phone,
-                        message: messageController.text,
-                        status: 'PENDING',
-                        type: 'MANUAL',
-                        clientId: Value(contact.id),
-                        createdAt: DateTime.now(),
-                        updatedAt: DateTime.now(),
-                      ),
-                    );
+                await database.createSmsLog({
+                  'recipient': contact.phone,
+                  'message': messageController.text,
+                  'status': 'PENDING',
+                  'type': 'MANUAL',
+                  'client_id': contact.id,
+                });
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
                   messenger.showSnackBar(
@@ -591,17 +587,13 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
                 final database = ref.read(databaseProvider);
                 final messenger = ScaffoldMessenger.of(context);
                 for (final contact in contacts) {
-                  await database.into(database.smsLogs).insert(
-                        SmsLogsCompanion.insert(
-                          recipient: contact.phone,
-                          message: messageController.text,
-                          status: 'PENDING',
-                          type: 'MARKETING',
-                          clientId: Value(contact.id),
-                          createdAt: DateTime.now(),
-                          updatedAt: DateTime.now(),
-                        ),
-                      );
+                  await database.createSmsLog({
+                    'recipient': contact.phone,
+                    'message': messageController.text,
+                    'status': 'PENDING',
+                    'type': 'MARKETING',
+                    'client_id': contact.id,
+                  });
                 }
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
@@ -686,21 +678,17 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
               if (nameController.text.isNotEmpty &&
                   phoneController.text.isNotEmpty) {
                 final database = ref.read(databaseProvider);
-                await database.into(database.clients).insert(
-                      ClientsCompanion.insert(
-                        name: nameController.text.trim(),
-                        phone: phoneController.text.trim(),
-                        email: emailController.text.trim().isEmpty
-                            ? const Value.absent()
-                            : Value(emailController.text.trim()),
-                        address: addressController.text.trim().isEmpty
-                            ? const Value.absent()
-                            : Value(addressController.text.trim()),
-                        registrationDate: DateTime.now(),
-                        createdAt: DateTime.now(),
-                        updatedAt: DateTime.now(),
-                      ),
-                    );
+                await database.createClient({
+                  'name': nameController.text.trim(),
+                  'phone': phoneController.text.trim(),
+                  'email': emailController.text.trim().isEmpty
+                      ? null
+                      : emailController.text.trim(),
+                  'address': addressController.text.trim().isEmpty
+                      ? null
+                      : addressController.text.trim(),
+                  'registration_date': DateTime.now().toIso8601String(),
+                });
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
                   setState(() {});
@@ -720,10 +708,10 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
     );
   }
 
-  Future<List<SmsLog>> _getSmsLogs(AppDatabase database) async {
-    return await (database.select(database.smsLogs)
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-        .get();
+  Future<List<SmsLog>> _getSmsLogs(SupabaseDataService database) async {
+    final logs = await database.getAllSmsLogs();
+    logs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return logs;
   }
 
   void _useTemplate(SmsTemplate template) {
@@ -788,15 +776,11 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
               }
 
               final database = ref.read(databaseProvider);
-              await database.into(database.smsTemplates).insert(
-                    SmsTemplatesCompanion.insert(
-                      name: nameController.text.trim(),
-                      message: messageController.text.trim(),
-                      type: typeController.text.trim(),
-                      createdAt: DateTime.now(),
-                      updatedAt: DateTime.now(),
-                    ),
-                  );
+              await database.createSmsTemplate({
+                'name': nameController.text.trim(),
+                'message': messageController.text.trim(),
+                'type': typeController.text.trim(),
+              });
 
               if (dialogContext.mounted) {
                 Navigator.of(dialogContext).pop();
@@ -871,17 +855,11 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
               }
 
               final database = ref.read(databaseProvider);
-              await (database.update(database.smsTemplates)
-                    ..where((tbl) => tbl.id.equals(template.id)))
-                  .write(
-                SmsTemplatesCompanion(
-                  name: Value(nameController.text.trim()),
-                  message: Value(messageController.text.trim()),
-                  type: Value(typeController.text.trim()),
-                  updatedAt: Value(DateTime.now()),
-                  isSynced: const Value(false),
-                ),
-              );
+              await database.updateSmsTemplate(template.id, {
+                'name': nameController.text.trim(),
+                'message': messageController.text.trim(),
+                'type': typeController.text.trim(),
+              });
 
               if (dialogContext.mounted) {
                 Navigator.of(dialogContext).pop();
@@ -917,9 +895,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
           ElevatedButton(
             onPressed: () async {
               final database = ref.read(databaseProvider);
-              await (database.delete(database.smsTemplates)
-                    ..where((tbl) => tbl.id.equals(template.id)))
-                  .go();
+              await database.deleteSmsTemplate(template.id);
 
               if (dialogContext.mounted) {
                 Navigator.of(dialogContext).pop();
@@ -1267,19 +1243,18 @@ class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  sim.displayName ?? 'SIM ${sim.slotId + 1}',
+                                  sim.displayName,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                if (sim.phoneNumber != null)
-                                  Text(
-                                    sim.phoneNumber!,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                    ),
+                                Text(
+                                  sim.phoneNumber,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[600],
                                   ),
+                                ),
                               ],
                             ),
                           ),
@@ -1355,7 +1330,7 @@ class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
             ),
           ] else ...[
             FutureBuilder<List<Client>>(
-              future: database.select(database.clients).get(),
+              future: database.getAllClients(),
               builder: (context, snapshot) {
                 final clients = snapshot.data ?? [];
                 return DropdownButtonFormField<Client?>(
@@ -1666,18 +1641,13 @@ class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
 
     try {
       final database = ref.read(databaseProvider);
-      await database.into(database.smsLogs).insert(
-            SmsLogsCompanion.insert(
-              recipient: phone,
-              message: _messageController.text.trim(),
-              status: 'PENDING',
-              type: _sendMode == 'manual' ? 'MANUAL' : 'NOTIFICATION',
-              clientId:
-                  clientId != null ? Value(clientId) : const Value.absent(),
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          );
+      await database.createSmsLog({
+        'recipient': phone,
+        'message': _messageController.text.trim(),
+        'status': 'PENDING',
+        'type': _sendMode == 'manual' ? 'MANUAL' : 'NOTIFICATION',
+        if (clientId != null) 'client_id': clientId,
+      });
 
       if (mounted) {
         _showSuccess('SMS queued for sending successfully!');

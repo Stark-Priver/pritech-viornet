@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 
 class AssetsScreen extends ConsumerStatefulWidget {
@@ -140,8 +140,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     }
   }
 
-  Future<List<Asset>> _getFilteredAssets(AppDatabase database) async {
-    final allAssets = await database.select(database.assets).get();
+  Future<List<Asset>> _getFilteredAssets(SupabaseDataService database) async {
+    final allAssets = await database.getAllAssets();
     var assets = allAssets;
 
     if (_typeFilter != 'All') {
@@ -158,7 +158,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     return assets;
   }
 
-  Future<void> _showAddAssetDialog(AppDatabase database) async {
+  Future<void> _showAddAssetDialog(SupabaseDataService database) async {
     final nameController = TextEditingController();
     final serialController = TextEditingController();
     String type = 'ROUTER';
@@ -211,18 +211,15 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.isNotEmpty) {
-                  await database.into(database.assets).insert(
-                        AssetsCompanion.insert(
-                          name: nameController.text,
-                          type: type,
-                          serialNumber: serialController.text.isEmpty
-                              ? const Value.absent()
-                              : Value(serialController.text),
-                          condition: condition,
-                          createdAt: DateTime.now(),
-                          updatedAt: DateTime.now(),
-                        ),
-                      );
+                  await database.createAsset({
+                    'name': nameController.text,
+                    'type': type,
+                    'serial_number': serialController.text.isEmpty
+                        ? null
+                        : serialController.text,
+                    'condition': condition,
+                    'is_active': true,
+                  });
                   if (context.mounted) {
                     Navigator.of(context).pop();
                     this.setState(() {});

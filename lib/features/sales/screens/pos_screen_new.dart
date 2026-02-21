@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../repository/sales_repository.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -39,10 +39,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   Future<void> _loadClients() async {
-    final database = ref.read(databaseProvider);
-    final clients = await (database.select(database.clients)
-          ..where((tbl) => tbl.isActive.equals(true)))
-        .get();
+    final clients = await SupabaseDataService().getActiveClients();
     setState(() {
       _clients = clients;
     });
@@ -62,11 +59,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     });
 
     try {
-      final database = ref.read(databaseProvider);
-      final repository = SalesRepository(database);
+      final repository = ref.read(salesRepositoryProvider);
 
-      // Get current user from database
-      final users = await database.select(database.users).get();
+      // Get current user
+      final users = await SupabaseDataService().getAllUsers();
       final currentUser = users.first;
 
       // Use makeSale helper which generates receipt number

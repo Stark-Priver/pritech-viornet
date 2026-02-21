@@ -1,17 +1,15 @@
-import 'package:flutter/foundation.dart';
-import 'package:drift/drift.dart';
-import '../database/database.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import '../models/app_models.dart';
+import 'supabase_data_service.dart';
 
 /// Commission calculation service
-/// Handles automatic commission calculation, tracking, and reporting
 class CommissionService {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  CommissionService(this._database);
+  CommissionService(this._service);
 
   /// Calculate commission for a sale
-  /// Returns the commission amount based on active rules
   Future<double> calculateCommission({
     required int agentId,
     required double saleAmount,
@@ -20,55 +18,45 @@ class CommissionService {
     int? packageId,
   }) async {
     try {
-      // Get agent details including roles
-      final agent = await (_database.select(_database.users)
-            ..where((tbl) => tbl.id.equals(agentId)))
-          .getSingle();
+      final agent = await _service.getUserById(agentId);
+      if (agent == null) return 0.0;
 
-      final agentRoles = await (_database.select(_database.userRoles).join([
-        innerJoin(_database.roles,
-            _database.roles.id.equalsExp(_database.userRoles.roleId)),
-      ])
-            ..where(_database.userRoles.userId.equals(agentId)))
-          .get();
+      final roleNames = await _service.getUserRoleNames(agentId);
 
-      final roleIds =
-          agentRoles.map((row) => row.readTable(_database.roles).id).toList();
-
-      // Get applicable commission settings (sorted by priority)
-      final settings = await (_database.select(_database.commissionSettings)
-            ..where((tbl) =>
-                tbl.isActive.equals(true) &
-                tbl.minSaleAmount.isSmallerOrEqualValue(saleAmount) &
-                (tbl.maxSaleAmount.isNull() |
-                    tbl.maxSaleAmount.isBiggerOrEqualValue(saleAmount)))
-            ..orderBy([
-              (tbl) => OrderingTerm.desc(tbl.priority),
-              (tbl) => OrderingTerm.asc(tbl.id),
-            ]))
-          .get();
+      final settings = await _service.getActiveCommissionSettings();
+      // Settings already sorted by priority descending
 
       double totalCommission = 0.0;
       CommissionSetting? appliedSetting;
-      Map<String, dynamic> calculationDetails = {
+      final calculationDetails = <String, dynamic>{
         'saleAmount': saleAmount,
         'agentId': agentId,
         'agentName': agent.name,
         'clientId': clientId,
         'packageId': packageId,
-        'rules': [],
+        'rules': <dynamic>[],
       };
 
       for (final setting in settings) {
-        bool applicable = false;
+        if (saleAmount < setting.minSaleAmount) {
+          continue;
+        }
+        if (setting.maxSaleAmount != null &&
+            saleAmount > setting.maxSaleAmount!) {
+          continue;
+        }
 
-        // Check if rule applies to this agent/client/package
+        bool applicable = false;
         if (setting.applicableTo == 'ALL_AGENTS') {
           applicable = true;
         } else if (setting.applicableTo == 'SPECIFIC_ROLE' &&
             setting.roleId != null &&
-            roleIds.contains(setting.roleId)) {
-          applicable = true;
+            roleNames.isNotEmpty) {
+          // Check if agent has the required role
+          final allRoles = await _service.getAllRoles();
+          final role =
+              allRoles.where((r) => r.id == setting.roleId).firstOrNull;
+          if (role != null && roleNames.contains(role.name)) applicable = true;
         } else if (setting.applicableTo == 'SPECIFIC_USER' &&
             setting.userId == agentId) {
           applicable = true;
@@ -86,7 +74,6 @@ class CommissionService {
 
         if (!applicable) continue;
 
-        // Calculate commission based on type
         double commission = 0.0;
         if (setting.commissionType == 'PERCENTAGE') {
           commission = (saleAmount * setting.rate) / 100;
@@ -95,7 +82,7 @@ class CommissionService {
         }
 
         totalCommission += commission;
-        calculationDetails['rules'].add({
+        (calculationDetails['rules'] as List).add({
           'settingId': setting.id,
           'name': setting.name,
           'type': setting.commissionType,
@@ -103,182 +90,121 @@ class CommissionService {
           'commission': commission,
           'applicableTo': setting.applicableTo,
         });
-
-        appliedSetting ??= setting; // Use first applied setting for record
+        appliedSetting ??= setting;
       }
 
-      // Create commission history record
-      await _database.into(_database.commissionHistory).insert(
-            CommissionHistoryCompanion.insert(
-              saleId: saleId,
-              agentId: agentId,
-              commissionAmount: totalCommission,
-              saleAmount: saleAmount,
-              commissionSettingId: appliedSetting != null
-                  ? Value(appliedSetting.id)
-                  : const Value.absent(),
-              commissionRate: appliedSetting != null
-                  ? Value(appliedSetting.rate)
-                  : const Value.absent(),
-              calculationDetails: Value(jsonEncode(calculationDetails)),
-              status: const Value('PENDING'),
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          );
+      // Record commission history
+      await _service.createCommissionHistory({
+        'sale_id': saleId,
+        'agent_id': agentId,
+        'commission_amount': totalCommission,
+        'sale_amount': saleAmount,
+        if (appliedSetting != null) 'commission_setting_id': appliedSetting.id,
+        if (appliedSetting != null) 'commission_rate': appliedSetting.rate,
+        'calculation_details': jsonEncode(calculationDetails),
+        'status': 'PENDING',
+      });
 
       debugPrint(
-          '✅ Commission calculated: ${totalCommission.toStringAsFixed(2)} for sale ID: $saleId');
-
+          'âœ… Commission calculated: ${totalCommission.toStringAsFixed(2)} for sale ID: $saleId');
       return totalCommission;
     } catch (e) {
-      debugPrint('❌ Commission calculation failed: $e');
+      debugPrint('âŒ Commission calculation failed: $e');
       return 0.0;
     }
   }
 
   /// Get agent's commission summary
-  Future<Map<String, dynamic>> getAgentCommissionSummary(int agentId,
-      {DateTime? startDate, DateTime? endDate}) async {
+  Future<Map<String, dynamic>> getAgentCommissionSummary(
+    int agentId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
-      var query = _database.select(_database.commissionHistory).join([
-        innerJoin(_database.sales,
-            _database.sales.id.equalsExp(_database.commissionHistory.saleId)),
-      ])
-        ..where(_database.commissionHistory.agentId.equals(agentId));
+      var history = await _service.getCommissionHistoryByAgent(agentId);
 
       if (startDate != null) {
-        query = query
-          ..where(_database.sales.saleDate.isBiggerOrEqualValue(startDate));
+        history = history.where((h) => h.createdAt.isAfter(startDate)).toList();
       }
       if (endDate != null) {
-        query = query
-          ..where(_database.sales.saleDate.isSmallerOrEqualValue(endDate));
+        history = history.where((h) => h.createdAt.isBefore(endDate)).toList();
       }
-
-      final results = await query.get();
 
       double totalCommission = 0.0;
       double totalSales = 0.0;
-      int salesCount = 0;
-      Map<String, double> commissionByStatus = {
+      final commissionByStatus = <String, double>{
         'PENDING': 0.0,
         'APPROVED': 0.0,
         'PAID': 0.0,
         'CANCELLED': 0.0,
       };
 
-      for (final row in results) {
-        final commission = row.readTable(_database.commissionHistory);
-        totalCommission += commission.commissionAmount;
-        totalSales += commission.saleAmount;
-        salesCount++;
-        commissionByStatus[commission.status] =
-            (commissionByStatus[commission.status] ?? 0.0) +
-                commission.commissionAmount;
+      for (final h in history) {
+        totalCommission += h.commissionAmount;
+        totalSales += h.saleAmount;
+        commissionByStatus[h.status] =
+            (commissionByStatus[h.status] ?? 0.0) + h.commissionAmount;
       }
 
       return {
         'totalCommission': totalCommission,
         'totalSales': totalSales,
-        'salesCount': salesCount,
+        'salesCount': history.length,
         'averageCommission':
-            salesCount > 0 ? totalCommission / salesCount : 0.0,
-        'averageSale': salesCount > 0 ? totalSales / salesCount : 0.0,
+            history.isNotEmpty ? totalCommission / history.length : 0.0,
+        'averageSale': history.isNotEmpty ? totalSales / history.length : 0.0,
         'commissionByStatus': commissionByStatus,
-        'commissionRate': totalSales > 0
-            ? (totalCommission / totalSales) * 100
-            : 0.0, // Effective rate
+        'commissionRate':
+            totalSales > 0 ? (totalCommission / totalSales) * 100 : 0.0,
       };
     } catch (e) {
-      debugPrint('❌ Failed to get commission summary: $e');
+      debugPrint('âŒ Failed to get commission summary: $e');
       return {};
     }
   }
 
-  /// Get commission history for agent
-  Future<List<CommissionHistoryData>> getAgentCommissions(
+  Future<List<CommissionHistory>> getAgentCommissions(
     int agentId, {
     String? status,
     int limit = 50,
   }) async {
-    var query = _database.select(_database.commissionHistory).join([
-      innerJoin(_database.sales,
-          _database.sales.id.equalsExp(_database.commissionHistory.saleId)),
-    ])
-      ..where(_database.commissionHistory.agentId.equals(agentId))
-      ..orderBy([OrderingTerm.desc(_database.sales.saleDate)]);
-
+    var history = await _service.getCommissionHistoryByAgent(agentId);
     if (status != null) {
-      query = query..where(_database.commissionHistory.status.equals(status));
+      history = history.where((h) => h.status == status).toList();
     }
-
-    query = query..limit(limit);
-
-    final results = await query.get();
-    return results
-        .map((row) => row.readTable(_database.commissionHistory))
-        .toList();
+    return history.take(limit).toList();
   }
 
-  /// Approve commission (Finance/Admin only)
   Future<bool> approveCommission(int commissionId, int approvedBy) async {
     try {
-      await (_database.update(_database.commissionHistory)
-            ..where((tbl) => tbl.id.equals(commissionId)))
-          .write(CommissionHistoryCompanion(
-        status: const Value('APPROVED'),
-        approvedBy: Value(approvedBy),
-        approvedAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        isSynced: const Value(false),
-      ));
+      await _service.updateCommissionHistory(commissionId, {
+        'status': 'APPROVED',
+        'approved_by': approvedBy,
+        'approved_at': DateTime.now().toIso8601String(),
+      });
       return true;
     } catch (e) {
-      debugPrint('❌ Failed to approve commission: $e');
+      debugPrint('âŒ Failed to approve commission: $e');
       return false;
     }
   }
 
-  /// Mark commission as paid (Finance only)
   Future<bool> markCommissionPaid(int commissionId) async {
     try {
-      await (_database.update(_database.commissionHistory)
-            ..where((tbl) => tbl.id.equals(commissionId)))
-          .write(CommissionHistoryCompanion(
-        status: const Value('PAID'),
-        paidAt: Value(DateTime.now()),
-        updatedAt: Value(DateTime.now()),
-        isSynced: const Value(false),
-      ));
+      await _service.updateCommissionHistory(commissionId, {
+        'status': 'PAID',
+        'paid_at': DateTime.now().toIso8601String(),
+      });
       return true;
     } catch (e) {
-      debugPrint('❌ Failed to mark commission as paid: $e');
+      debugPrint('âŒ Failed to mark commission as paid: $e');
       return false;
     }
   }
 
-  /// Get all pending commissions (for Finance approval)
-  Future<List<Map<String, dynamic>>> getPendingCommissions() async {
-    final results = await (_database.select(_database.commissionHistory).join([
-      innerJoin(_database.users,
-          _database.users.id.equalsExp(_database.commissionHistory.agentId)),
-      innerJoin(_database.sales,
-          _database.sales.id.equalsExp(_database.commissionHistory.saleId)),
-    ])
-          ..where(_database.commissionHistory.status.equals('PENDING'))
-          ..orderBy([OrderingTerm.desc(_database.commissionHistory.createdAt)]))
-        .get();
-
-    return results.map((row) {
-      final commission = row.readTable(_database.commissionHistory);
-      final agent = row.readTable(_database.users);
-      final sale = row.readTable(_database.sales);
-      return {
-        'commission': commission,
-        'agent': agent,
-        'sale': sale,
-      };
-    }).toList();
+  Future<List<CommissionHistory>> getPendingCommissions() async {
+    // Get commission_history with status=PENDING for all agents
+    final data = await _service.getCommissionHistoryByAgent(0);
+    return data.where((h) => h.status == 'PENDING').toList();
   }
 }

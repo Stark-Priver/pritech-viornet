@@ -1,98 +1,36 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class AssetRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  AssetRepository(this._database);
+  AssetRepository(this._service);
 
-  // Create asset
-  Future<int> createAsset(AssetsCompanion asset) async {
-    return await _database.into(_database.assets).insert(asset);
-  }
+  Future<Asset> createAsset(Map<String, dynamic> fields) =>
+      _service.createAsset(fields);
 
-  // Get all assets
-  Future<List<Asset>> getAllAssets() async {
-    return await _database.select(_database.assets).get();
-  }
+  Future<List<Asset>> getAllAssets() => _service.getAllAssets();
 
-  // Get active assets
-  Future<List<Asset>> getActiveAssets() async {
-    return await (_database.select(
-      _database.assets,
-    )..where((tbl) => tbl.isActive.equals(true)))
-        .get();
-  }
+  Future<List<Asset>> getActiveAssets() => _service.getActiveAssets();
 
-  // Get asset by ID
-  Future<Asset?> getAssetById(int id) async {
-    return await (_database.select(
-      _database.assets,
-    )..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<Asset?> getAssetById(int id) => _service.getAssetById(id);
 
-  // Get assets by site
-  Future<List<Asset>> getAssetsBySite(int siteId) async {
-    return await (_database.select(
-      _database.assets,
-    )..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
+  Future<List<Asset>> getAssetsBySite(int siteId) =>
+      _service.getAssetsBySite(siteId);
 
-  // Get assets by type
-  Future<List<Asset>> getAssetsByType(String type) async {
-    return await (_database.select(
-      _database.assets,
-    )..where((tbl) => tbl.type.equals(type)))
-        .get();
-  }
+  Future<List<Asset>> getAssetsByType(String type) =>
+      _service.getAssetsByType(type);
 
-  // Search assets
-  Future<List<Asset>> searchAssets(String query) async {
-    return await (_database.select(_database.assets)
-          ..where(
-            (tbl) =>
-                tbl.name.contains(query) |
-                tbl.serialNumber.contains(query) |
-                tbl.model.contains(query),
-          ))
-        .get();
-  }
+  Future<List<Asset>> searchAssets(String query) =>
+      _service.searchAssets(query);
 
-  // Update asset
-  Future<bool> updateAsset(int id, AssetsCompanion asset) async {
-    return await (_database.update(
-          _database.assets,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          asset.copyWith(
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<bool> updateAsset(int id, Map<String, dynamic> fields) =>
+      _service.updateAsset(id, fields);
 
-  // Delete asset
-  Future<int> deleteAsset(int id) async {
-    return await (_database.delete(
-      _database.assets,
-    )..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<void> deleteAsset(int id) => _service.deleteAsset(id);
 
-  // Get asset count
-  Future<int> getAssetCount() async {
-    final assets = await getAllAssets();
-    return assets.length;
-  }
+  Future<int> getAssetCount() => _service.getAssetCount();
 
-  // Get assets by condition
-  Future<List<Asset>> getAssetsByCondition(String condition) async {
-    return await (_database.select(
-      _database.assets,
-    )..where((tbl) => tbl.condition.equals(condition)))
-        .get();
-  }
+  Future<List<Asset>> getAssetsByCondition(String condition) =>
+      _service.getAssetsByCondition(condition);
 }

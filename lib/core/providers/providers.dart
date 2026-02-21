@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../database/database.dart';
+import '../services/supabase_data_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/api_service.dart';
-import '../services/supabase_postgres_sync_service.dart';
 import '../services/voucher_service.dart';
 import '../services/commission_service.dart';
+import '../models/app_models.dart';
 import '../../features/clients/repository/client_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
 import '../../features/sites/repository/site_repository.dart';
@@ -12,10 +12,14 @@ import '../../features/assets/repository/asset_repository.dart';
 import '../../features/maintenance/repository/maintenance_repository.dart';
 import '../../features/finance/repository/expense_repository.dart';
 
-// Database Provider
-final databaseProvider = Provider<AppDatabase>((ref) {
-  return AppDatabase();
+// Supabase Data Service Provider (singleton – online-only, no local DB)
+final supabaseDataServiceProvider = Provider<SupabaseDataService>((ref) {
+  return SupabaseDataService();
 });
+
+// Backward-compat alias so screens that still reference databaseProvider
+// compile without change until they are individually migrated.
+final databaseProvider = supabaseDataServiceProvider;
 
 // Services Providers
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
@@ -26,52 +30,45 @@ final apiServiceProvider = Provider<ApiService>((ref) {
   return ApiService();
 });
 
-final supabaseSyncServiceProvider = Provider<SupabaseSyncService>((ref) {
-  final syncService = SupabaseSyncService();
-  final database = ref.watch(databaseProvider);
-  syncService.setDatabase(database);
-  return syncService;
-});
-
 final voucherServiceProvider = Provider<VoucherService>((ref) {
-  final database = ref.watch(databaseProvider);
-  return VoucherService(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return VoucherService(service);
 });
 
 final commissionServiceProvider = Provider<CommissionService>((ref) {
-  final database = ref.watch(databaseProvider);
-  return CommissionService(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return CommissionService(service);
 });
 
 // Repository Providers
 final clientRepositoryProvider = Provider<ClientRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return ClientRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return ClientRepository(service);
 });
 
 final salesRepositoryProvider = Provider<SalesRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return SalesRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return SalesRepository(service);
 });
 
 final siteRepositoryProvider = Provider<SiteRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return SiteRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return SiteRepository(service);
 });
 
 final assetRepositoryProvider = Provider<AssetRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return AssetRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return AssetRepository(service);
 });
 
 final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return MaintenanceRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return MaintenanceRepository(service);
 });
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
-  final database = ref.watch(databaseProvider);
-  return ExpenseRepository(database);
+  final service = ref.watch(supabaseDataServiceProvider);
+  return ExpenseRepository(service);
 });
 
 // State Providers for UI

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/services/isp_subscription_service.dart';
-import '../../../core/providers/providers.dart';
 
 class SiteIspSubscriptionScreen extends ConsumerStatefulWidget {
   final Site site;
@@ -16,13 +16,11 @@ class SiteIspSubscriptionScreen extends ConsumerStatefulWidget {
 class _SiteIspSubscriptionScreenState
     extends ConsumerState<SiteIspSubscriptionScreen> {
   late final IspSubscriptionService _service;
-  late final AppDatabase _db;
 
   @override
   void initState() {
     super.initState();
-    _db = ref.read(databaseProvider);
-    _service = IspSubscriptionService(_db);
+    _service = IspSubscriptionService(SupabaseDataService());
   }
 
   @override
@@ -36,7 +34,8 @@ class _SiteIspSubscriptionScreenState
             padding: const EdgeInsets.all(16),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -75,7 +74,7 @@ class _SiteIspSubscriptionScreenState
 
           // Sort by paidAt descending (most recent first)
           subs.sort((a, b) => b.paidAt.compareTo(a.paidAt));
-          
+
           // Find next due (the soonest endsAt in the future)
           final now = DateTime.now();
           final nextDue = subs
@@ -84,7 +83,7 @@ class _SiteIspSubscriptionScreenState
             if (prev == null || s.endsAt.isBefore(prev.endsAt)) return s;
             return prev;
           });
-          
+
           final totalPaid =
               subs.fold<double>(0, (sum, s) => sum + (s.amount ?? 0));
 
@@ -122,7 +121,7 @@ class _SiteIspSubscriptionScreenState
                 const SizedBox(height: 24),
               ] else
                 _buildEmptyStateCard(),
-              
+
               // Add Button
               Container(
                 decoration: BoxDecoration(
@@ -178,7 +177,7 @@ class _SiteIspSubscriptionScreenState
                 ),
               ),
               const SizedBox(height: 24),
-              
+
               // Subscriptions List
               if (subs.isNotEmpty) ...[
                 Text(
@@ -249,8 +248,7 @@ class _SiteIspSubscriptionScreenState
   }
 
   Widget _buildNextDueCard(IspSubscription nextDue) {
-    final daysUntilDue =
-        nextDue.endsAt.difference(DateTime.now()).inDays;
+    final daysUntilDue = nextDue.endsAt.difference(DateTime.now()).inDays;
     final isUrgent = daysUntilDue <= 7;
 
     return Container(
@@ -265,8 +263,8 @@ class _SiteIspSubscriptionScreenState
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: (isUrgent ? Colors.red : Colors.green)
-                .withValues(alpha: 0.3),
+            color:
+                (isUrgent ? Colors.red : Colors.green).withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -411,8 +409,7 @@ class _SiteIspSubscriptionScreenState
     );
   }
 
-  Widget _buildSubscriptionCard(
-      IspSubscription sub, int index, int total) {
+  Widget _buildSubscriptionCard(IspSubscription sub, int index, int total) {
     final isExpired = sub.endsAt.isBefore(DateTime.now());
     final daysRemaining = sub.endsAt.difference(DateTime.now()).inDays;
 
@@ -572,8 +569,7 @@ class _SiteIspSubscriptionScreenState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                AddEditIspSubscriptionScreen(
+                            builder: (context) => AddEditIspSubscriptionScreen(
                               siteId: widget.site.id,
                               service: _service,
                               existing: sub,
@@ -587,7 +583,8 @@ class _SiteIspSubscriptionScreenState
                     const SizedBox(width: 8),
                     TextButton.icon(
                       onPressed: () => _confirmDelete(sub),
-                      icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                      icon:
+                          const Icon(Icons.delete, size: 18, color: Colors.red),
                       label: const Text('Delete',
                           style: TextStyle(color: Colors.red)),
                     ),
@@ -959,10 +956,7 @@ class _AddEditIspSubscriptionScreenState
                           Text(
                             _paidAt == null
                                 ? 'Select date'
-                                : _paidAt!
-                                    .toLocal()
-                                    .toString()
-                                    .split(' ')[0],
+                                : _paidAt!.toLocal().toString().split(' ')[0],
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1018,10 +1012,7 @@ class _AddEditIspSubscriptionScreenState
                           Text(
                             _endsAt == null
                                 ? 'Select date'
-                                : _endsAt!
-                                    .toLocal()
-                                    .toString()
-                                    .split(' ')[0],
+                                : _endsAt!.toLocal().toString().split(' ')[0],
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1084,8 +1075,8 @@ class _AddEditIspSubscriptionScreenState
                         ? const SizedBox(
                             height: 24,
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white),
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           )
                         : Row(

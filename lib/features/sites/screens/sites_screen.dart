@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'add_edit_site_screen.dart';
@@ -239,24 +239,19 @@ class _SitesScreenState extends ConsumerState<SitesScreen> {
     );
   }
 
-  Future<List<Site>> _getFilteredSites(AppDatabase database) async {
+  Future<List<Site>> _getFilteredSites(SupabaseDataService database) async {
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAllSites = authNotifier.canAccessAllSites;
     final userSites = authNotifier.currentUserSites;
 
     List<Site> allSites;
 
+    if (!canAccessAllSites && userSites.isEmpty) return [];
+
+    allSites = await database.getAllSites();
+
     if (!canAccessAllSites && userSites.isNotEmpty) {
-      // Filter to only show assigned sites
-      allSites = await (database.select(database.sites)
-            ..where((tbl) => tbl.id.isIn(userSites)))
-          .get();
-    } else if (!canAccessAllSites && userSites.isEmpty) {
-      // User has no assigned sites
-      return [];
-    } else {
-      // User can see all sites
-      allSites = await database.select(database.sites).get();
+      allSites = allSites.where((s) => userSites.contains(s.id)).toList();
     }
 
     if (_searchQuery.isEmpty) {
@@ -270,11 +265,10 @@ class _SitesScreenState extends ConsumerState<SitesScreen> {
     }).toList();
   }
 
-  Future<int> _getSiteTeamCount(AppDatabase database, int siteId) async {
-    final results = await (database.select(database.userSites)
-          ..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-    return results.length;
+  Future<int> _getSiteTeamCount(
+      SupabaseDataService database, int siteId) async {
+    final userIds = await database.getUserIdsBySite(siteId);
+    return userIds.length;
   }
 
   void _showManageTeamDialog(Site site) {
@@ -306,11 +300,9 @@ class _ManageTeamDialogState extends ConsumerState<_ManageTeamDialog> {
 
   Future<void> _loadAssignedUsers() async {
     final database = ref.read(databaseProvider);
-    final userSites = await (database.select(database.userSites)
-          ..where((tbl) => tbl.siteId.equals(widget.site.id)))
-        .get();
+    final assignedIds = await database.getUserIdsBySite(widget.site.id);
     setState(() {
-      _assignedUserIds = userSites.map((us) => us.userId).toList();
+      _assignedUserIds = assignedIds;
       _isLoading = false;
     });
   }
@@ -365,8 +357,8 @@ class _ManageTeamDialogState extends ConsumerState<_ManageTeamDialog> {
               )
             else
               Expanded(
-                child: FutureBuilder<List<User>>(
-                  future: database.select(database.users).get(),
+                child: FutureBuilder<List<AppUser>>(
+                  future: database.getAllUsers(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
@@ -428,14 +420,7 @@ class _ManageTeamDialogState extends ConsumerState<_ManageTeamDialog> {
 
     try {
       if (assign) {
-        // Assign user to site
-        await database.into(database.userSites).insert(
-              UserSitesCompanion.insert(
-                userId: userId,
-                siteId: widget.site.id,
-                assignedAt: DateTime.now(),
-              ),
-            );
+        await database.assignUserSite(userId, widget.site.id);
         setState(() {
           _assignedUserIds.add(userId);
         });
@@ -445,11 +430,7 @@ class _ManageTeamDialogState extends ConsumerState<_ManageTeamDialog> {
           );
         }
       } else {
-        // Remove user from site
-        final deleteQuery = database.delete(database.userSites);
-        deleteQuery.where((tbl) =>
-            tbl.userId.equals(userId) & tbl.siteId.equals(widget.site.id));
-        await deleteQuery.go();
+        await database.removeUserSite(userId, widget.site.id);
         setState(() {
           _assignedUserIds.remove(userId);
         });

@@ -1,19 +1,16 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+﻿import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class SalesRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  SalesRepository(this._database);
+  SalesRepository(this._service);
 
-  // Create sale
-  Future<int> createSale(SalesCompanion sale) async {
-    return await _database.into(_database.sales).insert(sale);
-  }
+  Future<Sale> createSale(Map<String, dynamic> fields) =>
+      _service.createSale(fields);
 
-  // Create sale with receipt number generation
-  Future<int> makeSale({
-    required int voucherId,
+  Future<Sale> makeSale({
+    int? voucherId,
     required int agentId,
     required double amount,
     int? clientId,
@@ -21,192 +18,72 @@ class SalesRepository {
     double commission = 0.0,
     String paymentMethod = 'CASH',
     String? notes,
-  }) async {
-    final receiptNumber = _generateReceiptNumber();
+  }) =>
+      _service.makeSale(
+        voucherId: voucherId,
+        agentId: agentId,
+        amount: amount,
+        clientId: clientId,
+        siteId: siteId,
+        commission: commission,
+        paymentMethod: paymentMethod,
+        notes: notes,
+      );
 
-    return await _database.into(_database.sales).insert(
-          SalesCompanion.insert(
-            receiptNumber: receiptNumber,
-            voucherId: Value(voucherId),
-            clientId: clientId != null ? Value(clientId) : const Value.absent(),
-            agentId: agentId,
-            siteId: siteId != null ? Value(siteId) : const Value.absent(),
-            amount: amount,
-            commission: Value(commission),
-            paymentMethod: paymentMethod,
-            notes: notes != null ? Value(notes) : const Value.absent(),
-            saleDate: DateTime.now(),
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        );
-  }
+  Future<List<Sale>> getAllSales() => _service.getAllSales();
 
-  // Get all sales
-  Future<List<Sale>> getAllSales() async {
-    return await _database.select(_database.sales).get();
-  }
+  Future<Sale?> getSaleById(int id) => _service.getSaleById(id);
 
-  // Get sale by ID
-  Future<Sale?> getSaleById(int id) async {
-    return await (_database.select(
-      _database.sales,
-    )..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<Sale?> getSaleByReceiptNumber(String receipt) =>
+      _service.getSaleByReceiptNumber(receipt);
 
-  // Get sale by receipt number
-  Future<Sale?> getSaleByReceiptNumber(String receiptNumber) async {
-    return await (_database.select(_database.sales)
-          ..where((tbl) => tbl.receiptNumber.equals(receiptNumber)))
-        .getSingleOrNull();
-  }
+  Future<List<Sale>> getSalesByAgent(int agentId) =>
+      _service.getSalesByAgent(agentId);
 
-  // Get sales by agent
-  Future<List<Sale>> getSalesByAgent(int agentId) async {
-    return await (_database.select(
-      _database.sales,
-    )..where((tbl) => tbl.agentId.equals(agentId)))
-        .get();
-  }
+  Future<List<Sale>> getSalesBySite(int siteId) =>
+      _service.getSalesBySite(siteId);
 
-  // Get sales by site
-  Future<List<Sale>> getSalesBySite(int siteId) async {
-    return await (_database.select(
-      _database.sales,
-    )..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
-
-  // Get sales by date range
   Future<List<Sale>> getSalesByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    return await (_database.select(_database.sales)
-          ..where(
-            (tbl) =>
-                tbl.saleDate.isBiggerOrEqualValue(startDate) &
-                tbl.saleDate.isSmallerOrEqualValue(endDate),
-          ))
-        .get();
-  }
+          DateTime startDate, DateTime endDate) =>
+      _service.getSalesByDateRange(startDate, endDate);
 
-  // Get today's sales
-  Future<List<Sale>> getTodaySales() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  Future<List<Sale>> getTodaySales() => _service.getTodaySales();
 
-    return await getSalesByDateRange(startOfDay, endOfDay);
-  }
+  Future<List<Sale>> getThisMonthSales() => _service.getThisMonthSales();
 
-  // Get this month's sales
-  Future<List<Sale>> getThisMonthSales() async {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+  Future<bool> updateSale(int id, Map<String, dynamic> fields) =>
+      _service.updateSale(id, fields);
 
-    return await getSalesByDateRange(startOfMonth, endOfMonth);
-  }
+  Future<void> deleteSale(int id) => _service.deleteSale(id);
 
-  // Update sale
-  Future<bool> updateSale(int id, SalesCompanion sale) async {
-    return await (_database.update(
-          _database.sales,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          sale.copyWith(
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<double> getTotalRevenue() => _service.getTotalRevenue();
 
-  // Delete sale
-  Future<int> deleteSale(int id) async {
-    return await (_database.delete(
-      _database.sales,
-    )..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
-
-  // Get total revenue
-  Future<double> getTotalRevenue() async {
-    final sales = await getAllSales();
-    return sales.fold<double>(0.0, (sum, sale) => sum + sale.amount);
-  }
-
-  // Get revenue by date range
   Future<double> getRevenueByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    final sales = await getSalesByDateRange(startDate, endDate);
-    return sales.fold<double>(0.0, (sum, sale) => sum + sale.amount);
-  }
+          DateTime startDate, DateTime endDate) =>
+      _service.getRevenueByDateRange(startDate, endDate);
 
-  // Get today's revenue
-  Future<double> getTodayRevenue() async {
-    final sales = await getTodaySales();
-    return sales.fold<double>(0.0, (sum, sale) => sum + sale.amount);
-  }
+  Future<double> getTodayRevenue() => _service.getTodayRevenue();
 
-  // Get this month's revenue
-  Future<double> getThisMonthRevenue() async {
-    final sales = await getThisMonthSales();
-    return sales.fold<double>(0.0, (sum, sale) => sum + sale.amount);
-  }
+  Future<double> getThisMonthRevenue() => _service.getThisMonthRevenue();
 
-  // Get agent commissions
   Future<double> getAgentCommissions(
     int agentId, {
     DateTime? startDate,
     DateTime? endDate,
-  }) async {
-    List<Sale> sales;
+  }) =>
+      _service.getAgentCommissions(agentId,
+          startDate: startDate, endDate: endDate);
 
-    if (startDate != null && endDate != null) {
-      sales = await (_database.select(_database.sales)
-            ..where(
-              (tbl) =>
-                  tbl.agentId.equals(agentId) &
-                  tbl.saleDate.isBiggerOrEqualValue(startDate) &
-                  tbl.saleDate.isSmallerOrEqualValue(endDate),
-            ))
-          .get();
-    } else {
-      sales = await getSalesByAgent(agentId);
-    }
+  Future<int> getSalesCount() => _service.getSalesCount();
 
-    return sales.fold<double>(0.0, (sum, sale) => sum + sale.commission);
-  }
+  Future<List<Sale>> getSalesPaginated(
+          {required int page, required int pageSize}) =>
+      _service.getSalesPaginated(page: page, pageSize: pageSize);
 
-  // Get sales count
-  Future<int> getSalesCount() async {
-    final sales = await getAllSales();
-    return sales.length;
-  }
-
-  // Get sales with pagination
-  Future<List<Sale>> getSalesPaginated({
-    required int page,
-    required int pageSize,
-  }) async {
-    final offset = (page - 1) * pageSize;
-    return await (_database.select(_database.sales)
-          ..orderBy([(t) => OrderingTerm.desc(t.saleDate)])
-          ..limit(pageSize, offset: offset))
-        .get();
-  }
-
-  // Get sales statistics
   Future<Map<String, dynamic>> getSalesStatistics() async {
     final allSales = await getAllSales();
     final todaySales = await getTodaySales();
     final monthSales = await getThisMonthSales();
-
     return {
       'total_sales': allSales.length,
       'today_sales': todaySales.length,
@@ -218,19 +95,7 @@ class SalesRepository {
       'month_revenue':
           monthSales.fold<double>(0.0, (sum, sale) => sum + sale.amount),
       'total_commission': allSales.fold<double>(
-        0.0,
-        (sum, sale) => sum + sale.commission,
-      ),
+          0.0, (sum, sale) => sum + sale.commission),
     };
-  }
-
-  // Helper: Generate receipt number
-  String _generateReceiptNumber() {
-    final now = DateTime.now();
-    final dateStr =
-        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final timeStr =
-        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
-    return 'RCP-$dateStr-$timeStr';
   }
 }

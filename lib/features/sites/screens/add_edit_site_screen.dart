@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
 
 class AddEditSiteScreen extends ConsumerStatefulWidget {
@@ -54,23 +53,19 @@ class _AddEditSiteScreenState extends ConsumerState<AddEditSiteScreen> {
     try {
       if (widget.site == null) {
         // Create new site
-        await database.into(database.sites).insert(
-              SitesCompanion.insert(
-                name: _nameController.text.trim(),
-                location: _locationController.text.trim().isEmpty
-                    ? const Value.absent()
-                    : Value(_locationController.text.trim()),
-                contactPerson: _contactPersonController.text.trim().isEmpty
-                    ? const Value.absent()
-                    : Value(_contactPersonController.text.trim()),
-                contactPhone: _contactPhoneController.text.trim().isEmpty
-                    ? const Value.absent()
-                    : Value(_contactPhoneController.text.trim()),
-                isActive: Value(_isActive),
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
+        await database.createSite({
+          'name': _nameController.text.trim(),
+          'location': _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          'contact_person': _contactPersonController.text.trim().isEmpty
+              ? null
+              : _contactPersonController.text.trim(),
+          'contact_phone': _contactPhoneController.text.trim().isEmpty
+              ? null
+              : _contactPhoneController.text.trim(),
+          'is_active': _isActive,
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -82,24 +77,19 @@ class _AddEditSiteScreenState extends ConsumerState<AddEditSiteScreen> {
         }
       } else {
         // Update existing site
-        await (database.update(database.sites)
-              ..where((tbl) => tbl.id.equals(widget.site!.id)))
-            .write(
-          SitesCompanion(
-            name: Value(_nameController.text.trim()),
-            location: _locationController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_locationController.text.trim()),
-            contactPerson: _contactPersonController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_contactPersonController.text.trim()),
-            contactPhone: _contactPhoneController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_contactPhoneController.text.trim()),
-            isActive: Value(_isActive),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+        await database.updateSite(widget.site!.id, {
+          'name': _nameController.text.trim(),
+          'location': _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          'contact_person': _contactPersonController.text.trim().isEmpty
+              ? null
+              : _contactPersonController.text.trim(),
+          'contact_phone': _contactPhoneController.text.trim().isEmpty
+              ? null
+              : _contactPhoneController.text.trim(),
+          'is_active': _isActive,
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -260,9 +250,7 @@ class _AddEditSiteScreenState extends ConsumerState<AddEditSiteScreen> {
 
     if (confirm == true && mounted) {
       final database = ref.read(databaseProvider);
-      await (database.delete(database.sites)
-            ..where((tbl) => tbl.id.equals(widget.site!.id)))
-          .go();
+      await database.deleteSite(widget.site!.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,107 +1,45 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class ExpenseRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  ExpenseRepository(this._database);
+  ExpenseRepository(this._service);
 
-  // Create expense
-  Future<int> createExpense(ExpensesCompanion expense) async {
-    return await _database.into(_database.expenses).insert(expense);
-  }
+  Future<Expense> createExpense(Map<String, dynamic> fields) =>
+      _service.createExpense(fields);
 
-  // Get all expenses
-  Future<List<Expense>> getAllExpenses() async {
-    return await _database.select(_database.expenses).get();
-  }
+  Future<List<Expense>> getAllExpenses() => _service.getAllExpenses();
 
-  // Get expense by ID
-  Future<Expense?> getExpenseById(int id) async {
-    return await (_database.select(_database.expenses)
-          ..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<Expense?> getExpenseById(int id) => _service.getExpenseById(id);
 
-  // Get expenses by category
-  Future<List<Expense>> getExpensesByCategory(String category) async {
-    return await (_database.select(_database.expenses)
-          ..where((tbl) => tbl.category.equals(category)))
-        .get();
-  }
+  Future<List<Expense>> getExpensesByCategory(String category) =>
+      _service.getExpensesByCategory(category);
 
-  // Get expenses by site
-  Future<List<Expense>> getExpensesBySite(int siteId) async {
-    return await (_database.select(_database.expenses)
-          ..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
+  Future<List<Expense>> getExpensesBySite(int siteId) =>
+      _service.getExpensesBySite(siteId);
 
-  // Get expenses by date range
   Future<List<Expense>> getExpensesByDateRange(
-      DateTime startDate, DateTime endDate) async {
-    return await (_database.select(_database.expenses)
-          ..where((tbl) =>
-              tbl.expenseDate.isBiggerOrEqualValue(startDate) &
-              tbl.expenseDate.isSmallerOrEqualValue(endDate)))
-        .get();
-  }
+          DateTime startDate, DateTime endDate) =>
+      _service.getExpensesByDateRange(startDate, endDate);
 
-  // Get this month's expenses
-  Future<List<Expense>> getThisMonthExpenses() async {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-    return await getExpensesByDateRange(startOfMonth, endOfMonth);
-  }
+  Future<List<Expense>> getThisMonthExpenses() =>
+      _service.getThisMonthExpenses();
 
-  // Update expense
-  Future<bool> updateExpense(int id, ExpensesCompanion expense) async {
-    return await (_database.update(_database.expenses)
-              ..where((tbl) => tbl.id.equals(id)))
-            .write(expense.copyWith(
-          updatedAt: Value(DateTime.now()),
-          isSynced: const Value(false),
-        )) >
-        0;
-  }
+  Future<bool> updateExpense(int id, Map<String, dynamic> fields) =>
+      _service.updateExpense(id, fields);
 
-  // Delete expense
-  Future<int> deleteExpense(int id) async {
-    return await (_database.delete(_database.expenses)
-          ..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<void> deleteExpense(int id) => _service.deleteExpense(id);
 
-  // Get total expenses
-  Future<double> getTotalExpenses() async {
-    final expenses = await getAllExpenses();
-    return expenses.fold<double>(0.0, (sum, expense) => sum + expense.amount);
-  }
+  Future<double> getTotalExpenses() => _service.getTotalExpenses();
 
-  // Get expenses total by date range
   Future<double> getExpensesTotalByDateRange(
-      DateTime startDate, DateTime endDate) async {
-    final expenses = await getExpensesByDateRange(startDate, endDate);
-    return expenses.fold<double>(0.0, (sum, expense) => sum + expense.amount);
-  }
+          DateTime startDate, DateTime endDate) =>
+      _service.getExpensesTotalByDateRange(startDate, endDate);
 
-  // Get this month's total expenses
-  Future<double> getThisMonthTotalExpenses() async {
-    final expenses = await getThisMonthExpenses();
-    return expenses.fold<double>(0.0, (sum, expense) => sum + expense.amount);
-  }
+  Future<double> getThisMonthTotalExpenses() =>
+      _service.getThisMonthTotalExpenses();
 
-  // Get expenses by category total
-  Future<Map<String, double>> getExpensesByCategoryTotal() async {
-    final expenses = await getAllExpenses();
-    final Map<String, double> categoryTotals = {};
-
-    for (final expense in expenses) {
-      categoryTotals[expense.category] =
-          (categoryTotals[expense.category] ?? 0) + expense.amount;
-    }
-
-    return categoryTotals;
-  }
+  Future<Map<String, double>> getExpensesByCategoryTotal() =>
+      _service.getExpensesByCategoryTotal();
 }

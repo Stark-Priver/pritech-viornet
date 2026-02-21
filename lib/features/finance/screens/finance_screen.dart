@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 import 'expenses_screen.dart';
@@ -134,7 +134,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _buildFinancialSummary(AppDatabase database) {
+  Widget _buildFinancialSummary(SupabaseDataService database) {
     return FutureBuilder<Map<String, double>>(
       future: _calculateFinancialSummary(database),
       builder: (context, snapshot) {
@@ -271,7 +271,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _buildRevenueExpenseComparison(AppDatabase database) {
+  Widget _buildRevenueExpenseComparison(SupabaseDataService database) {
     return FutureBuilder<Map<String, double>>(
       future: _calculateFinancialSummary(database),
       builder: (context, snapshot) {
@@ -359,15 +359,13 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _buildRecentTransactions(AppDatabase database) {
+  Widget _buildRecentTransactions(SupabaseDataService database) {
     return FutureBuilder<List<Sale>>(
-      future: (database.select(database.sales)
-            ..where((tbl) =>
-                tbl.saleDate.isBiggerOrEqualValue(_startDate) &
-                tbl.saleDate.isSmallerOrEqualValue(_endDate))
-            ..orderBy([(t) => OrderingTerm.desc(t.saleDate)])
-            ..limit(5))
-          .get(),
+      future: database.getSalesByDateRange(_startDate, _endDate).then(
+            (sales) => (sales..sort((a, b) => b.saleDate.compareTo(a.saleDate)))
+                .take(5)
+                .toList(),
+          ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -427,13 +425,9 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     );
   }
 
-  Widget _buildExpenseBreakdown(AppDatabase database) {
+  Widget _buildExpenseBreakdown(SupabaseDataService database) {
     return FutureBuilder<List<Expense>>(
-      future: (database.select(database.expenses)
-            ..where((tbl) =>
-                tbl.expenseDate.isBiggerOrEqualValue(_startDate) &
-                tbl.expenseDate.isSmallerOrEqualValue(_endDate)))
-          .get(),
+      future: database.getExpensesByDateRange(_startDate, _endDate),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -579,19 +573,11 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   Future<Map<String, double>> _calculateFinancialSummary(
-    AppDatabase database,
+    SupabaseDataService database,
   ) async {
-    final sales = await (database.select(database.sales)
-          ..where((tbl) =>
-              tbl.saleDate.isBiggerOrEqualValue(_startDate) &
-              tbl.saleDate.isSmallerOrEqualValue(_endDate)))
-        .get();
-
-    final expenses = await (database.select(database.expenses)
-          ..where((tbl) =>
-              tbl.expenseDate.isBiggerOrEqualValue(_startDate) &
-              tbl.expenseDate.isSmallerOrEqualValue(_endDate)))
-        .get();
+    final sales = await database.getSalesByDateRange(_startDate, _endDate);
+    final expenses =
+        await database.getExpensesByDateRange(_startDate, _endDate);
 
     final revenue = sales.fold<double>(0, (sum, sale) => sum + sale.amount);
     final totalExpenses =

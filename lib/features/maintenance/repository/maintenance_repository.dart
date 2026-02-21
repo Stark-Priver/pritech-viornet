@@ -1,123 +1,44 @@
-import 'package:drift/drift.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 
 class MaintenanceRepository {
-  final AppDatabase _database;
+  final SupabaseDataService _service;
 
-  MaintenanceRepository(this._database);
+  MaintenanceRepository(this._service);
 
-  // Create maintenance record
-  Future<int> createMaintenance(MaintenanceCompanion maintenance) async {
-    return await _database.into(_database.maintenance).insert(maintenance);
-  }
+  Future<MaintenanceRecord> createMaintenance(Map<String, dynamic> fields) =>
+      _service.createMaintenance(fields);
 
-  // Get all maintenance records
-  Future<List<MaintenanceData>> getAllMaintenance() async {
-    return await _database.select(_database.maintenance).get();
-  }
+  Future<List<MaintenanceRecord>> getAllMaintenance() =>
+      _service.getAllMaintenance();
 
-  // Get maintenance by ID
-  Future<MaintenanceData?> getMaintenanceById(int id) async {
-    return await (_database.select(
-      _database.maintenance,
-    )..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<MaintenanceRecord?> getMaintenanceById(int id) =>
+      _service.getMaintenanceById(id);
 
-  // Get maintenance by status
-  Future<List<MaintenanceData>> getMaintenanceByStatus(String status) async {
-    return await (_database.select(
-      _database.maintenance,
-    )..where((tbl) => tbl.status.equals(status)))
-        .get();
-  }
+  Future<List<MaintenanceRecord>> getMaintenanceByStatus(String status) =>
+      _service.getMaintenanceByStatus(status);
 
-  // Get pending maintenance
-  Future<List<MaintenanceData>> getPendingMaintenance() async {
-    return await getMaintenanceByStatus('PENDING');
-  }
+  Future<List<MaintenanceRecord>> getPendingMaintenance() =>
+      _service.getMaintenanceByStatus('PENDING');
 
-  // Get maintenance by site
-  Future<List<MaintenanceData>> getMaintenanceBySite(int siteId) async {
-    return await (_database.select(
-      _database.maintenance,
-    )..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
+  Future<List<MaintenanceRecord>> getMaintenanceBySite(int siteId) =>
+      _service.getMaintenanceBySite(siteId);
 
-  // Get maintenance by asset
-  Future<List<MaintenanceData>> getMaintenanceByAsset(int assetId) async {
-    return await (_database.select(
-      _database.maintenance,
-    )..where((tbl) => tbl.assetId.equals(assetId)))
-        .get();
-  }
+  Future<List<MaintenanceRecord>> getMaintenanceByAsset(int assetId) =>
+      _service.getMaintenanceByAsset(assetId);
 
-  // Get maintenance assigned to technician
-  Future<List<MaintenanceData>> getMaintenanceByTechnician(
-    int technicianId,
-  ) async {
-    return await (_database.select(
-      _database.maintenance,
-    )..where((tbl) => tbl.assignedTo.equals(technicianId)))
-        .get();
-  }
+  Future<List<MaintenanceRecord>> getMaintenanceByTechnician(
+          int technicianId) =>
+      _service.getMaintenanceByTechnician(technicianId);
 
-  // Update maintenance
-  Future<bool> updateMaintenance(
-    int id,
-    MaintenanceCompanion maintenance,
-  ) async {
-    return await (_database.update(
-          _database.maintenance,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          maintenance.copyWith(
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<bool> updateMaintenance(int id, Map<String, dynamic> fields) =>
+      _service.updateMaintenance(id, fields);
 
-  // Complete maintenance
-  Future<bool> completeMaintenance(
-    int id,
-    String resolution,
-    double? cost,
-  ) async {
-    return await (_database.update(
-          _database.maintenance,
-        )..where((tbl) => tbl.id.equals(id)))
-            .write(
-          MaintenanceCompanion(
-            status: const Value('COMPLETED'),
-            completedDate: Value(DateTime.now()),
-            resolution: Value(resolution),
-            cost: cost != null ? Value(cost) : const Value.absent(),
-            updatedAt: Value(DateTime.now()),
-            isSynced: const Value(false),
-          ),
-        ) >
-        0;
-  }
+  Future<bool> completeMaintenance(int id, String resolution, double? cost) =>
+      _service.completeMaintenance(id, resolution, cost);
 
-  // Delete maintenance
-  Future<int> deleteMaintenance(int id) async {
-    return await (_database.delete(
-      _database.maintenance,
-    )..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<void> deleteMaintenance(int id) => _service.deleteMaintenance(id);
 
-  // Get maintenance count by status
-  Future<Map<String, int>> getMaintenanceCounts() async {
-    final all = await getAllMaintenance();
-    return {
-      'total': all.length,
-      'pending': all.where((m) => m.status == 'PENDING').length,
-      'in_progress': all.where((m) => m.status == 'IN_PROGRESS').length,
-      'completed': all.where((m) => m.status == 'COMPLETED').length,
-    };
-  }
+  Future<Map<String, int>> getMaintenanceCounts() =>
+      _service.getMaintenanceCounts();
 }

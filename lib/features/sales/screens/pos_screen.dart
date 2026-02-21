@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' as drift;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../repository/sales_repository.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
   const PosScreen({super.key});
@@ -58,20 +57,15 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   Future<void> _loadClients() async {
-    final database = ref.read(databaseProvider);
-    final clients = await (database.select(database.clients)
-          ..where((tbl) => tbl.isActive.equals(true)))
-        .get();
+    final clients = await SupabaseDataService().getActiveClients();
     setState(() {
       _clients = clients;
     });
   }
 
   Future<void> _loadSites() async {
-    final database = ref.read(databaseProvider);
-    final sites = await (database.select(database.sites)
-          ..where((tbl) => tbl.isActive.equals(true)))
-        .get();
+    final allSites = await SupabaseDataService().getAllSites();
+    final sites = allSites.where((s) => s.isActive).toList();
     setState(() {
       _sites = sites;
       if (_sites.isNotEmpty && _selectedSite == null) {
@@ -81,10 +75,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   Future<void> _loadPackages() async {
-    final database = ref.read(databaseProvider);
-    final packages = await (database.select(database.packages)
-          ..where((tbl) => tbl.isActive.equals(true)))
-        .get();
+    final allPackages = await SupabaseDataService().getAllPackages();
+    final packages = allPackages.where((p) => p.isActive).toList();
     setState(() {
       _packages = packages;
     });
@@ -174,24 +166,17 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       // Create new client
       final database = ref.read(databaseProvider);
       try {
-        final clientId = await database.into(database.clients).insert(
-              ClientsCompanion.insert(
-                name: _clientNameController.text,
-                phone: _clientPhoneController.text,
-                siteId: drift.Value(_selectedSite!.id),
-                registrationDate: DateTime.now(),
-                email: drift.Value(_clientEmailController.text.isEmpty
-                    ? null
-                    : _clientEmailController.text),
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
-
-        // Get the newly created client
-        clientForSale = await (database.select(database.clients)
-              ..where((tbl) => tbl.id.equals(clientId)))
-            .getSingle();
+        clientForSale = await database.createClient({
+          'name': _clientNameController.text,
+          'phone': _clientPhoneController.text,
+          'site_id': _selectedSite!.id,
+          'registration_date': DateTime.now().toIso8601String(),
+          if (_clientEmailController.text.isNotEmpty)
+            'email': _clientEmailController.text,
+          'is_active': true,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
 
         // Reload clients list
         await _loadClients();
@@ -224,41 +209,33 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     });
 
     try {
-      final database = ref.read(databaseProvider);
-      final repository = SalesRepository(database);
+      final repository = ref.read(salesRepositoryProvider);
       final voucherService = ref.read(voucherServiceProvider);
       final commissionService = ref.read(commissionServiceProvider);
 
-      // Get current user from database
-      final users = await database.select(database.users).get();
+      // Get current user
+      final users = await SupabaseDataService().getAllUsers();
       final currentUser = users.first;
 
       int saleId;
 
       if (_isWalkIn) {
         // Create sale without client (walk-in)
-        final receiptNo = 'WI-${DateTime.now().millisecondsSinceEpoch}';
-        saleId = await database.into(database.sales).insert(
-              SalesCompanion.insert(
-                receiptNumber: receiptNo,
-                voucherId: drift.Value(_selectedVoucher?.id),
-                agentId: currentUser.id,
-                siteId: drift.Value(_selectedSite!.id),
-                clientId: drift.Value(null), // Walk-in customer
-                amount: double.parse(_amountController.text),
-                paymentMethod: _paymentMethod,
-                commission: drift.Value(_commissionController.text.isEmpty
-                    ? 0
-                    : double.parse(_commissionController.text)),
-                saleDate: DateTime.now(),
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
+        final sale = await repository.makeSale(
+          voucherId: _selectedVoucher?.id,
+          agentId: currentUser.id,
+          siteId: _selectedSite!.id,
+          amount: double.parse(_amountController.text),
+          paymentMethod: _paymentMethod,
+          commission: _commissionController.text.isEmpty
+              ? 0
+              : double.parse(_commissionController.text),
+        );
+        saleId = sale.id;
       } else {
         // Use makeSale helper which generates receipt number
-        saleId = await repository.makeSale(
-          voucherId: _selectedVoucher?.id ?? 1,
+        final sale = await repository.makeSale(
+          voucherId: _selectedVoucher?.id,
           agentId: currentUser.id,
           clientId: clientForSale!.id,
           siteId: _selectedSite!.id,
@@ -268,6 +245,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               ? 0
               : double.parse(_commissionController.text),
         );
+        saleId = sale.id;
       }
 
       // Mark voucher as sold if it's a voucher sale
@@ -381,8 +359,6 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   Future<void> _sendVoucherSms(Client client, Voucher voucher) async {
     try {
-      final database = ref.read(databaseProvider);
-
       // Format SMS message
       final message = '''
 Hello ${client.name},
@@ -398,18 +374,16 @@ Use this code to connect to our network.
 Thank you!
 ''';
 
-      // Log SMS
-      await database.into(database.smsLogs).insert(
-            SmsLogsCompanion.insert(
-              recipient: client.phone,
-              message: message,
-              status: 'PENDING',
-              type: 'NOTIFICATION',
-              sentAt: drift.Value(DateTime.now()),
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          );
+      // Log SMS to Supabase
+      await SupabaseDataService().createSmsLog({
+        'recipient': client.phone,
+        'message': message,
+        'status': 'PENDING',
+        'type': 'NOTIFICATION',
+        'sent_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

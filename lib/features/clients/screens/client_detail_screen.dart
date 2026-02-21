@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import 'add_edit_client_screen.dart';
 
@@ -110,9 +111,7 @@ class ClientDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<Client?> _getClient(AppDatabase database) async {
-    return await (database.select(database.clients)
-          ..where((tbl) => tbl.id.equals(clientId)))
-        .getSingleOrNull();
+  Future<Client?> _getClient(SupabaseDataService database) async {
+    return await database.getClientById(clientId);
   }
 }

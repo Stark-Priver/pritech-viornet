@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../database/database.dart';
+import '../models/app_models.dart';
 import '../rbac/permissions.dart';
-import '../providers/providers.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -120,55 +119,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     });
 
     try {
-      final supabaseService = ref.read(supabaseSyncServiceProvider);
-
-      // Show syncing dialog
+      // App is fully online via Supabase – no local sync needed.
       if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Syncing with cloud...'),
-                ],
-              ),
-            ),
-          ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Data is always synced with Supabase ✓'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
         ),
       );
-
-      // Perform bidirectional sync
-      final result = await supabaseService.syncAll();
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      if (result.errors.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Sync complete: Pushed ${result.pushed}, Pulled ${result.pulled}${result.conflicts > 0 ? ', ${result.conflicts} conflicts resolved' : ''}',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Sync completed with errors: ${result.errors.join(', ')}'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -347,7 +306,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     return item.label;
   }
 
-  Widget _buildNavigationRail(User user, List<NavigationItem> items) {
+  Widget _buildNavigationRail(AppUser user, List<NavigationItem> items) {
     return Column(
       children: [
         // User Info
@@ -417,7 +376,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, User user,
+  Widget _buildDrawer(BuildContext context, AppUser user,
       List<NavigationItem> items, bool isTablet) {
     return Drawer(
       width: isTablet ? 300 : null,

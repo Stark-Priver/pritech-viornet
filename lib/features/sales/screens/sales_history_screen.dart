@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
+import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -319,36 +319,30 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     }
   }
 
-  Future<List<_SaleWithDetails>> _getFilteredSales(AppDatabase database) async {
+  Future<List<_SaleWithDetails>> _getFilteredSales(
+      SupabaseDataService database) async {
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAllSites = authNotifier.canAccessAllSites;
     final userSites = authNotifier.currentUserSites;
 
-    // Fetch sales based on site access
-    List<Sale> allSales;
+    // Fetch all sales and clients
+    if (!canAccessAllSites && userSites.isEmpty) return [];
+
+    List<Sale> allSales = await database.getAllSales();
+    allSales.sort((a, b) => b.saleDate.compareTo(a.saleDate));
+
     if (!canAccessAllSites && userSites.isNotEmpty) {
-      // Get clients from assigned sites
-      final clientIds = await (database.selectOnly(database.clients)
-            ..addColumns([database.clients.id])
-            ..where(database.clients.siteId.isIn(userSites)))
-          .map((row) => row.read(database.clients.id)!)
-          .get();
-
-      if (clientIds.isEmpty) {
-        return [];
-      }
-
-      // Filter sales by client IDs
-      final query = database.select(database.sales)
-        ..where((tbl) => tbl.clientId.isIn(clientIds))
-        ..orderBy([(t) => OrderingTerm.desc(t.saleDate)]);
-      allSales = await query.get();
-    } else if (!canAccessAllSites && userSites.isEmpty) {
-      return [];
-    } else {
-      var query = database.select(database.sales)
-        ..orderBy([(t) => OrderingTerm.desc(t.saleDate)]);
-      allSales = await query.get();
+      // Filter to only show sales from clients in assigned sites
+      final allClients = await database.getAllClients();
+      final siteClientIds = allClients
+          .where((c) => userSites.contains(c.siteId))
+          .map((c) => c.id)
+          .toSet();
+      if (siteClientIds.isEmpty) return [];
+      allSales = allSales
+          .where(
+              (s) => s.clientId != null && siteClientIds.contains(s.clientId))
+          .toList();
     }
 
     final results = <_SaleWithDetails>[];
@@ -356,9 +350,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     for (final sale in allSales) {
       String? clientName;
       if (sale.clientId != null) {
-        final client = await (database.select(database.clients)
-              ..where((t) => t.id.equals(sale.clientId!)))
-            .getSingleOrNull();
+        final client = await database.getClientById(sale.clientId!);
         clientName = client?.name;
       }
 

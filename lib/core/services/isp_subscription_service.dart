@@ -1,13 +1,13 @@
-import 'package:drift/drift.dart';
-import '../database/database.dart';
+﻿import '../models/app_models.dart';
+import 'supabase_data_service.dart';
 
 /// Service for tracking the reseller's own ISP subscription (not for clients)
 class IspSubscriptionService {
-  final AppDatabase db;
-  IspSubscriptionService(this.db);
+  final SupabaseDataService _service;
 
-  /// Add a new ISP subscription payment for a site
-  Future<int> addIspSubscription({
+  IspSubscriptionService(this._service);
+
+  Future<IspSubscription> addIspSubscription({
     required int siteId,
     required String providerName,
     required DateTime paidAt,
@@ -17,25 +17,20 @@ class IspSubscriptionService {
     String? serviceNumber,
     double? amount,
     String? notes,
-  }) async {
-    return await db.into(db.ispSubscriptions).insert(
-          IspSubscriptionsCompanion.insert(
-            siteId: siteId,
-            providerName: providerName,
-            paidAt: paidAt,
-            endsAt: endsAt,
-            paymentControlNumber: Value(paymentControlNumber),
-            registeredName: Value(registeredName),
-            serviceNumber: Value(serviceNumber),
-            amount: Value(amount),
-            notes: Value(notes),
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        );
-  }
+  }) =>
+      _service.createIspSubscription({
+        'site_id': siteId,
+        'provider_name': providerName,
+        'paid_at': paidAt.toIso8601String(),
+        'ends_at': endsAt.toIso8601String(),
+        if (paymentControlNumber != null)
+          'payment_control_number': paymentControlNumber,
+        if (registeredName != null) 'registered_name': registeredName,
+        if (serviceNumber != null) 'service_number': serviceNumber,
+        if (amount != null) 'amount': amount,
+        if (notes != null) 'notes': notes,
+      });
 
-  /// Update an existing ISP subscription record
   Future<bool> updateIspSubscription({
     required int id,
     int? siteId,
@@ -47,56 +42,26 @@ class IspSubscriptionService {
     String? serviceNumber,
     double? amount,
     String? notes,
-  }) async {
-    final updated = await (db.update(db.ispSubscriptions)
-          ..where((tbl) => tbl.id.equals(id)))
-        .write(
-      IspSubscriptionsCompanion(
-        siteId: siteId != null ? Value(siteId) : const Value.absent(),
-        providerName:
-            providerName != null ? Value(providerName) : const Value.absent(),
-        paidAt: paidAt != null ? Value(paidAt) : const Value.absent(),
-        endsAt: endsAt != null ? Value(endsAt) : const Value.absent(),
-        paymentControlNumber: paymentControlNumber != null
-            ? Value(paymentControlNumber)
-            : const Value.absent(),
-        registeredName: registeredName != null
-            ? Value(registeredName)
-            : const Value.absent(),
-        serviceNumber:
-            serviceNumber != null ? Value(serviceNumber) : const Value.absent(),
-        amount: amount != null ? Value(amount) : const Value.absent(),
-        notes: notes != null ? Value(notes) : const Value.absent(),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
-    return updated > 0;
-  }
+  }) =>
+      _service.updateIspSubscription(id, {
+        if (siteId != null) 'site_id': siteId,
+        if (providerName != null) 'provider_name': providerName,
+        if (paidAt != null) 'paid_at': paidAt.toIso8601String(),
+        if (endsAt != null) 'ends_at': endsAt.toIso8601String(),
+        if (paymentControlNumber != null)
+          'payment_control_number': paymentControlNumber,
+        if (registeredName != null) 'registered_name': registeredName,
+        if (serviceNumber != null) 'service_number': serviceNumber,
+        if (amount != null) 'amount': amount,
+        if (notes != null) 'notes': notes,
+      });
 
-  /// Get all ISP subscriptions for a site (history)
-  Future<List<IspSubscription>> getIspSubscriptionsForSite(int siteId) async {
-    return await (db.select(db.ispSubscriptions)
-          ..where((tbl) => tbl.siteId.equals(siteId)))
-        .get();
-  }
+  Future<List<IspSubscription>> getIspSubscriptionsForSite(int siteId) =>
+      _service.getIspSubscriptionsForSite(siteId);
 
-  /// Get the latest ISP subscription for a site
-  Future<IspSubscription?> getLatestIspSubscriptionForSite(int siteId) async {
-    final query = db.select(db.ispSubscriptions)
-      ..where((tbl) => tbl.siteId.equals(siteId))
-      ..orderBy([
-        (tbl) => OrderingTerm.desc(tbl.paidAt),
-      ])
-      ..limit(1);
-    final results = await query.get();
-    return results.isNotEmpty ? results.first : null;
-  }
+  Future<IspSubscription?> getLatestIspSubscriptionForSite(int siteId) =>
+      _service.getLatestIspSubscriptionForSite(siteId);
 
-  /// Delete an ISP subscription record
-  Future<bool> deleteIspSubscription(int id) async {
-    final deleted = await (db.delete(db.ispSubscriptions)
-          ..where((tbl) => tbl.id.equals(id)))
-        .go();
-    return deleted > 0;
-  }
+  Future<bool> deleteIspSubscription(int id) =>
+      _service.deleteIspSubscription(id);
 }

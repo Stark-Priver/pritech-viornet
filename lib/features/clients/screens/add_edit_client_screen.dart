@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:drift/drift.dart' hide Column;
-import '../../../core/database/database.dart';
+import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
-import '../repository/client_repository.dart';
 
 class AddEditClientScreen extends ConsumerStatefulWidget {
   final Client? client;
@@ -69,31 +67,26 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
     });
 
     try {
-      final database = ref.read(databaseProvider);
-      final repository = ClientRepository(database);
+      final repository = ref.read(clientRepositoryProvider);
 
       final expiryDate = _calculateExpiryDate();
 
       if (widget.client == null) {
         // Create new client
-        await repository.createClient(
-          ClientsCompanion.insert(
-            name: _nameController.text.trim(),
-            phone: _phoneController.text.trim(),
-            email: _emailController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_emailController.text.trim()),
-            address: Value(_locationController.text.trim()),
-            registrationDate: DateTime.now(),
-            expiryDate: Value(expiryDate),
-            smsReminder: Value(_smsReminder),
-            notes: _notesController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_notesController.text.trim()),
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        );
+        await repository.createClient({
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          if (_emailController.text.trim().isNotEmpty)
+            'email': _emailController.text.trim(),
+          'address': _locationController.text.trim(),
+          'registration_date': DateTime.now().toIso8601String(),
+          'expiry_date': expiryDate.toIso8601String(),
+          'sms_reminder': _smsReminder,
+          if (_notesController.text.trim().isNotEmpty)
+            'notes': _notesController.text.trim(),
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -105,25 +98,20 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
         }
       } else {
         // Update existing client
-        final database = ref.read(databaseProvider);
-        await (database.update(database.clients)
-              ..where((tbl) => tbl.id.equals(widget.client!.id)))
-            .write(
-          ClientsCompanion(
-            name: Value(_nameController.text.trim()),
-            phone: Value(_phoneController.text.trim()),
-            email: _emailController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_emailController.text.trim()),
-            address: Value(_locationController.text.trim()),
-            expiryDate: Value(expiryDate),
-            smsReminder: Value(_smsReminder),
-            notes: _notesController.text.trim().isEmpty
-                ? const Value.absent()
-                : Value(_notesController.text.trim()),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
+        await repository.updateClient(widget.client!.id, {
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'email': _emailController.text.trim().isEmpty
+              ? null
+              : _emailController.text.trim(),
+          'address': _locationController.text.trim(),
+          'expiry_date': expiryDate.toIso8601String(),
+          'sms_reminder': _smsReminder,
+          'notes': _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
