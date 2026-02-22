@@ -1167,6 +1167,14 @@ class SupabaseDataService {
     return (data as List).map((e) => CommissionHistory.fromJson(e)).toList();
   }
 
+  Future<List<CommissionHistory>> getAllCommissionHistory() async {
+    final data = await _client
+        .from('commission_history')
+        .select()
+        .order('created_at', ascending: false);
+    return (data as List).map((e) => CommissionHistory.fromJson(e)).toList();
+  }
+
   Future<CommissionHistory> createCommissionHistory(
       Map<String, dynamic> fields) async {
     fields['server_id'] = _uuid.v4();

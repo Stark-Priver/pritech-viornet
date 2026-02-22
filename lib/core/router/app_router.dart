@@ -25,6 +25,7 @@ import '../../features/sms/screens/sms_screen.dart';
 import '../../features/packages/screens/packages_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/settings/screens/commission_settings_screen.dart';
+import '../../features/settings/screens/commission_demands_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
@@ -203,6 +204,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'commissions',
                 name: 'commission-settings',
                 builder: (context, state) => const CommissionSettingsScreen(),
+              ),
+              GoRoute(
+                path: 'commission-demands',
+                name: 'commission-demands',
+                builder: (context, state) => const CommissionDemandsScreen(),
               ),
             ],
           ),

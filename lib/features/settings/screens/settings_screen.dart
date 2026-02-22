@@ -113,7 +113,7 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/packages'),
           ),
-        if (canManageCommissions)
+        if (canManageCommissions) ...[
           ListTile(
             leading: const Icon(Icons.percent),
             title: const Text('Commission Settings'),
@@ -121,6 +121,14 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/commissions'),
           ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long),
+            title: const Text('Commission Demands'),
+            subtitle: const Text('Review and pay agent commission requests'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/commission-demands'),
+          ),
+        ],
       ];
 
   List<Widget> _systemSection(BuildContext context) => [
