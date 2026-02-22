@@ -68,6 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         } else {
           await storage.clearRememberedEmail();
         }
+        if (!mounted) return;
         context.go('/');
       } else {
         final error = ref.read(authProvider).error ??

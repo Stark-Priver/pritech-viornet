@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
-import '../../../core/services/supabase_data_service.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class AddEditClientScreen extends ConsumerStatefulWidget {
@@ -270,7 +269,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
                     ),
                   ),
                   DropdownButtonFormField<int>(
-                    value: _selectedSiteId,
+                    initialValue: _selectedSiteId,
                     decoration: const InputDecoration(
                       labelText: 'Site *',
                       prefixIcon: Icon(Icons.cell_tower),
@@ -288,7 +287,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
                   if (canAssign && _users.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int?>(
-                      value: _assignedToId,
+                      initialValue: _assignedToId,
                       decoration: const InputDecoration(
                         labelText: 'Assign to User (optional)',
                         prefixIcon: Icon(Icons.person_pin),

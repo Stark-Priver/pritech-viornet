@@ -42,6 +42,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (item.route == '/isp-subscription') {
         return checker.hasAnyRole(['FINANCE', 'SUPER_ADMIN']);
       }
+      // Commission Demands — admin / finance / super-admin only
+      if (item.route == '/commission-demands') {
+        return checker.hasAnyRole(['SUPER_ADMIN', 'ADMIN', 'FINANCE']);
+      }
+      // My Commissions — agent-level roles (not pure admin/finance)
+      if (item.route == '/my-commissions') {
+        return !checker.hasAnyRole(['SUPER_ADMIN', 'FINANCE']);
+      }
       return checker.canAccessRoute(item.route);
     }).toList();
 
@@ -72,6 +80,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     ),
     NavigationItem(icon: Icons.point_of_sale, label: 'POS', route: '/pos'),
     NavigationItem(icon: Icons.receipt_long, label: 'Sales', route: '/sales'),
+    NavigationItem(
+      icon: Icons.account_balance_wallet_outlined,
+      label: 'My Commissions',
+      route: '/my-commissions',
+    ),
     NavigationItem(icon: Icons.location_on, label: 'Sites', route: '/sites'),
     NavigationItem(icon: Icons.devices, label: 'Assets', route: '/assets'),
     NavigationItem(
@@ -89,6 +102,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       label: 'Finance',
       route: '/finance',
     ),
+    NavigationItem(
+      icon: Icons.pending_actions,
+      label: 'Commission Demands',
+      route: '/commission-demands',
+    ),
     NavigationItem(icon: Icons.sms, label: 'SMS', route: '/sms'),
     NavigationItem(icon: Icons.settings, label: 'Settings', route: '/settings'),
   ];
@@ -97,6 +115,12 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     // Special case: highlight ISP Subscription if on /isp-subscription/:siteId
     if (widget.currentRoute.startsWith('/isp-subscription')) {
       final idx = items.indexWhere((item) => item.label == 'ISP Subscription');
+      if (idx != -1) return idx;
+    }
+    // Special case: highlight Commission Demands from settings sub-route
+    if (widget.currentRoute == '/settings/commission-demands') {
+      final idx =
+          items.indexWhere((item) => item.route == '/commission-demands');
       if (idx != -1) return idx;
     }
     final index = items.indexWhere(
@@ -443,7 +467,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   Widget _buildBottomNavigation(
       BuildContext context, List<NavigationItem> items, bool isTablet) {
     // For mobile, show only primary items that user has access to
-    final primaryRoutes = ['/', '/clients', '/pos', '/sales', '/settings'];
+    final primaryRoutes = [
+      '/',
+      '/clients',
+      '/pos',
+      '/sales',
+      '/my-commissions',
+      '/commission-demands',
+      '/settings',
+    ];
     List<NavigationItem> primaryItems =
         items.where((item) => primaryRoutes.contains(item.route)).toList();
 
