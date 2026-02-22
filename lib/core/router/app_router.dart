@@ -36,24 +36,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.isAuthenticated;
       final goingToLogin = state.uri.path == '/login';
-      final goingToRegister = state.uri.path == '/register';
       final goingToSplash = state.uri.path == '/splash';
 
       // Allow splash screen always
       if (goingToSplash) return null;
 
-      // If not logged in and not going to login/register, redirect to login
-      if (!isLoggedIn && !goingToLogin && !goingToRegister) {
-        return '/login';
-      }
+      // /register is only reachable when already authenticated (admins only)
+      if (!isLoggedIn && !goingToLogin) return '/login';
 
       // If logged in and going to login, redirect to dashboard
-      if (isLoggedIn && (goingToLogin || goingToRegister)) {
-        return '/';
-      }
+      if (isLoggedIn && goingToLogin) return '/';
 
       // Check route permissions for authenticated users
-      if (isLoggedIn && !goingToLogin && !goingToRegister && !goingToSplash) {
+      if (isLoggedIn && !goingToLogin && !goingToSplash) {
         final checker = PermissionChecker(authState.userRoles);
         if (!checker.canAccessRoute(state.uri.path)) {
           // User doesn't have permission, redirect to dashboard

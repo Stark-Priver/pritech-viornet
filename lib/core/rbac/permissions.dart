@@ -198,8 +198,43 @@ class Roles {
     ],
   );
 
+  static const admin = Role(
+    id: 'ADMIN',
+    name: 'Admin',
+    description: 'Administrator — full access except super-admin controls',
+    permissions: [
+      Permissions.viewDashboard,
+      Permissions.viewClients,
+      Permissions.createClient,
+      Permissions.editClient,
+      Permissions.deleteClient,
+      Permissions.viewVouchers,
+      Permissions.createVoucher,
+      Permissions.deleteVoucher,
+      Permissions.viewSales,
+      Permissions.makeSale,
+      Permissions.viewSites,
+      Permissions.manageSites,
+      Permissions.viewAssets,
+      Permissions.manageAssets,
+      Permissions.viewMaintenance,
+      Permissions.manageMaintenance,
+      Permissions.viewFinance,
+      Permissions.manageExpenses,
+      Permissions.viewSms,
+      Permissions.sendSms,
+      Permissions.viewPackages,
+      Permissions.managePackages,
+      Permissions.viewUsers,
+      Permissions.manageUsers,
+      Permissions.viewSettings,
+      Permissions.manageSettings,
+    ],
+  );
+
   static List<Role> get allRoles => [
         superAdmin,
+        admin,
         marketing,
         sales,
         technical,

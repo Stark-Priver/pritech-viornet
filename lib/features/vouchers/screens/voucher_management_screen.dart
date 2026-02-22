@@ -93,20 +93,26 @@ class _VoucherManagementScreenState
     if (confirmed != true || !mounted) return;
 
     final progressNotifier = ValueNotifier<(int, int)>((0, count));
+    // Capture the dialog navigator BEFORE the async gap so we can close
+    // only the dialog (not the whole screen) after deletion finishes.
+    NavigatorState? dialogNavigator;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: const Text('Deleting…'),
-          content: ValueListenableBuilder<(int, int)>(
-            valueListenable: progressNotifier,
-            builder: (_, v, __) =>
-                LinearProgressIndicator(value: v.$2 > 0 ? v.$1 / v.$2 : 0),
+      builder: (dlgCtx) {
+        dialogNavigator = Navigator.of(dlgCtx);
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Deleting…'),
+            content: ValueListenableBuilder<(int, int)>(
+              valueListenable: progressNotifier,
+              builder: (_, v, __) =>
+                  LinearProgressIndicator(value: v.$2 > 0 ? v.$1 / v.$2 : 0),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     final svc = ref.read(voucherServiceProvider);
@@ -117,7 +123,10 @@ class _VoucherManagementScreenState
       progressNotifier.value = (done, count);
     }
     if (!mounted) return;
-    Navigator.of(context).pop();
+    // Close only the progress dialog using its own navigator.
+    if (dialogNavigator != null && dialogNavigator!.canPop()) {
+      dialogNavigator!.pop();
+    }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('$count voucher${count == 1 ? '' : 's'} deleted'),
         backgroundColor: Colors.red));
@@ -358,51 +367,55 @@ class _VoucherManagementScreenState
     // ── Step 3: progress dialog ───────────────────────────────────────────
     final progressNotifier = ValueNotifier<(int, int)>((0, 0));
     bool cancelled = false;
+    NavigatorState? progressDialogNav;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (progressCtx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          title: const Text('Uploading Vouchers'),
-          content: ValueListenableBuilder<(int, int)>(
-            valueListenable: progressNotifier,
-            builder: (_, progress, __) {
-              final done = progress.$1;
-              final total = progress.$2;
-              final pct = total > 0 ? done / total : 0.0;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  total == 0
-                      ? const LinearProgressIndicator()
-                      : LinearProgressIndicator(value: pct),
-                  const SizedBox(height: 10),
-                  total == 0
-                      ? const Text('Parsing file…')
-                      : Text(
-                          '$done / $total vouchers  •  '
-                          '${(pct * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              onPressed: () {
-                cancelled = true;
-                Navigator.pop(progressCtx);
+      builder: (progressCtx) {
+        progressDialogNav = Navigator.of(progressCtx);
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Uploading Vouchers'),
+            content: ValueListenableBuilder<(int, int)>(
+              valueListenable: progressNotifier,
+              builder: (_, progress, __) {
+                final done = progress.$1;
+                final total = progress.$2;
+                final pct = total > 0 ? done / total : 0.0;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    total == 0
+                        ? const LinearProgressIndicator()
+                        : LinearProgressIndicator(value: pct),
+                    const SizedBox(height: 10),
+                    total == 0
+                        ? const Text('Parsing file…')
+                        : Text(
+                            '$done / $total vouchers  •  '
+                            '${(pct * 100).toStringAsFixed(0)}%',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                  ],
+                );
               },
-              child: const Text('Cancel'),
             ),
-          ],
-        ),
-      ),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                onPressed: () {
+                  cancelled = true;
+                  Navigator.pop(progressCtx);
+                },
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      },
     );
 
     // ── Step 4: run upload ────────────────────────────────────────────────
@@ -420,7 +433,9 @@ class _VoucherManagementScreenState
 
       if (!mounted) return;
       if (!cancelled) {
-        Navigator.of(context).pop(); // close progress dialog
+        if (progressDialogNav != null && progressDialogNav!.canPop()) {
+          progressDialogNav!.pop();
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$count vouchers uploaded successfully'),
@@ -435,7 +450,11 @@ class _VoucherManagementScreenState
       }
     } catch (e) {
       if (!mounted) return;
-      if (!cancelled) Navigator.of(context).pop();
+      if (!cancelled) {
+        if (progressDialogNav != null && progressDialogNav!.canPop()) {
+          progressDialogNav!.pop();
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error uploading vouchers: $e'),
@@ -529,7 +548,12 @@ class _VoucherManagementScreenState
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final userRoles = authState.userRoles;
+    // Combine the join-table roles with the direct role field so the check
+    // works even when the user_roles table has no rows for this user.
+    final userRoles = {
+      ...authState.userRoles,
+      if (authState.user?.role != null) authState.user!.role,
+    }.toList();
     final canDelete = _canDeleteVouchers(userRoles);
     final canSummary = _canViewSummary(userRoles);
     final canCreate = PermissionChecker([authState.user?.role ?? ''])
@@ -545,7 +569,10 @@ class _VoucherManagementScreenState
       selectedIds: _selectedIds,
       canDelete: canDelete,
       onRefresh: _refresh,
-      onEnterSelection: () => setState(() => _selectionMode = true),
+      onEnterSelection: (int id) => setState(() {
+        _selectionMode = true;
+        _selectedIds.add(id); // auto-select the long-pressed item
+      }),
       onToggleSelect: (id) => setState(() {
         if (_selectedIds.contains(id)) {
           _selectedIds.remove(id);
@@ -582,7 +609,31 @@ class _VoucherManagementScreenState
               tooltip: 'Delete selected',
               onPressed: _deleteSelected,
             ),
+          if (_selectionMode)
+            IconButton(
+              icon: const Icon(Icons.select_all),
+              tooltip: 'Select all',
+              onPressed: () async {
+                final all = await _loadVouchers();
+                setState(() {
+                  if (_selectedIds.length == all.length) {
+                    _selectedIds.clear();
+                    _selectionMode = false;
+                  } else {
+                    _selectedIds
+                      ..clear()
+                      ..addAll(all.map((v) => v.id));
+                  }
+                });
+              },
+            ),
           if (!_selectionMode) ...[
+            if (canDelete)
+              IconButton(
+                icon: const Icon(Icons.checklist),
+                tooltip: 'Select vouchers',
+                onPressed: () => setState(() => _selectionMode = true),
+              ),
             IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
             IconButton(
               icon: Badge(
@@ -668,7 +719,7 @@ class _VouchersTab extends StatelessWidget {
   final Set<int> selectedIds;
   final bool canDelete;
   final VoidCallback onRefresh;
-  final VoidCallback onEnterSelection;
+  final void Function(int id) onEnterSelection;
   final void Function(int id) onToggleSelect;
   final void Function(List<Voucher> all) onSelectAll;
 
@@ -690,7 +741,7 @@ class _VouchersTab extends StatelessWidget {
       children: [
         // Stats row (computed from loaded vouchers)
         FutureBuilder<List<Voucher>>(
-          key: ValueKey(rebuildKey),
+          key: ValueKey('stats_$rebuildKey'),
           future: loadVouchers(),
           builder: (_, snap) {
             final vs = snap.data ?? [];
@@ -720,7 +771,7 @@ class _VouchersTab extends StatelessWidget {
         // Select-all banner
         if (selectionMode)
           FutureBuilder<List<Voucher>>(
-            key: ValueKey(rebuildKey),
+            key: ValueKey('banner_$rebuildKey'),
             future: loadVouchers(),
             builder: (ctx, snap) {
               final all = snap.data ?? [];
@@ -746,7 +797,7 @@ class _VouchersTab extends StatelessWidget {
         // Voucher list
         Expanded(
           child: FutureBuilder<List<Voucher>>(
-            key: ValueKey(rebuildKey),
+            key: ValueKey('list_$rebuildKey'),
             future: loadVouchers(),
             builder: (ctx, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -793,7 +844,7 @@ class _VouchersTab extends StatelessWidget {
                     selectionMode: selectionMode,
                     isSelected: selectedIds.contains(v.id),
                     canDelete: canDelete,
-                    onLongPress: onEnterSelection,
+                    onLongPress: onEnterSelection, // void Function(int id)
                     onToggleSelect: () => onToggleSelect(v.id),
                     onRefresh: onRefresh,
                   );
@@ -1071,7 +1122,7 @@ class _VoucherListItem extends ConsumerWidget {
   final bool selectionMode;
   final bool isSelected;
   final bool canDelete;
-  final VoidCallback onLongPress;
+  final void Function(int id) onLongPress;
   final VoidCallback onToggleSelect;
   final VoidCallback onRefresh;
 
@@ -1137,7 +1188,7 @@ class _VoucherListItem extends ConsumerWidget {
           backgroundColor: color.withValues(alpha: 0.15),
           side: BorderSide(color: color),
         ),
-        onLongPress: selectionMode ? null : onLongPress,
+        onLongPress: selectionMode ? null : () => onLongPress(voucher.id),
         onTap:
             selectionMode ? onToggleSelect : () => _showDetails(context, ref),
       ),

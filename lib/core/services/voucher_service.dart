@@ -10,51 +10,86 @@ class VoucherService {
 
   // â”€â”€ HTML Parsing (pure Dart â€“ no DB dependency) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  /// Parse Mikrotik HTML voucher file and extract voucher codes
+  /// Parse Mikrotik HTML voucher file and extract voucher codes.
+  ///
+  /// Supports two HTML template formats:
+  ///   • Old format: codes in `<div class="user">XXXXXX</div>` (6 digits),
+  ///     price in `<div class="form3">NNN TZS</div>`.
+  ///   • New format: codes in `<td class="qrcode" id="XXXX">` (any length),
+  ///     price/validity/speed in `<span>…PRICE: NNN…</span>` fields.
   Future<List<Map<String, dynamic>>> parseHtmlVouchers(
       String htmlContent) async {
-    final vouchers = <Map<String, dynamic>>[];
-    final codePattern = RegExp(r'<div class="user">(\d{6})</div>');
-    final codes = codePattern.allMatches(htmlContent);
-    final pricePattern = RegExp(r'<div class="form3"[^>]*>(\d+)\s*TZS</div>');
-    final priceMatches = pricePattern.allMatches(htmlContent).toList();
-    final validityPattern = RegExp(r'VALIDITY:\s*([^<]+)</div>');
-    final validityMatches = validityPattern.allMatches(htmlContent).toList();
-    final speedPattern = RegExp(r'SPEED:\s*([^<]*)</div>');
-    final speedMatches = speedPattern.allMatches(htmlContent).toList();
+    // ── QR data is the same in both formats ──────────────────────────────
     final qrPattern = RegExp(r'"text":\s*"([^"]+)"');
     final qrMatches = qrPattern.allMatches(htmlContent).toList();
 
-    int index = 0;
-    for (final match in codes) {
-      final code = match.group(1);
-      if (code != null && code != '.') {
-        double? price;
-        if (index < priceMatches.length) {
-          price = double.tryParse(priceMatches[index].group(1) ?? '');
-        }
-        String? validity;
-        if (index < validityMatches.length) {
-          validity = validityMatches[index].group(1)?.trim();
-        }
-        String? speed;
-        if (index < speedMatches.length) {
-          speed = speedMatches[index].group(1)?.trim();
-          if (speed != null && speed.isEmpty) speed = null;
-        }
-        String? qrCodeData;
-        if (index < qrMatches.length) {
-          qrCodeData = qrMatches[index].group(1);
-        }
+    // ── Detect format ─────────────────────────────────────────────────────
+    final oldCodePattern = RegExp(r'<div class="user">(\d+)</div>');
+    final oldCodes = oldCodePattern.allMatches(htmlContent).toList();
+
+    if (oldCodes.isNotEmpty) {
+      // ── Old format ───────────────────────────────────────────────────────
+      final pricePattern =
+          RegExp(r'<div class="form3"[^>]*>(\d+(?:\.\d+)?)\s*(?:TZS)?</div>');
+      final priceMatches = pricePattern.allMatches(htmlContent).toList();
+      final validityPattern = RegExp(r'VALIDITY:\s*([^<]+)<');
+      final validityMatches = validityPattern.allMatches(htmlContent).toList();
+      final speedPattern = RegExp(r'SPEED:\s*([^<]*)<');
+      final speedMatches = speedPattern.allMatches(htmlContent).toList();
+
+      final vouchers = <Map<String, dynamic>>[];
+      for (int i = 0; i < oldCodes.length; i++) {
+        final code = oldCodes[i].group(1);
+        if (code == null || code == '.') continue;
         vouchers.add({
           'code': code,
-          'price': price,
-          'validity': validity,
-          'speed': speed,
-          'qrCodeData': qrCodeData,
+          'price': i < priceMatches.length
+              ? double.tryParse(priceMatches[i].group(1) ?? '')
+              : null,
+          'validity': i < validityMatches.length
+              ? validityMatches[i].group(1)?.trim()
+              : null,
+          'speed': () {
+            if (i >= speedMatches.length) return null;
+            final s = speedMatches[i].group(1)?.trim();
+            return (s == null || s.isEmpty) ? null : s;
+          }(),
+          'qrCodeData': i < qrMatches.length ? qrMatches[i].group(1) : null,
         });
-        index++;
       }
+      return vouchers;
+    }
+
+    // ── New format: <td class="qrcode" id="CODE"> ────────────────────────
+    final newCodePattern = RegExp(r'<td[^>]+class="qrcode"[^>]+id="([^"]+)"');
+    final newCodes = newCodePattern.allMatches(htmlContent).toList();
+
+    final pricePattern = RegExp(r'PRICE:\s*(\d+(?:\.\d+)?)');
+    final priceMatches = pricePattern.allMatches(htmlContent).toList();
+    final validityPattern = RegExp(r'VALIDITY:\s*([^<]+)<');
+    final validityMatches = validityPattern.allMatches(htmlContent).toList();
+    final speedPattern = RegExp(r'SPEED:\s*([^<]+)<');
+    final speedMatches = speedPattern.allMatches(htmlContent).toList();
+
+    final vouchers = <Map<String, dynamic>>[];
+    for (int i = 0; i < newCodes.length; i++) {
+      final code = newCodes[i].group(1);
+      if (code == null || code == '.') continue;
+      vouchers.add({
+        'code': code,
+        'price': i < priceMatches.length
+            ? double.tryParse(priceMatches[i].group(1) ?? '')
+            : null,
+        'validity': i < validityMatches.length
+            ? validityMatches[i].group(1)?.trim()
+            : null,
+        'speed': () {
+          if (i >= speedMatches.length) return null;
+          final s = speedMatches[i].group(1)?.trim();
+          return (s == null || s.isEmpty) ? null : s;
+        }(),
+        'qrCodeData': i < qrMatches.length ? qrMatches[i].group(1) : null,
+      });
     }
     return vouchers;
   }
