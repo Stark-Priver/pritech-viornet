@@ -11,6 +11,9 @@ class ClientRepository {
 
   Future<List<Client>> getAllClients() => _service.getAllClients();
 
+  Future<List<Client>> getClientsByUser(int userId) =>
+      _service.getClientsByUser(userId);
+
   Future<Client?> getClientById(int id) => _service.getClientById(id);
 
   Future<List<Client>> getClientsBySite(int siteId) =>

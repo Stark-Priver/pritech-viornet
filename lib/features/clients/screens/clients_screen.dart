@@ -286,19 +286,16 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   Future<List<Client>> _getFilteredClients(SupabaseDataService database) async {
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAllSites = authNotifier.canAccessAllSites;
-    final userSites = authNotifier.currentUserSites;
+    final currentUser = authNotifier.currentUser;
 
-    // Fetch all clients then filter by site access
+    // Admin / Finance / Super-Admin → every client.
+    // All other roles → only clients they registered OR were assigned to them.
     List<Client> allClients;
-    if (!canAccessAllSites && userSites.isEmpty) {
-      return [];
-    }
-
-    allClients = await database.getAllClients();
-
-    if (!canAccessAllSites && userSites.isNotEmpty) {
-      allClients =
-          allClients.where((c) => userSites.contains(c.siteId)).toList();
+    if (canAccessAllSites) {
+      allClients = await database.getAllClients();
+    } else {
+      if (currentUser == null) return [];
+      allClients = await database.getClientsByUser(currentUser.id);
     }
 
     // Apply search filter first if needed

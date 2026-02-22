@@ -134,11 +134,35 @@ class _VoucherManagementScreenState
   }
 
   Future<List<Voucher>> _loadVouchers() async {
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAll = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
+
     final voucherService = ref.read(voucherServiceProvider);
+
+    // Determine effective site restriction
+    int? effectiveSiteId;
+    List<int>? effectiveSiteIds;
+
+    if (!canAccessAll) {
+      if (userSites.isEmpty) return []; // not assigned to any site
+      if (_siteFilter != null && userSites.contains(_siteFilter)) {
+        // user filtered to a specific site within their allowed list
+        effectiveSiteId = _siteFilter;
+      } else {
+        // restrict to all their assigned sites
+        effectiveSiteIds = userSites;
+      }
+    } else {
+      // Admin / Finance / Super-Admin: respect manual site filter
+      effectiveSiteId = _siteFilter;
+    }
+
     return voucherService.watchVouchers(
       status: _statusFilter == 'ALL' ? null : _statusFilter,
       packageId: _packageFilter,
-      siteId: _siteFilter,
+      siteId: effectiveSiteId,
+      siteIds: effectiveSiteIds,
       batchId: _batchFilter,
     );
   }
@@ -466,7 +490,15 @@ class _VoucherManagementScreenState
 
   Future<void> _showFilterDialog() async {
     final packages = await SupabaseDataService().getAllPackages();
-    final sites = await SupabaseDataService().getAllSites();
+    final allSites = await SupabaseDataService().getAllSites();
+
+    // Restrict site list for non-privileged users
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAll = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
+    final sites = canAccessAll
+        ? allSites
+        : allSites.where((s) => userSites.contains(s.id)).toList();
 
     if (!mounted) return;
 

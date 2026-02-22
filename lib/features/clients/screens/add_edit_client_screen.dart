@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/providers/providers.dart';
+import '../../../core/services/supabase_data_service.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class AddEditClientScreen extends ConsumerStatefulWidget {
   final Client? client;
@@ -19,34 +21,60 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _locationController = TextEditingController();
+  final _macController = TextEditingController();
   final _notesController = TextEditingController();
 
-  String _selectedPackage = '1 Week';
   bool _smsReminder = true;
   bool _isLoading = false;
 
-  final List<String> _packages = [
-    '1 Day',
-    '1 Week',
-    '2 Weeks',
-    '1 Month',
-    '3 Months',
-    '6 Months',
-    '1 Year',
-  ];
+  // Site & assignment
+  int? _selectedSiteId;
+  int? _assignedToId;
+  List<Site> _sites = [];
+  List<AppUser> _users = [];
+  bool _formDataLoading = true;
 
   @override
   void initState() {
     super.initState();
     if (widget.client != null) {
-      _nameController.text = widget.client!.name;
-      _phoneController.text = widget.client!.phone;
-      _emailController.text = widget.client!.email ?? '';
-      _locationController.text = widget.client!.address ?? '';
-      _notesController.text = widget.client!.notes ?? '';
-      _selectedPackage = '1 Week';
-      _smsReminder = widget.client!.smsReminder;
+      final c = widget.client!;
+      _nameController.text = c.name;
+      _phoneController.text = c.phone;
+      _emailController.text = c.email ?? '';
+      _locationController.text = c.address ?? '';
+      _macController.text = c.macAddress ?? '';
+      _notesController.text = c.notes ?? '';
+      _smsReminder = c.smsReminder;
+      _selectedSiteId = c.siteId;
+      _assignedToId = c.assignedTo;
     }
+    _loadFormData();
+  }
+
+  Future<void> _loadFormData() async {
+    final db = ref.read(databaseProvider);
+    final authNotifier = ref.read(authProvider.notifier);
+    final canAccessAll = authNotifier.canAccessAllSites;
+    final userSites = authNotifier.currentUserSites;
+
+    final allSites = await db.getAllSites();
+    final allUsers = canAccessAll ? await db.getAllUsers() : <AppUser>[];
+
+    if (!mounted) return;
+    setState(() {
+      _sites = canAccessAll
+          ? allSites
+          : allSites.where((s) => userSites.contains(s.id)).toList();
+
+      // Auto-select site when user has only one
+      if (_selectedSiteId == null && _sites.length == 1) {
+        _selectedSiteId = _sites.first.id;
+      }
+
+      _users = allUsers;
+      _formDataLoading = false;
+    });
   }
 
   @override
@@ -55,6 +83,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _locationController.dispose();
+    _macController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -62,25 +91,38 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
   Future<void> _saveClient() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (_selectedSiteId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a site for this client'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
 
     try {
       final repository = ref.read(clientRepositoryProvider);
-
-      final expiryDate = _calculateExpiryDate();
+      final currentUser = ref.read(authProvider).user;
 
       if (widget.client == null) {
-        // Create new client
+        // ── Create new client ──────────────────────────────────────────
         await repository.createClient({
           'name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
           if (_emailController.text.trim().isNotEmpty)
             'email': _emailController.text.trim(),
-          'address': _locationController.text.trim(),
+          if (_locationController.text.trim().isNotEmpty)
+            'address': _locationController.text.trim(),
+          if (_macController.text.trim().isNotEmpty)
+            'mac_address': _macController.text.trim(),
+          'site_id': _selectedSiteId,
+          if (currentUser != null) 'registered_by': currentUser.id,
+          if (_assignedToId != null) 'assigned_to': _assignedToId,
           'registration_date': DateTime.now().toIso8601String(),
-          'expiry_date': expiryDate.toIso8601String(),
+          'is_active': true,
           'sms_reminder': _smsReminder,
           if (_notesController.text.trim().isNotEmpty)
             'notes': _notesController.text.trim(),
@@ -97,15 +139,21 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
           );
         }
       } else {
-        // Update existing client
+        // ── Update existing client ─────────────────────────────────────
         await repository.updateClient(widget.client!.id, {
           'name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'email': _emailController.text.trim().isEmpty
               ? null
               : _emailController.text.trim(),
-          'address': _locationController.text.trim(),
-          'expiry_date': expiryDate.toIso8601String(),
+          'address': _locationController.text.trim().isEmpty
+              ? null
+              : _locationController.text.trim(),
+          'mac_address': _macController.text.trim().isEmpty
+              ? null
+              : _macController.text.trim(),
+          'site_id': _selectedSiteId,
+          'assigned_to': _assignedToId,
           'sms_reminder': _smsReminder,
           'notes': _notesController.text.trim().isEmpty
               ? null
@@ -123,9 +171,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
         }
       }
 
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
+      if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -136,188 +182,186 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  DateTime _calculateExpiryDate() {
-    final now = DateTime.now();
-    switch (_selectedPackage) {
-      case '1 Day':
-        return now.add(const Duration(days: 1));
-      case '1 Week':
-        return now.add(const Duration(days: 7));
-      case '2 Weeks':
-        return now.add(const Duration(days: 14));
-      case '1 Month':
-        return DateTime(now.year, now.month + 1, now.day);
-      case '3 Months':
-        return DateTime(now.year, now.month + 3, now.day);
-      case '6 Months':
-        return DateTime(now.year, now.month + 6, now.day);
-      case '1 Year':
-        return DateTime(now.year + 1, now.month, now.day);
-      default:
-        return now.add(const Duration(days: 7));
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final canAssign = ref.read(authProvider.notifier).canAccessAllSites;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.client == null ? 'Add Client' : 'Edit Client'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Full Name *',
-                prefixIcon: Icon(Icons.person),
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter client name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number *',
-                prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.phone,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter phone number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email (Optional)',
-                prefixIcon: Icon(Icons.email),
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location *',
-                prefixIcon: Icon(Icons.location_on),
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter location';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedPackage,
-              decoration: const InputDecoration(
-                labelText: 'Package *',
-                prefixIcon: Icon(Icons.wifi),
-                border: OutlineInputBorder(),
-              ),
-              items: _packages.map((package) {
-                return DropdownMenuItem(
-                  value: package,
-                  child: Text(package),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedPackage = value!;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
+      body: _formDataLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Subscription Details',
+                children: [
+                  // ── Personal details ─────────────────────────────────
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name *',
+                      prefixIcon: Icon(Icons.person),
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number *',
+                      prefixIcon: Icon(Icons.phone),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email (optional)',
+                      prefixIcon: Icon(Icons.email),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Address / Location',
+                      prefixIcon: Icon(Icons.location_on),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _macController,
+                    decoration: const InputDecoration(
+                      labelText: 'MAC Address (optional)',
+                      prefixIcon: Icon(Icons.router),
+                      border: OutlineInputBorder(),
+                      hintText: 'e.g. AA:BB:CC:DD:EE:FF',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Site & assignment ─────────────────────────────────
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'SITE & ASSIGNMENT',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                        letterSpacing: 1,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Starts: ${_formatDate(DateTime.now())}',
-                      style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  DropdownButtonFormField<int>(
+                    value: _selectedSiteId,
+                    decoration: const InputDecoration(
+                      labelText: 'Site *',
+                      prefixIcon: Icon(Icons.cell_tower),
+                      border: OutlineInputBorder(),
                     ),
-                    Text(
-                      'Expires: ${_formatDate(_calculateExpiryDate())}',
-                      style: TextStyle(color: Colors.grey[700]),
+                    items: _sites
+                        .map((s) => DropdownMenuItem(
+                              value: s.id,
+                              child: Text(s.name),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setState(() => _selectedSiteId = v),
+                    validator: (v) => v == null ? 'Please select a site' : null,
+                  ),
+                  if (canAssign && _users.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int?>(
+                      value: _assignedToId,
+                      decoration: const InputDecoration(
+                        labelText: 'Assign to User (optional)',
+                        prefixIcon: Icon(Icons.person_pin),
+                        border: OutlineInputBorder(),
+                        helperText:
+                            'Transfer this client to an agent or staff member',
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('— Unassigned —'),
+                        ),
+                        ..._users.map((u) => DropdownMenuItem(
+                              value: u.id,
+                              child: Text('${u.name} (${u.role})'),
+                            )),
+                      ],
+                      onChanged: (v) => setState(() => _assignedToId = v),
                     ),
                   ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SwitchListTile(
-              title: const Text('Enable SMS Reminders'),
-              subtitle: const Text('Send reminder before expiry'),
-              value: _smsReminder,
-              onChanged: (value) {
-                setState(() {
-                  _smsReminder = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes (Optional)',
-                prefixIcon: Icon(Icons.note),
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveClient,
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        widget.client == null ? 'Add Client' : 'Update Client'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                  const SizedBox(height: 24),
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+                  // ── Preferences ──────────────────────────────────────
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'PREFERENCES',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  SwitchListTile(
+                    title: const Text('Enable SMS Reminders'),
+                    subtitle: const Text('Send a reminder before expiry'),
+                    value: _smsReminder,
+                    onChanged: (v) => setState(() => _smsReminder = v),
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Notes (optional)',
+                      prefixIcon: Icon(Icons.note),
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Save button ──────────────────────────────────────
+                  SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _saveClient,
+                      icon: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(
+                        widget.client == null ? 'Add Client' : 'Save Changes',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
   }
 }

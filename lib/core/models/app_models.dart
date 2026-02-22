@@ -197,6 +197,8 @@ class Client {
   final bool isActive;
   final bool smsReminder;
   final String? notes;
+  final int? registeredBy; // user who registered this client
+  final int? assignedTo; // user the client was transferred/assigned to
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -215,6 +217,8 @@ class Client {
     required this.isActive,
     required this.smsReminder,
     this.notes,
+    this.registeredBy,
+    this.assignedTo,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -238,6 +242,8 @@ class Client {
         isActive: json['is_active'] as bool? ?? true,
         smsReminder: json['sms_reminder'] as bool? ?? true,
         notes: json['notes'] as String?,
+        registeredBy: json['registered_by'] as int?,
+        assignedTo: json['assigned_to'] as int?,
         createdAt: DateTime.parse(json['created_at'] as String),
         updatedAt: DateTime.parse(json['updated_at'] as String),
       );
@@ -255,6 +261,8 @@ class Client {
         'is_active': isActive,
         'sms_reminder': smsReminder,
         'notes': notes,
+        'registered_by': registeredBy,
+        'assigned_to': assignedTo,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -273,6 +281,8 @@ class Client {
     bool? isActive,
     bool? smsReminder,
     String? notes,
+    int? registeredBy,
+    int? assignedTo,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -291,6 +301,8 @@ class Client {
         isActive: isActive ?? this.isActive,
         smsReminder: smsReminder ?? this.smsReminder,
         notes: notes ?? this.notes,
+        registeredBy: registeredBy ?? this.registeredBy,
+        assignedTo: assignedTo ?? this.assignedTo,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );

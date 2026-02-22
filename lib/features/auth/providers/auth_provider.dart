@@ -150,6 +150,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   bool get canAccessAllSites {
     return state.userRoles.contains('SUPER_ADMIN') ||
+        state.userRoles.contains('ADMIN') ||
         state.userRoles.contains('FINANCE');
   }
 

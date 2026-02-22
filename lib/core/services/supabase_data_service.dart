@@ -266,6 +266,16 @@ class SupabaseDataService {
     return (data as List).map((e) => Client.fromJson(e)).toList();
   }
 
+  /// Clients registered by OR assigned/transferred to [userId].
+  Future<List<Client>> getClientsByUser(int userId) async {
+    final data = await _client
+        .from('clients')
+        .select()
+        .or('registered_by.eq.$userId,assigned_to.eq.$userId')
+        .order('name');
+    return (data as List).map((e) => Client.fromJson(e)).toList();
+  }
+
   Future<List<Client>> getActiveClients() async {
     final data = await _client
         .from('clients')
@@ -417,12 +427,18 @@ class SupabaseDataService {
     String? status,
     int? packageId,
     int? siteId,
+    List<int>? siteIds, // restrict to multiple sites (used for RBAC scoping)
     String? batchId,
   }) async {
     var query = _client.from('vouchers').select();
     if (status != null) query = query.eq('status', status);
     if (packageId != null) query = query.eq('package_id', packageId);
-    if (siteId != null) query = query.eq('site_id', siteId);
+    // siteIds (multi-site) takes priority over single siteId
+    if (siteIds != null && siteIds.isNotEmpty) {
+      query = query.inFilter('site_id', siteIds);
+    } else if (siteId != null) {
+      query = query.eq('site_id', siteId);
+    }
     if (batchId != null) query = query.eq('batch_id', batchId);
     final data = await query.order('created_at', ascending: false);
     return (data as List).map((e) => Voucher.fromJson(e)).toList();

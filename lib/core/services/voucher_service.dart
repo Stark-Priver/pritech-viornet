@@ -163,17 +163,19 @@ class VoucherService {
   Future<bool> markVoucherAsUsed(int voucherId) =>
       _service.markVoucherAsUsed(voucherId);
 
-  /// Returns a Future (not a Stream) â€“ screens should poll or use FutureBuilder
+  /// Returns a Future (not a Stream) — screens should poll or use FutureBuilder
   Future<List<Voucher>> watchVouchers({
     String? status,
     int? packageId,
     int? siteId,
+    List<int>? siteIds,
     String? batchId,
   }) =>
       _service.getAllVouchers(
           status: status,
           packageId: packageId,
           siteId: siteId,
+          siteIds: siteIds,
           batchId: batchId);
 
   Future<Map<String, int>> getVoucherStats() => _service.getVoucherStats();

@@ -226,6 +226,25 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            if (saleData.agentName != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline,
+                        size: 14, color: Colors.blue[700]),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Sold by: ${saleData.agentName}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (saleData.clientName != null)
               Text(
                 'Client: ${saleData.clientName}',
@@ -323,26 +342,25 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       SupabaseDataService database) async {
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAllSites = authNotifier.canAccessAllSites;
-    final userSites = authNotifier.currentUserSites;
+    final currentUser = authNotifier.currentUser;
 
-    // Fetch all sales and clients
-    if (!canAccessAllSites && userSites.isEmpty) return [];
-
-    List<Sale> allSales = await database.getAllSales();
+    // Load sales scoped by the user's role:
+    // – Admin / Finance / Super-Admin → all sales
+    // – Agents / Marketing / Technical → only their own sales (by agent_id)
+    List<Sale> allSales;
+    if (canAccessAllSites) {
+      allSales = await database.getAllSales();
+    } else {
+      if (currentUser == null) return [];
+      allSales = await database.getSalesByAgent(currentUser.id);
+    }
     allSales.sort((a, b) => b.saleDate.compareTo(a.saleDate));
 
-    if (!canAccessAllSites && userSites.isNotEmpty) {
-      // Filter to only show sales from clients in assigned sites
-      final allClients = await database.getAllClients();
-      final siteClientIds = allClients
-          .where((c) => userSites.contains(c.siteId))
-          .map((c) => c.id)
-          .toSet();
-      if (siteClientIds.isEmpty) return [];
-      allSales = allSales
-          .where(
-              (s) => s.clientId != null && siteClientIds.contains(s.clientId))
-          .toList();
+    // Build agent name map once for privileged users (avoids N+1 queries)
+    Map<int, String> agentNameMap = {};
+    if (canAccessAllSites) {
+      final allUsers = await database.getAllUsers();
+      agentNameMap = {for (final u in allUsers) u.id: u.name};
     }
 
     final results = <_SaleWithDetails>[];
@@ -354,7 +372,11 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         clientName = client?.name;
       }
 
-      results.add(_SaleWithDetails(sale: sale, clientName: clientName));
+      results.add(_SaleWithDetails(
+        sale: sale,
+        clientName: clientName,
+        agentName: canAccessAllSites ? agentNameMap[sale.agentId] : null,
+      ));
     }
 
     // Apply date filter
@@ -382,6 +404,11 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
 class _SaleWithDetails {
   final Sale sale;
   final String? clientName;
+  final String? agentName; // only populated for Admin / Finance / Super-Admin
 
-  _SaleWithDetails({required this.sale, this.clientName});
+  _SaleWithDetails({
+    required this.sale,
+    this.clientName,
+    this.agentName,
+  });
 }
