@@ -22,6 +22,8 @@ class AppConstants {
   static const String keyUserRole = 'user_role';
   static const String keyIsLoggedIn = 'is_logged_in';
   static const String keyLastSyncTime = 'last_sync_time';
+  static const String keyRememberMe = 'remember_me';
+  static const String keyRememberedEmail = 'remembered_email';
 
   // Pagination
   static const int defaultPageSize = 20;

@@ -74,6 +74,28 @@ class SecureStorageService {
     return null;
   }
 
+  // Remember Me
+  Future<void> saveRememberedEmail(String email) async {
+    await _storage.write(key: AppConstants.keyRememberedEmail, value: email);
+    await _storage.write(key: AppConstants.keyRememberMe, value: 'true');
+  }
+
+  Future<String?> getRememberedEmail() async {
+    final remember = await _storage.read(key: AppConstants.keyRememberMe);
+    if (remember != 'true') return null;
+    return await _storage.read(key: AppConstants.keyRememberedEmail);
+  }
+
+  Future<bool> isRememberMe() async {
+    final value = await _storage.read(key: AppConstants.keyRememberMe);
+    return value == 'true';
+  }
+
+  Future<void> clearRememberedEmail() async {
+    await _storage.delete(key: AppConstants.keyRememberedEmail);
+    await _storage.delete(key: AppConstants.keyRememberMe);
+  }
+
   // Clear all data
   Future<void> clearAll() async {
     await _storage.deleteAll();

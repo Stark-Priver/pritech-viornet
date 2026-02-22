@@ -1,167 +1,13 @@
-import 'dart:math' as math;
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/theme/geo_theme.dart';
+import '../../../core/widgets/glass_alert_dialog.dart';
+import '../../../core/providers/providers.dart';
 import '../providers/auth_provider.dart';
 
-// ─── Colour palette ──────────────────────────────────────────────────────────
-const _kBg1 = Color(0xFF0A0E27);
-const _kBg2 = Color(0xFF0D1B3E);
-const _kAccent1 = Color(0xFF00D4FF); // cyan
-const _kAccent2 = Color(0xFF7B2FBE); // purple
-const _kAccent3 = Color(0xFF00FFB3); // teal-green
-
-// ─── Geometric background painter ────────────────────────────────────────────
-class _GeometricPainter extends CustomPainter {
-  final double t; // 0..1 animation progress
-
-  _GeometricPainter(this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Gradient background
-    final bgRect = Offset.zero & size;
-    canvas.drawRect(
-      bgRect,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_kBg1, _kBg2, Color(0xFF12102A)],
-        ).createShader(bgRect),
-    );
-
-    // ── Floating orbs ──────────────────────────────────────────────────────
-    _drawOrb(
-        canvas,
-        Offset(w * 0.15, h * 0.18 + math.sin(t * math.pi * 2) * 18),
-        w * 0.38,
-        _kAccent2.withValues(alpha: 0.18));
-    _drawOrb(
-        canvas,
-        Offset(w * 0.82, h * 0.72 + math.cos(t * math.pi * 2) * 22),
-        w * 0.42,
-        _kAccent1.withValues(alpha: 0.14));
-    _drawOrb(
-        canvas,
-        Offset(w * 0.55, h * 0.1 + math.sin(t * math.pi * 2 + 1) * 14),
-        w * 0.22,
-        _kAccent3.withValues(alpha: 0.12));
-    _drawOrb(
-        canvas,
-        Offset(w * 0.08, h * 0.85 + math.cos(t * math.pi * 2 + 2) * 16),
-        w * 0.3,
-        _kAccent1.withValues(alpha: 0.10));
-
-    // ── Grid lines ─────────────────────────────────────────────────────────
-    final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
-      ..strokeWidth = 1;
-    const step = 48.0;
-    for (double x = 0; x < w; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, h), gridPaint);
-    }
-    for (double y = 0; y < h; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(w, y), gridPaint);
-    }
-
-    // ── Diagonal accent lines ───────────────────────────────────────────────
-    final linePaint = Paint()
-      ..color = _kAccent1.withValues(alpha: 0.08)
-      ..strokeWidth = 1.2;
-    for (int i = -4; i < 12; i++) {
-      final offset = i * 80.0 + (t * 80);
-      canvas.drawLine(
-        Offset(offset, 0),
-        Offset(offset + h * 0.6, h),
-        linePaint,
-      );
-    }
-
-    // ── Hexagon ring decorations ────────────────────────────────────────────
-    _drawHexRing(canvas, Offset(w * 0.88, h * 0.12), 44,
-        _kAccent1.withValues(alpha: 0.18));
-    _drawHexRing(canvas, Offset(w * 0.06, h * 0.6), 32,
-        _kAccent2.withValues(alpha: 0.20));
-    _drawHexRing(canvas, Offset(w * 0.72, h * 0.92), 52,
-        _kAccent3.withValues(alpha: 0.14));
-
-    // ── Corner accent triangles ─────────────────────────────────────────────
-    _drawTriangle(canvas, Offset(0, 0), Offset(w * 0.22, 0),
-        Offset(0, h * 0.14), _kAccent1.withValues(alpha: 0.07));
-    _drawTriangle(canvas, Offset(w, h), Offset(w * 0.78, h),
-        Offset(w, h * 0.86), _kAccent2.withValues(alpha: 0.09));
-  }
-
-  void _drawOrb(Canvas canvas, Offset center, double radius, Color color) {
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..shader = RadialGradient(
-          colors: [color, color.withValues(alpha: 0)],
-        ).createShader(Rect.fromCircle(center: center, radius: radius)),
-    );
-  }
-
-  void _drawHexRing(Canvas canvas, Offset center, double r, Color color) {
-    final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final angle = (math.pi / 3) * i - math.pi / 6;
-      final x = center.dx + r * math.cos(angle);
-      final y = center.dy + r * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(
-        path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = color);
-    // inner ring
-    final path2 = Path();
-    for (int i = 0; i < 6; i++) {
-      final angle = (math.pi / 3) * i - math.pi / 6;
-      final x = center.dx + (r * 0.6) * math.cos(angle);
-      final y = center.dy + (r * 0.6) * math.sin(angle);
-      if (i == 0) {
-        path2.moveTo(x, y);
-      } else {
-        path2.lineTo(x, y);
-      }
-    }
-    path2.close();
-    canvas.drawPath(
-        path2,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8
-          ..color = color.withValues(alpha: color.a * 0.6));
-  }
-
-  void _drawTriangle(Canvas canvas, Offset a, Offset b, Offset c, Color color) {
-    final path = Path()
-      ..moveTo(a.dx, a.dy)
-      ..lineTo(b.dx, b.dy)
-      ..lineTo(c.dx, c.dy)
-      ..close();
-    canvas.drawPath(path, Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_GeometricPainter old) => old.t != t;
-}
-
-// ─── Login Screen ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Login Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -175,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _rememberMe = false;
   late final AnimationController _animCtrl;
 
   @override
@@ -184,6 +31,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 12),
     )..repeat();
+    _loadRememberedCredentials();
+  }
+
+  Future<void> _loadRememberedCredentials() async {
+    final storage = ref.read(secureStorageProvider);
+    final email = await storage.getRememberedEmail();
+    final remember = await storage.isRememberMe();
+    if (email != null && mounted) {
+      setState(() {
+        _emailController.text = email;
+        _rememberMe = remember;
+      });
+    }
   }
 
   @override
@@ -196,19 +56,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      final email = _emailController.text.trim();
       final success = await ref
           .read(authProvider.notifier)
-          .login(_emailController.text.trim(), _passwordController.text);
-      if (success && mounted) context.go('/');
+          .login(email, _passwordController.text);
+      if (!mounted) return;
+      final storage = ref.read(secureStorageProvider);
+      if (success) {
+        if (_rememberMe) {
+          await storage.saveRememberedEmail(email);
+        } else {
+          await storage.clearRememberedEmail();
+        }
+        context.go('/');
+      } else {
+        final error = ref.read(authProvider).error ??
+            'Invalid credentials. Please check your email and password.';
+        showGlassAlertDialog(
+          context: context,
+          type: GlassDialogType.error,
+          title: 'Authentication Failed',
+          message: error,
+          confirmLabel: 'Try Again',
+          onConfirm: _passwordController.clear,
+        );
+      }
     }
   }
 
-  // ── Glassmorphism input decoration ────────────────────────────────────────
+  // â”€â”€ Glassmorphism input decoration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   InputDecoration _glassInput(String label, IconData icon, {Widget? suffix}) =>
       InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-        prefixIcon: Icon(icon, color: _kAccent1.withValues(alpha: 0.8)),
+        prefixIcon: Icon(icon, color: kGeoAccent1.withValues(alpha: 0.8)),
         suffixIcon: suffix,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.07),
@@ -219,7 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _kAccent1, width: 1.5),
+          borderSide: const BorderSide(color: kGeoAccent1, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -245,12 +126,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           return Stack(
             fit: StackFit.expand,
             children: [
-              // ── Geometric background ──────────────────────────────────────
+              // â”€â”€ Geometric background â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               CustomPaint(
-                painter: _GeometricPainter(_animCtrl.value),
+                painter: GeoBackgroundPainter(_animCtrl.value),
               ),
 
-              // ── Scrollable form ───────────────────────────────────────────
+              // â”€â”€ Scrollable form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               SafeArea(
                 child: Center(
                   child: SingleChildScrollView(
@@ -272,7 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: _kAccent2.withValues(alpha: 0.18),
+                                  color: kGeoAccent2.withValues(alpha: 0.18),
                                   blurRadius: 40,
                                   spreadRadius: -4,
                                 ),
@@ -291,7 +172,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  // ── Logo ─────────────────────────────────
+                                  // â”€â”€ Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   Center(
                                     child: Container(
                                       width: 72,
@@ -299,13 +180,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         gradient: const LinearGradient(
-                                          colors: [_kAccent1, _kAccent2],
+                                          colors: [kGeoAccent1, kGeoAccent2],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: _kAccent1.withValues(
+                                            color: kGeoAccent1.withValues(
                                                 alpha: 0.4),
                                             blurRadius: 20,
                                             spreadRadius: 2,
@@ -318,7 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                   const SizedBox(height: 20),
 
-                                  // ── Title ────────────────────────────────
+                                  // â”€â”€ Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   const Text(
                                     'ViorNet',
                                     textAlign: TextAlign.center,
@@ -342,7 +223,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                   const SizedBox(height: 36),
 
-                                  // ── Email ────────────────────────────────
+                                  // â”€â”€ Email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   TextFormField(
                                     controller: _emailController,
                                     keyboardType: TextInputType.text,
@@ -358,7 +239,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   ),
                                   const SizedBox(height: 16),
 
-                                  // ── Password ─────────────────────────────
+                                  // â”€â”€ Password â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   TextFormField(
                                     controller: _passwordController,
                                     obscureText: _obscurePassword,
@@ -386,43 +267,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       return null;
                                     },
                                   ),
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 12),
 
-                                  // ── Error ─────────────────────────────────
-                                  if (authState.error != null)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.red.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: Colors.red
-                                              .withValues(alpha: 0.45),
+                                  // ── Remember Me ───────────────────────────────────────
+                                  Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: Checkbox(
+                                          value: _rememberMe,
+                                          onChanged: (v) => setState(
+                                              () => _rememberMe = v ?? false),
+                                          activeColor: kGeoAccent1,
+                                          checkColor: kGeoBg1,
+                                          side: BorderSide(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.35),
+                                            width: 1.5,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                          ),
+                                          materialTapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                         ),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.error_outline,
-                                              color: Color(0xFFFF6B6B),
-                                              size: 18),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              authState.error!,
-                                              style: const TextStyle(
-                                                  color: Color(0xFFFF6B6B),
-                                                  fontSize: 13),
-                                            ),
+                                      const SizedBox(width: 10),
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                            () => _rememberMe = !_rememberMe),
+                                        child: Text(
+                                          'Remember me',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.white
+                                                .withValues(alpha: 0.70),
+                                            fontWeight: FontWeight.w500,
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
+                                    ],
+                                  ),
 
-                                  const SizedBox(height: 8),
-
-                                  // ── Login button ──────────────────────────
+                                  const SizedBox(height: 20),
+                                  // â”€â”€ Login button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   SizedBox(
                                     height: 52,
                                     child: DecoratedBox(
@@ -431,7 +321,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         gradient: authState.isLoading
                                             ? null
                                             : const LinearGradient(
-                                                colors: [_kAccent1, _kAccent2],
+                                                colors: [
+                                                  kGeoAccent1,
+                                                  kGeoAccent2
+                                                ],
                                                 begin: Alignment.centerLeft,
                                                 end: Alignment.centerRight,
                                               ),
@@ -439,7 +332,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                             ? null
                                             : [
                                                 BoxShadow(
-                                                  color: _kAccent1.withValues(
+                                                  color: kGeoAccent1.withValues(
                                                       alpha: 0.35),
                                                   blurRadius: 16,
                                                   offset: const Offset(0, 6),
@@ -485,7 +378,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                                   const SizedBox(height: 28),
 
-                                  // ── Divider ────────────────────────────────
+                                  // â”€â”€ Divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                   Row(
                                     children: [
                                       Expanded(
@@ -496,7 +389,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12),
                                         child: Text(
-                                          '© 2026 Pritech Vior Softech',
+                                          'Â© 2026 Pritech Vior Softech',
                                           style: TextStyle(
                                             fontSize: 10,
                                             color: Colors.white

@@ -27,37 +27,69 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/settings/screens/commission_settings_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 
-// Router Provider
+// ── Router notifier ──────────────────────────────────────────────────────────
+// Wraps auth state as a ChangeNotifier so GoRouter can use it as a
+// refreshListenable WITHOUT recreating the GoRouter instance on each change.
+class _RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  _RouterNotifier(this._ref) {
+    // Only retrigger redirect logic when the meaningful auth status changes:
+    // - loading finishes (either way), or
+    // - authenticated flag flips.
+    // Firing on the transient loading->loading tick causes brief route flashes.
+    _ref.listen<AuthState>(authProvider, (prev, next) {
+      final wasLoading = prev?.isLoading ?? true;
+      final wasAuthenticated = prev?.isAuthenticated ?? false;
+      final loadingEnded = wasLoading && !next.isLoading;
+      final authFlipped = wasAuthenticated != next.isAuthenticated;
+      if (loadingEnded || authFlipped) notifyListeners();
+    });
+  }
+
+  String? redirect(BuildContext context, GoRouterState routerState) {
+    final authState = _ref.read(authProvider);
+
+    // Never redirect while auth is still initialising (avoids flicker).
+    if (authState.isLoading) return null;
+
+    final isLoggedIn = authState.isAuthenticated;
+    final goingToLogin = routerState.uri.path == '/login';
+    final goingToSplash = routerState.uri.path == '/splash';
+
+    // Splash is always allowed.
+    if (goingToSplash) return null;
+
+    // Unauthenticated users can only be on /login.
+    if (!isLoggedIn && !goingToLogin) return '/login';
+
+    // Authenticated user landing on /login → go to dashboard.
+    if (isLoggedIn && goingToLogin) return '/';
+
+    // RBAC route guard.
+    if (isLoggedIn && !goingToLogin && !goingToSplash) {
+      final checker = PermissionChecker(authState.userRoles);
+      if (!checker.canAccessRoute(routerState.uri.path)) return '/';
+    }
+
+    return null;
+  }
+}
+
+final _routerNotifierProvider =
+    ChangeNotifierProvider<_RouterNotifier>((ref) => _RouterNotifier(ref));
+
+// Router Provider — created ONCE; auth changes only retrigger redirect logic.
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // ref.READ (not watch) — prevents the Provider from rebuilding when the
+  // notifier fires. GoRouter's refreshListenable handles re-running redirect
+  // internally without ever recreating the router instance.
+  final notifier = ref.read(_routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/splash',
-    redirect: (context, state) {
-      final isLoggedIn = authState.isAuthenticated;
-      final goingToLogin = state.uri.path == '/login';
-      final goingToSplash = state.uri.path == '/splash';
-
-      // Allow splash screen always
-      if (goingToSplash) return null;
-
-      // /register is only reachable when already authenticated (admins only)
-      if (!isLoggedIn && !goingToLogin) return '/login';
-
-      // If logged in and going to login, redirect to dashboard
-      if (isLoggedIn && goingToLogin) return '/';
-
-      // Check route permissions for authenticated users
-      if (isLoggedIn && !goingToLogin && !goingToSplash) {
-        final checker = PermissionChecker(authState.userRoles);
-        if (!checker.canAccessRoute(state.uri.path)) {
-          // User doesn't have permission, redirect to dashboard
-          return '/';
-        }
-      }
-
-      return null;
-    },
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
     routes: [
       // Splash Screen (no layout)
       GoRoute(

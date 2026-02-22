@@ -18,20 +18,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // Check if user is already logged in (stored session)
   Future<void> _checkAuthStatus() async {
-    final isLoggedIn = await _storage.isLoggedIn();
-    if (isLoggedIn) {
-      final userId = await _storage.getUserId();
-      if (userId != null) {
-        final user = await _svc.getUserById(int.parse(userId));
-        if (user != null) {
-          final userRoles = await _svc.getUserRoleNames(user.id);
-          final userSites = await _svc.getUserSiteIds(user.id);
-          state = AuthState.authenticated(user, userRoles, userSites);
-        } else {
-          await logout();
+    try {
+      final isLoggedIn = await _storage.isLoggedIn();
+      if (isLoggedIn) {
+        final userId = await _storage.getUserId();
+        if (userId != null) {
+          final user = await _svc.getUserById(int.parse(userId));
+          if (user != null) {
+            final userRoles = await _svc.getUserRoleNames(user.id);
+            final userSites = await _svc.getUserSiteIds(user.id);
+            state = AuthState.authenticated(user, userRoles, userSites);
+            return;
+          }
         }
       }
-    }
+    } catch (_) {}
+    // Always settle into unauthenticated if we didn't authenticate above.
+    state = AuthState.unauthenticated();
   }
 
   // Login with email or phone + password
@@ -191,7 +194,7 @@ class AuthState {
     this.error,
   });
 
-  factory AuthState.initial() => AuthState();
+  factory AuthState.initial() => AuthState(isLoading: true);
 
   factory AuthState.loading() => AuthState(isLoading: true);
 
