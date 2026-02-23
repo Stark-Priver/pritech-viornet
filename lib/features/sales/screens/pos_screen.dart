@@ -671,7 +671,7 @@ Thank you!
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<Site>(
-                      initialValue: _selectedSite,
+                      value: _selectedSite,
                       decoration: const InputDecoration(
                         labelText: 'Site *',
                         border: OutlineInputBorder(),
@@ -694,7 +694,7 @@ Thank you!
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _saleType,
+                      value: _saleType,
                       decoration: const InputDecoration(
                           labelText: 'Sale Type', border: OutlineInputBorder()),
                       items: const [
@@ -749,7 +749,7 @@ Thank you!
                                   filled: true,
                                   fillColor: Colors.white,
                                 ),
-                                initialValue: _selectedPackage?.id,
+                                value: _selectedPackage?.id,
                                 items: _packages
                                     .map((pkg) => DropdownMenuItem(
                                           value: pkg.id,
@@ -803,7 +803,7 @@ Thank you!
                                   filled: true,
                                   fillColor: Colors.white,
                                 ),
-                                initialValue: _selectedVoucher?.id,
+                                value: _selectedVoucher?.id,
                                 items: _availableVouchers
                                     .map((voucher) => DropdownMenuItem(
                                           value: voucher.id,
@@ -900,7 +900,7 @@ Thank you!
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _paymentMethod,
+                      value: _paymentMethod,
                       decoration: const InputDecoration(
                           labelText: 'Payment Method',
                           border: OutlineInputBorder()),

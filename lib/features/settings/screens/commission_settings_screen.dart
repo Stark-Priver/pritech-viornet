@@ -417,7 +417,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _commissionType,
+                value: _commissionType,
                 decoration: const InputDecoration(labelText: 'Commission Type'),
                 items: const [
                   DropdownMenuItem(
@@ -472,7 +472,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _applicableTo,
+                value: _applicableTo,
                 decoration: const InputDecoration(labelText: 'Applicable To'),
                 items: const [
                   DropdownMenuItem(
@@ -498,7 +498,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
                   builder: (context, snapshot) {
                     final users = snapshot.data ?? [];
                     return DropdownButtonFormField<int>(
-                      initialValue: _selectedUserId,
+                      value: _selectedUserId,
                       decoration: const InputDecoration(
                         labelText: 'Select Agent/User',
                       ),
@@ -522,7 +522,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
                   builder: (context, snapshot) {
                     final packages = snapshot.data ?? [];
                     return DropdownButtonFormField<int>(
-                      initialValue: _selectedPackageId,
+                      value: _selectedPackageId,
                       decoration: const InputDecoration(
                         labelText: 'Select Package',
                       ),

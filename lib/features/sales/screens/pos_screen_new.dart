@@ -213,7 +213,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _saleType,
+                      value: _saleType,
                       decoration: const InputDecoration(
                         labelText: 'Sale Type',
                         border: OutlineInputBorder(),
@@ -254,7 +254,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      initialValue: _paymentMethod,
+                      value: _paymentMethod,
                       decoration: const InputDecoration(
                         labelText: 'Payment Method',
                         border: OutlineInputBorder(),

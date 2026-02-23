@@ -318,7 +318,7 @@ class _VoucherManagementScreenState
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
                 decoration: const InputDecoration(labelText: 'Site (Required)'),
-                initialValue: selectedSiteId,
+                value: selectedSiteId,
                 items: sites
                     .map((site) => DropdownMenuItem(
                           value: site.id,
@@ -331,7 +331,7 @@ class _VoucherManagementScreenState
               DropdownButtonFormField<int>(
                 decoration:
                     const InputDecoration(labelText: 'Package (Optional)'),
-                initialValue: selectedPackageId,
+                value: selectedPackageId,
                 items: packages
                     .map((pkg) => DropdownMenuItem(
                           value: pkg.id,
@@ -516,7 +516,7 @@ class _VoucherManagementScreenState
               children: [
                 DropdownButtonFormField<int?>(
                   decoration: const InputDecoration(labelText: 'Package'),
-                  initialValue: tempPackageFilter,
+                  value: tempPackageFilter,
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All')),
                     ...packages.map((pkg) => DropdownMenuItem(
@@ -530,7 +530,7 @@ class _VoucherManagementScreenState
                 const SizedBox(height: 16),
                 DropdownButtonFormField<int?>(
                   decoration: const InputDecoration(labelText: 'Site'),
-                  initialValue: tempSiteFilter,
+                  value: tempSiteFilter,
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All')),
                     ...sites.map((site) => DropdownMenuItem(

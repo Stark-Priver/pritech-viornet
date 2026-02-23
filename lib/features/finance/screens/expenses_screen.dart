@@ -287,7 +287,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: category,
+                          value: category,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),

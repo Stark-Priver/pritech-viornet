@@ -481,7 +481,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          initialValue: role,
+                          value: role,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),

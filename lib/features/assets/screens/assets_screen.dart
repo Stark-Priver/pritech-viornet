@@ -179,7 +179,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: type,
+                  value: type,
                   decoration: const InputDecoration(labelText: 'Type'),
                   items: ['ROUTER', 'AP', 'SWITCH', 'UPS', 'CABLE', 'OTHER']
                       .map((t) => DropdownMenuItem(value: t, child: Text(t)))
@@ -193,7 +193,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: condition,
+                  value: condition,
                   decoration: const InputDecoration(labelText: 'Condition'),
                   items: ['NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED']
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))

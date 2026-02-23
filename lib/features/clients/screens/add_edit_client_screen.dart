@@ -269,7 +269,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
                     ),
                   ),
                   DropdownButtonFormField<int>(
-                    initialValue: _selectedSiteId,
+                    value: _selectedSiteId,
                     decoration: const InputDecoration(
                       labelText: 'Site *',
                       prefixIcon: Icon(Icons.cell_tower),
@@ -287,7 +287,7 @@ class _AddEditClientScreenState extends ConsumerState<AddEditClientScreen> {
                   if (canAssign && _users.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int?>(
-                      initialValue: _assignedToId,
+                      value: _assignedToId,
                       decoration: const InputDecoration(
                         labelText: 'Assign to User (optional)',
                         prefixIcon: Icon(Icons.person_pin),
