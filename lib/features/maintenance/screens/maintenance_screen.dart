@@ -386,7 +386,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: priority,
+                  initialValue: priority,
                   decoration: const InputDecoration(
                     labelText: 'Priority',
                     border: OutlineInputBorder(),
@@ -407,7 +407,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                   builder: (context, snapshot) {
                     final sites = snapshot.data ?? [];
                     return DropdownButtonFormField<int?>(
-                      value: selectedSiteId,
+                      initialValue: selectedSiteId,
                       decoration: const InputDecoration(
                         labelText: 'Site (Optional)',
                         border: OutlineInputBorder(),
@@ -438,7 +438,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                       if (assets.isEmpty) return const SizedBox.shrink();
 
                       return DropdownButtonFormField<int?>(
-                        value: selectedAssetId,
+                        initialValue: selectedAssetId,
                         decoration: const InputDecoration(
                           labelText: 'Asset (Optional)',
                           border: OutlineInputBorder(),
@@ -680,7 +680,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: newStatus,
+                initialValue: newStatus,
                 decoration: const InputDecoration(
                   labelText: 'Status',
                   border: OutlineInputBorder(),
@@ -701,7 +701,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
                 builder: (context, snapshot) {
                   final users = snapshot.data ?? [];
                   return DropdownButtonFormField<int?>(
-                    value: assignedTo ?? maintenance.assignedTo,
+                    initialValue: assignedTo ?? maintenance.assignedTo,
                     decoration: const InputDecoration(
                       labelText: 'Assign To (Optional)',
                       border: OutlineInputBorder(),

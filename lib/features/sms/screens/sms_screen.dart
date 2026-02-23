@@ -344,7 +344,7 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
                     if (sites.isEmpty) return const SizedBox();
 
                     return DropdownButtonFormField<int?>(
-                      value: _selectedSiteId,
+                      initialValue: _selectedSiteId,
                       decoration: const InputDecoration(
                         labelText: 'Filter by Site',
                         border: OutlineInputBorder(),
@@ -1334,7 +1334,7 @@ class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
               builder: (context, snapshot) {
                 final clients = snapshot.data ?? [];
                 return DropdownButtonFormField<Client?>(
-                  value: _selectedClient,
+                  initialValue: _selectedClient,
                   decoration: InputDecoration(
                     labelText: 'Select Client *',
                     border: OutlineInputBorder(
