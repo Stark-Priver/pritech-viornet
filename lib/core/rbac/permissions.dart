@@ -58,6 +58,10 @@ class Permissions {
   static const viewUsers = Permission('view_users', 'View Users');
   static const manageUsers = Permission('manage_users', 'Manage Users');
 
+  // Investors
+  static const manageInvestors =
+      Permission('manage_investors', 'Manage Investors');
+
   // Settings
   static const viewSettings = Permission('view_settings', 'View Settings');
   static const manageSettings =
@@ -111,6 +115,7 @@ class Roles {
       Permissions.manageUsers,
       Permissions.viewSettings,
       Permissions.manageSettings,
+      Permissions.manageInvestors,
     ],
   );
 
@@ -178,6 +183,7 @@ class Roles {
       Permissions.viewSales,
       Permissions.viewFinance,
       Permissions.manageExpenses,
+      Permissions.manageInvestors,
       Permissions.viewPackages,
       Permissions.viewSettings,
     ],
@@ -229,6 +235,7 @@ class Roles {
       Permissions.manageUsers,
       Permissions.viewSettings,
       Permissions.manageSettings,
+      Permissions.manageInvestors,
     ],
   );
 
@@ -294,6 +301,7 @@ class PermissionChecker {
       '/maintenance': [Permissions.viewMaintenance],
       '/finance': [Permissions.viewFinance],
       '/expenses': [Permissions.manageExpenses],
+      '/investors': [Permissions.manageInvestors],
       '/sms': [Permissions.viewSms],
       '/packages': [Permissions.viewPackages],
       '/users': [Permissions.viewUsers],

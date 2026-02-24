@@ -28,6 +28,7 @@ import '../../features/settings/screens/commission_settings_screen.dart';
 import '../../features/settings/screens/commission_demands_screen.dart';
 import '../../features/settings/screens/my_commissions_screen.dart';
 import '../../features/users/screens/users_screen.dart';
+import '../../features/investors/screens/investors_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
 // Wraps auth state as a ChangeNotifier so GoRouter can use it as a
@@ -180,6 +181,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/expenses',
             name: 'expenses',
             builder: (context, state) => const ExpensesScreen(),
+          ),
+          GoRoute(
+            path: '/investors',
+            name: 'investors',
+            builder: (context, state) => const InvestorsScreen(),
           ),
           GoRoute(
             path: '/sms',

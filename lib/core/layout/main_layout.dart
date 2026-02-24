@@ -108,6 +108,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       route: '/expenses',
     ),
     NavigationItem(
+      icon: Icons.people_outline_rounded,
+      label: 'Investors',
+      route: '/investors',
+    ),
+    NavigationItem(
       icon: Icons.pending_actions,
       label: 'Commission Demands',
       route: '/commission-demands',

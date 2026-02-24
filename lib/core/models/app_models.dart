@@ -1439,3 +1439,105 @@ class IspSubscription {
         updatedAt: updatedAt ?? this.updatedAt,
       );
 }
+
+// ============================================================
+// INVESTOR
+// ============================================================
+
+class Investor {
+  final int id;
+  final String name;
+  final String? email;
+  final String? phone;
+  final double investedAmount;
+  final DateTime investDate;
+
+  /// Percentage of net profit returned to this investor per period.
+  final double roiPercentage;
+
+  /// MONTHLY | QUARTERLY | ANNUALLY
+  final String returnPeriod;
+  final String? notes;
+  final bool isActive;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const Investor({
+    required this.id,
+    required this.name,
+    this.email,
+    this.phone,
+    required this.investedAmount,
+    required this.investDate,
+    required this.roiPercentage,
+    required this.returnPeriod,
+    this.notes,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Investor.fromJson(Map<String, dynamic> json) => Investor(
+        id: json['id'] as int,
+        name: json['name'] as String,
+        email: json['email'] as String?,
+        phone: json['phone'] as String?,
+        investedAmount: (json['invested_amount'] as num?)?.toDouble() ?? 0.0,
+        investDate: DateTime.parse(json['invest_date'] as String),
+        roiPercentage: (json['roi_percentage'] as num?)?.toDouble() ?? 0.0,
+        returnPeriod: json['return_period'] as String? ?? 'MONTHLY',
+        notes: json['notes'] as String?,
+        isActive: json['is_active'] as bool? ?? true,
+        createdAt: DateTime.parse(
+            json['created_at'] as String? ?? DateTime.now().toIso8601String()),
+        updatedAt: DateTime.parse(
+            json['updated_at'] as String? ?? DateTime.now().toIso8601String()),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        'invested_amount': investedAmount,
+        'invest_date': investDate.toIso8601String().split('T').first,
+        'roi_percentage': roiPercentage,
+        'return_period': returnPeriod,
+        if (notes != null) 'notes': notes,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+
+  Investor copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? phone,
+    double? investedAmount,
+    DateTime? investDate,
+    double? roiPercentage,
+    String? returnPeriod,
+    String? notes,
+    bool? isActive,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) =>
+      Investor(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        email: email ?? this.email,
+        phone: phone ?? this.phone,
+        investedAmount: investedAmount ?? this.investedAmount,
+        investDate: investDate ?? this.investDate,
+        roiPercentage: roiPercentage ?? this.roiPercentage,
+        returnPeriod: returnPeriod ?? this.returnPeriod,
+        notes: notes ?? this.notes,
+        isActive: isActive ?? this.isActive,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+
+  /// Calculates investor return amount for a given net profit.
+  double calculateReturn(double netProfit) => netProfit * (roiPercentage / 100);
+}

@@ -766,10 +766,34 @@ class _AddEditIspSubscriptionScreenState
               : _notesController.text.trim(),
         );
 
+        // Auto-record ISP subscription as an INTERNET expense
+        final subscriptionAmount =
+            double.tryParse(_amountController.text) ?? 0.0;
+        if (subscriptionAmount > 0) {
+          try {
+            final expenseFields = <String, dynamic>{
+              'category': 'INTERNET',
+              'description': 'ISP - ${_providerController.text.trim()}',
+              'amount': subscriptionAmount,
+              'site_id': widget.siteId,
+              'expense_date': _paidAt!.toIso8601String(),
+            };
+            final notesVal = _notesController.text.trim();
+            if (notesVal.isNotEmpty) {
+              expenseFields['notes'] =
+                  'Auto-recorded from ISP subscription. $notesVal';
+            }
+            await SupabaseDataService().createExpense(expenseFields);
+          } catch (_) {
+            // Never block ISP save on expense side-effect failure
+          }
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('ISP subscription added successfully'),
+              content: Text(
+                  'ISP subscription added and expense recorded automatically'),
               backgroundColor: Colors.green,
             ),
           );

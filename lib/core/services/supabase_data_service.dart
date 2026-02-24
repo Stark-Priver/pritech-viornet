@@ -863,6 +863,54 @@ class SupabaseDataService {
   }
 
   // =========================================================================
+  // INVESTORS
+  // =========================================================================
+
+  Future<List<Investor>> getAllInvestors() async {
+    final data = await _client
+        .from('investors')
+        .select()
+        .order('created_at', ascending: false);
+    return (data as List).map((e) => Investor.fromJson(e)).toList();
+  }
+
+  Future<List<Investor>> getActiveInvestors() async {
+    final data = await _client
+        .from('investors')
+        .select()
+        .eq('is_active', true)
+        .order('name');
+    return (data as List).map((e) => Investor.fromJson(e)).toList();
+  }
+
+  Future<Investor> createInvestor(Map<String, dynamic> fields) async {
+    fields['created_at'] = DateTime.now().toIso8601String();
+    fields['updated_at'] = DateTime.now().toIso8601String();
+    final data =
+        await _client.from('investors').insert(fields).select().single();
+    return Investor.fromJson(data);
+  }
+
+  Future<bool> updateInvestor(int id, Map<String, dynamic> fields) async {
+    fields['updated_at'] = DateTime.now().toIso8601String();
+    await _client.from('investors').update(fields).eq('id', id);
+    return true;
+  }
+
+  Future<void> deleteInvestor(int id) async {
+    await _client.from('investors').delete().eq('id', id);
+  }
+
+  Future<double> getTotalInvestedAmount() async {
+    final data = await _client
+        .from('investors')
+        .select('invested_amount')
+        .eq('is_active', true);
+    return (data as List).fold<double>(
+        0, (s, e) => s + (e['invested_amount'] as num).toDouble());
+  }
+
+  // =========================================================================
   // ASSETS
   // =========================================================================
 
