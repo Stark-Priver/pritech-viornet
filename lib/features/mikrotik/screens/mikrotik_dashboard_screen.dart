@@ -46,17 +46,17 @@ class _MikroTikDashboardScreenState
   Future<void> _disconnect() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('Disconnect'),
         content:
             const Text('Are you sure you want to disconnect from the router?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Disconnect'),
           ),
         ],
@@ -71,7 +71,7 @@ class _MikroTikDashboardScreenState
   Future<void> _confirmReboot() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange),
         title: const Text('Reboot Router'),
         content: const Text(
@@ -80,11 +80,11 @@ class _MikroTikDashboardScreenState
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton.tonal(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.orange.shade100,
               foregroundColor: Colors.orange.shade900,

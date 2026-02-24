@@ -410,16 +410,16 @@ class _MikroTikPppTabState extends ConsumerState<MikroTikPppTab>
   Future<bool> _confirmDelete(BuildContext context, String message) async {
     return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (ctx) => AlertDialog(
             title: const Text('Confirm'),
             content: Text(message),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 child: const Text('Confirm'),
               ),

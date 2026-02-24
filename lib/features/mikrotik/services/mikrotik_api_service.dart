@@ -24,6 +24,10 @@ class MikroTikApiService {
       StreamController.broadcast();
   StreamSubscription? _socketSub;
 
+  // Serialises all API calls so only one sendCommand runs at a time.
+  // Concurrent callers chain onto this future and wait their turn.
+  Future<dynamic> _commandQueue = Future.value();
+
   bool get isConnected => _socket != null;
 
   // ── Connect & Login ──────────────────────────────────────────────────────────
@@ -53,6 +57,7 @@ class MikroTikApiService {
     await _socket?.close();
     _socket = null;
     _buffer.clear();
+    _commandQueue = Future.value(); // reset queue on disconnect
   }
 
   // ── Auto-detecting login ──────────────────────────────────────────────────────
@@ -98,7 +103,24 @@ class MikroTikApiService {
   }
 
   // ── Send a command & collect reply ───────────────────────────────────────────
+  /// Public entry-point: serialises all calls through [_commandQueue] so that
+  /// two concurrent callers never share the same broadcast-stream listener.
   Future<MikroTikReply> sendCommand(
+    String command, {
+    Map<String, String> params = const {},
+    List<String> queries = const [],
+  }) {
+    // Chain each call onto the previous one so they never overlap.
+    final next = _commandQueue.then(
+      (_) => _sendCommandNow(command, params: params, queries: queries),
+    );
+    // Store the new tail (errors are swallowed from the queue itself so a
+    // failing call doesn't prevent subsequent ones from running).
+    _commandQueue = next.catchError((_) => <Map<String, String>>[]);
+    return next;
+  }
+
+  Future<MikroTikReply> _sendCommandNow(
     String command, {
     Map<String, String> params = const {},
     List<String> queries = const [],

@@ -221,6 +221,11 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) async {
+            // Wait one frame so the PopupMenu route finishes dismissing before
+            // we push a new route (showDialog). Without this the navigator is
+            // still locked and throws '!_debugLocked'.
+            await Future.delayed(Duration.zero);
+            if (!mounted) return;
             if (value == 'edit') {
               await _showEditUserDialog(context, user);
             } else if (value == 'toggle') {
@@ -608,16 +613,16 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
   Future<bool> _confirmDelete(BuildContext context, String message) async {
     return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (ctx) => AlertDialog(
             title: const Text('Confirm'),
             content: Text(message),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(ctx, true),
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 child: const Text('Confirm'),
               ),

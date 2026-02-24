@@ -31,6 +31,7 @@ import '../../features/users/screens/users_screen.dart';
 import '../../features/investors/screens/investors_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_connect_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_dashboard_screen.dart';
+import '../../features/mikrotik/screens/mikrotik_sites_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
 // Wraps auth state as a ChangeNotifier so GoRouter can use it as a
@@ -239,6 +240,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/mikrotik',
             name: 'mikrotik',
+            builder: (context, state) => const MikroTikSitesScreen(),
+          ),
+          GoRoute(
+            path: '/mikrotik/connect',
+            name: 'mikrotik-connect',
             builder: (context, state) => const MikroTikConnectScreen(),
           ),
           GoRoute(
