@@ -36,7 +36,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       ];
     }
 
-    final checker = PermissionChecker(userRoles);
+    final checker = PermissionChecker(
+      userRoles,
+      customRolePermissions: authState.customRolePermissions,
+      overrides: authState.permissionOverrides,
+    );
 
     final filteredItems = _allNavigationItems.where((item) {
       // Restrict ISP Subscription to FINANCE and SUPER_ADMIN only
@@ -58,6 +62,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // MikroTik — TECHNICAL, ADMIN, SUPER_ADMIN only
       if (item.route == '/mikrotik') {
         return checker.hasAnyRole(['SUPER_ADMIN', 'ADMIN', 'TECHNICAL']);
+      }
+      // Team Management — SUPER_ADMIN only
+      if (item.route == '/team-management') {
+        return checker.hasAnyRole(['SUPER_ADMIN']);
       }
       return checker.canAccessRoute(item.route);
     }).toList();
@@ -136,6 +144,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       icon: Icons.router,
       label: 'MikroTik',
       route: '/mikrotik',
+    ),
+    NavigationItem(
+      icon: Icons.admin_panel_settings_outlined,
+      label: 'Team Mgmt',
+      route: '/team-management',
     ),
     NavigationItem(icon: Icons.settings, label: 'Settings', route: '/settings'),
   ];

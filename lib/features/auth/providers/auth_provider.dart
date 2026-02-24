@@ -27,7 +27,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
           if (user != null) {
             final userRoles = await _svc.getUserRoleNames(user.id);
             final userSites = await _svc.getUserSiteIds(user.id);
-            state = AuthState.authenticated(user, userRoles, userSites);
+            final customRolePerms =
+                await _svc.getUserCustomRolePermissions(user.id);
+            final overrides = await _svc.getUserPermissionOverridesMap(user.id);
+            state = AuthState.authenticated(user, userRoles, userSites,
+                customRolePermissions: customRolePerms,
+                permissionOverrides: overrides);
             return;
           }
         }
@@ -59,12 +64,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (user != null) {
         final userRoles = await _svc.getUserRoleNames(user.id);
         final userSites = await _svc.getUserSiteIds(user.id);
+        final customRolePerms =
+            await _svc.getUserCustomRolePermissions(user.id);
+        final overrides = await _svc.getUserPermissionOverridesMap(user.id);
 
         await _storage.saveUserId(user.id.toString());
         await _storage.saveUserRole(user.role);
         await _storage.setLoggedIn(true);
 
-        state = AuthState.authenticated(user, userRoles, userSites);
+        state = AuthState.authenticated(user, userRoles, userSites,
+            customRolePermissions: customRolePerms,
+            permissionOverrides: overrides);
         return true;
       } else {
         state =
@@ -156,13 +166,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   bool hasPermission(Permission permission) {
     if (state.user == null || state.userRoles.isEmpty) return false;
-    final checker = PermissionChecker(state.userRoles);
+    final checker = PermissionChecker(
+      state.userRoles,
+      customRolePermissions: state.customRolePermissions,
+      overrides: state.permissionOverrides,
+    );
     return checker.hasPermission(permission);
   }
 
   bool canAccessRoute(String routePath) {
     if (state.user == null || state.userRoles.isEmpty) return false;
-    final checker = PermissionChecker(state.userRoles);
+    final checker = PermissionChecker(
+      state.userRoles,
+      customRolePermissions: state.customRolePermissions,
+      overrides: state.permissionOverrides,
+    );
     return checker.canAccessRoute(routePath);
   }
 
@@ -177,6 +195,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final checker = PermissionChecker(state.userRoles);
     return checker.hasAllRoles(roleNames);
   }
+
+  /// Reload the current user's permissions from Supabase.
+  /// Call after a Super Admin updates a user's role/overrides if the
+  /// *current* user was the target of the change.
+  Future<void> refreshPermissions() async {
+    if (state.user == null) return;
+    try {
+      final uid = state.user!.id;
+      final customPerms = await _svc.getUserCustomRolePermissions(uid);
+      final overrides = await _svc.getUserPermissionOverridesMap(uid);
+      state = AuthState.authenticated(
+        state.user!,
+        state.userRoles,
+        state.userSites,
+        customRolePermissions: customPerms,
+        permissionOverrides: overrides,
+      );
+    } catch (_) {}
+  }
 }
 
 // Auth State
@@ -187,12 +224,20 @@ class AuthState {
   final bool isLoading;
   final String? error;
 
+  /// Permissions from custom (DB-stored) roles assigned to this user.
+  final Set<String> customRolePermissions;
+
+  /// Per-user explicit GRANT/DENY overrides.
+  final Map<String, bool> permissionOverrides;
+
   AuthState({
     this.user,
     this.userRoles = const [],
     this.userSites = const [],
     this.isLoading = false,
     this.error,
+    this.customRolePermissions = const {},
+    this.permissionOverrides = const {},
   });
 
   factory AuthState.initial() => AuthState(isLoading: true);
@@ -200,8 +245,19 @@ class AuthState {
   factory AuthState.loading() => AuthState(isLoading: true);
 
   factory AuthState.authenticated(
-          AppUser user, List<String> roles, List<int> sites) =>
-      AuthState(user: user, userRoles: roles, userSites: sites);
+    AppUser user,
+    List<String> roles,
+    List<int> sites, {
+    Set<String> customRolePermissions = const {},
+    Map<String, bool> permissionOverrides = const {},
+  }) =>
+      AuthState(
+        user: user,
+        userRoles: roles,
+        userSites: sites,
+        customRolePermissions: customRolePermissions,
+        permissionOverrides: permissionOverrides,
+      );
 
   factory AuthState.unauthenticated({String? error}) => AuthState(error: error);
 

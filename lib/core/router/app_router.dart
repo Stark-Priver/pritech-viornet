@@ -33,6 +33,7 @@ import '../../features/mikrotik/screens/mikrotik_connect_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_dashboard_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_sites_screen.dart';
 import '../../features/vouchers/screens/voucher_quota_screen.dart';
+import '../../features/team_management/screens/team_management_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
 // Wraps auth state as a ChangeNotifier so GoRouter can use it as a
@@ -75,7 +76,11 @@ class _RouterNotifier extends ChangeNotifier {
 
     // RBAC route guard.
     if (isLoggedIn && !goingToLogin && !goingToSplash) {
-      final checker = PermissionChecker(authState.userRoles);
+      final checker = PermissionChecker(
+        authState.userRoles,
+        customRolePermissions: authState.customRolePermissions,
+        overrides: authState.permissionOverrides,
+      );
       if (!checker.canAccessRoute(routerState.uri.path)) return '/';
     }
 
@@ -205,6 +210,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/users',
             name: 'users',
             builder: (context, state) => const UsersScreen(),
+          ),
+          GoRoute(
+            path: '/team-management',
+            name: 'team-management',
+            builder: (context, state) => const TeamManagementScreen(),
           ),
           GoRoute(
             path: '/my-commissions',

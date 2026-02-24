@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/voucher_service.dart';
 import '../services/commission_service.dart';
 import '../models/app_models.dart';
+import '../rbac/rbac_service.dart';
 import '../../features/clients/repository/client_repository.dart';
 import '../../features/sales/repository/sales_repository.dart';
 import '../../features/sites/repository/site_repository.dart';
@@ -20,6 +21,11 @@ final supabaseDataServiceProvider = Provider<SupabaseDataService>((ref) {
 // Backward-compat alias so screens that still reference databaseProvider
 // compile without change until they are individually migrated.
 final databaseProvider = supabaseDataServiceProvider;
+
+// RBAC Service Provider
+final rbacServiceProvider = Provider<RbacService>((ref) {
+  return RbacService(ref.watch(supabaseDataServiceProvider));
+});
 
 // Services Providers
 final secureStorageProvider = Provider<SecureStorageService>((ref) {

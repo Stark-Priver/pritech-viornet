@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/app_models.dart';
+import '../rbac/rbac_models.dart';
 
 /// Central data service – all reads/writes go through Supabase.
 /// Use the service-role key (set in main.dart) to bypass RLS.
@@ -207,8 +208,332 @@ class SupabaseDataService {
   }
 
   // =========================================================================
-  // SITES
+  // CUSTOM ROLES (team_management)
   // =========================================================================
+
+  Future<List<CustomRole>> getAllCustomRoles() async {
+    final data = await _client
+        .from('custom_roles')
+        .select()
+        .eq('is_active', true)
+        .order('is_system', ascending: false)
+        .order('name');
+    final rows = data as List;
+    final roles = <CustomRole>[];
+    for (final row in rows) {
+      final perms = await getCustomRolePermissions(row['id'] as int);
+      roles.add(CustomRole.fromJson(row, permissions: perms));
+    }
+    return roles;
+  }
+
+  Future<CustomRole?> getCustomRoleById(int id) async {
+    final data =
+        await _client.from('custom_roles').select().eq('id', id).maybeSingle();
+    if (data == null) return null;
+    final perms = await getCustomRolePermissions(id);
+    return CustomRole.fromJson(data, permissions: perms);
+  }
+
+  Future<CustomRole?> getCustomRoleByName(String name) async {
+    final data = await _client
+        .from('custom_roles')
+        .select()
+        .eq('name', name)
+        .maybeSingle();
+    if (data == null) return null;
+    final perms = await getCustomRolePermissions(data['id'] as int);
+    return CustomRole.fromJson(data, permissions: perms);
+  }
+
+  Future<CustomRole> createCustomRole({
+    required String name,
+    required String description,
+    required String color,
+    required String icon,
+    required List<String> permissions,
+    int? createdBy,
+  }) async {
+    final data = await _client
+        .from('custom_roles')
+        .insert({
+          'name': name,
+          'description': description,
+          'color': color,
+          'icon': icon,
+          'is_system': false,
+          'is_active': true,
+          if (createdBy != null) 'created_by': createdBy,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .select()
+        .single();
+    final roleId = data['id'] as int;
+    await setCustomRolePermissions(roleId, permissions);
+    return CustomRole.fromJson(data, permissions: permissions);
+  }
+
+  Future<void> updateCustomRole(int roleId,
+      {required String name,
+      required String description,
+      required String color,
+      required String icon,
+      required List<String> permissions}) async {
+    await _client.from('custom_roles').update({
+      'name': name,
+      'description': description,
+      'color': color,
+      'icon': icon,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', roleId);
+    await setCustomRolePermissions(roleId, permissions);
+  }
+
+  Future<void> deleteCustomRole(int roleId) async {
+    await _client.from('custom_roles').delete().eq('id', roleId);
+  }
+
+  Future<void> toggleCustomRoleStatus(int roleId, bool isActive) async {
+    await _client.from('custom_roles').update({
+      'is_active': isActive,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', roleId);
+  }
+
+  // ── Custom Role Permissions ─────────────────────────────────────────────
+
+  Future<List<String>> getCustomRolePermissions(int roleId) async {
+    final data = await _client
+        .from('custom_role_permissions')
+        .select('permission')
+        .eq('custom_role_id', roleId);
+    return (data as List).map((e) => e['permission'] as String).toList();
+  }
+
+  Future<void> setCustomRolePermissions(
+      int roleId, List<String> permissions) async {
+    // Remove all existing, then insert fresh set
+    await _client
+        .from('custom_role_permissions')
+        .delete()
+        .eq('custom_role_id', roleId);
+    if (permissions.isEmpty) return;
+    await _client.from('custom_role_permissions').insert(permissions
+        .map((p) => {
+              'custom_role_id': roleId,
+              'permission': p,
+              'granted_at': DateTime.now().toIso8601String(),
+            })
+        .toList());
+  }
+
+  // ── User Custom Role Assignments ────────────────────────────────────────
+
+  Future<List<CustomRole>> getUserCustomRoles(int userId) async {
+    final data = await _client
+        .from('user_custom_roles')
+        .select('custom_role_id')
+        .eq('user_id', userId);
+    final ids = (data as List).map((e) => e['custom_role_id'] as int).toList();
+    if (ids.isEmpty) return [];
+    final roles = <CustomRole>[];
+    for (final id in ids) {
+      final role = await getCustomRoleById(id);
+      if (role != null) roles.add(role);
+    }
+    return roles;
+  }
+
+  Future<Set<String>> getUserCustomRolePermissions(int userId) async {
+    final customRoles = await getUserCustomRoles(userId);
+    return customRoles.expand((r) => r.permissions).toSet();
+  }
+
+  Future<void> assignUserCustomRole(int userId, int customRoleId,
+      {int? assignedBy}) async {
+    await _client.from('user_custom_roles').upsert({
+      'user_id': userId,
+      'custom_role_id': customRoleId,
+      if (assignedBy != null) 'assigned_by': assignedBy,
+      'assigned_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> removeUserCustomRole(int userId, int customRoleId) async {
+    await _client
+        .from('user_custom_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('custom_role_id', customRoleId);
+  }
+
+  Future<void> setUserCustomRoles(int userId, List<int> customRoleIds,
+      {int? assignedBy}) async {
+    await _client.from('user_custom_roles').delete().eq('user_id', userId);
+    if (customRoleIds.isEmpty) return;
+    await _client.from('user_custom_roles').insert(customRoleIds
+        .map((id) => {
+              'user_id': userId,
+              'custom_role_id': id,
+              if (assignedBy != null) 'assigned_by': assignedBy,
+              'assigned_at': DateTime.now().toIso8601String(),
+            })
+        .toList());
+  }
+
+  // ── Per-User Permission Overrides ───────────────────────────────────────
+
+  Future<List<UserPermissionOverride>> getUserPermissionOverrides(
+      int userId) async {
+    final data = await _client
+        .from('user_permission_overrides')
+        .select()
+        .eq('user_id', userId)
+        .order('permission');
+    return (data as List)
+        .map((e) => UserPermissionOverride.fromJson(e))
+        .toList();
+  }
+
+  /// Returns a map of permission_name → is_granted for this user.
+  Future<Map<String, bool>> getUserPermissionOverridesMap(int userId) async {
+    final overrides = await getUserPermissionOverrides(userId);
+    return {for (final o in overrides) o.permission: o.isGranted};
+  }
+
+  Future<void> setUserPermissionOverride({
+    required int userId,
+    required String permission,
+    required bool isGranted,
+    String? reason,
+    int? setBy,
+  }) async {
+    await _client.from('user_permission_overrides').upsert({
+      'user_id': userId,
+      'permission': permission,
+      'is_granted': isGranted,
+      if (reason != null) 'reason': reason,
+      if (setBy != null) 'set_by': setBy,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<void> removeUserPermissionOverride(
+      int userId, String permission) async {
+    await _client
+        .from('user_permission_overrides')
+        .delete()
+        .eq('user_id', userId)
+        .eq('permission', permission);
+  }
+
+  Future<void> clearUserPermissionOverrides(int userId) async {
+    await _client
+        .from('user_permission_overrides')
+        .delete()
+        .eq('user_id', userId);
+  }
+
+  /// Bulk-replace all overrides: pass a map of permission → is_granted.
+  Future<void> setAllUserPermissionOverrides(
+      int userId, Map<String, bool> overrideMap,
+      {int? setBy}) async {
+    await clearUserPermissionOverrides(userId);
+    if (overrideMap.isEmpty) return;
+    await _client.from('user_permission_overrides').insert(overrideMap.entries
+        .map((e) => {
+              'user_id': userId,
+              'permission': e.key,
+              'is_granted': e.value,
+              if (setBy != null) 'set_by': setBy,
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+        .toList());
+  }
+
+  // ── Full user-with-permissions summary ──────────────────────────────────
+
+  Future<UserWithPermissions> getUserWithPermissions(int userId) async {
+    final user = await getUserById(userId);
+    if (user == null) {
+      throw Exception('User $userId not found');
+    }
+    final roleNames = await getUserRoleNames(userId);
+    final customRoles = await getUserCustomRoles(userId);
+    final overrides = await getUserPermissionOverrides(userId);
+    final overrideMap = {for (final o in overrides) o.permission: o.isGranted};
+    final customPerms = customRoles.expand((r) => r.permissions).toSet();
+
+    // Compute effective permissions via PermissionChecker
+    // Import handled by rbac_models.dart being in same package
+    return UserWithPermissions(
+      userId: userId,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      isActive: user.isActive,
+      roleNames: roleNames,
+      customRoles: customRoles,
+      overrides: overrides,
+      effectivePermissions:
+          _computeEffective(roleNames, customPerms, overrideMap),
+    );
+  }
+
+  Set<String> _computeEffective(List<String> roleNames, Set<String> customPerms,
+      Map<String, bool> overrideMap) {
+    const all = [
+      'view_dashboard',
+      'view_clients',
+      'create_client',
+      'edit_client',
+      'delete_client',
+      'view_vouchers',
+      'create_voucher',
+      'delete_voucher',
+      'view_sales',
+      'make_sale',
+      'view_sites',
+      'manage_sites',
+      'view_assets',
+      'manage_assets',
+      'view_maintenance',
+      'manage_maintenance',
+      'view_finance',
+      'manage_expenses',
+      'manage_investors',
+      'view_sms',
+      'send_sms',
+      'view_packages',
+      'manage_packages',
+      'view_users',
+      'manage_users',
+      'manage_team',
+      'manage_mikrotik',
+      'view_settings',
+      'manage_settings',
+    ];
+
+    final isSuperAdmin = roleNames.contains('SUPER_ADMIN');
+    if (isSuperAdmin) return all.toSet();
+
+    final result = <String>{};
+    for (final p in all) {
+      if (overrideMap[p] == false) continue;
+      if (overrideMap[p] == true) {
+        result.add(p);
+        continue;
+      }
+      if (customPerms.contains(p)) {
+        result.add(p);
+        continue;
+      }
+    }
+    return result;
+  }
 
   Future<List<Site>> getAllSites() async {
     final data = await _client.from('sites').select().order('name');
