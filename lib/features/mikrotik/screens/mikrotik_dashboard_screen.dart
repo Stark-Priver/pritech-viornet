@@ -7,6 +7,7 @@ import 'tabs/mikrotik_interfaces_tab.dart';
 import 'tabs/mikrotik_hotspot_tab.dart';
 import 'tabs/mikrotik_ppp_tab.dart';
 import 'tabs/mikrotik_ip_tab.dart';
+import 'tabs/mikrotik_profiles_tab.dart';
 
 class MikroTikDashboardScreen extends ConsumerStatefulWidget {
   const MikroTikDashboardScreen({super.key});
@@ -27,6 +28,7 @@ class _MikroTikDashboardScreenState
     Tab(icon: Icon(Icons.wifi_tethering), text: 'Hotspot'),
     Tab(icon: Icon(Icons.vpn_key_outlined), text: 'PPPoE'),
     Tab(icon: Icon(Icons.lan_outlined), text: 'IP / DHCP'),
+    Tab(icon: Icon(Icons.manage_accounts_outlined), text: 'Profiles'),
   ];
 
   @override
@@ -188,6 +190,7 @@ class _MikroTikDashboardScreenState
           MikroTikHotspotTab(),
           MikroTikPppTab(),
           MikroTikIpTab(),
+          MikroTikProfilesTab(),
         ],
       ),
     );

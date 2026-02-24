@@ -419,4 +419,46 @@ class MikroTikApiService {
   Future<void> disableInterface(String id) async {
     await sendCommand('/interface/disable', params: {'.id': id});
   }
+
+  // ── Hotspot Profiles ──────────────────────────────────────────────────────
+
+  /// List all hotspot user profiles
+  Future<MikroTikReply> getHotspotProfiles() async {
+    return sendCommand('/ip/hotspot/user/profile/print');
+  }
+
+  /// Add a hotspot user profile
+  Future<void> addHotspotProfile({
+    required String name,
+    String rateLimit = '',
+    String sessionTimeout = '',
+    String sharedUsers = '1',
+    String addressPool = '',
+  }) async {
+    final params = <String, String>{'name': name};
+    if (rateLimit.isNotEmpty) params['rate-limit'] = rateLimit;
+    if (sessionTimeout.isNotEmpty) params['session-timeout'] = sessionTimeout;
+    if (sharedUsers.isNotEmpty) params['shared-users'] = sharedUsers;
+    if (addressPool.isNotEmpty) params['address-pool'] = addressPool;
+    await sendCommand('/ip/hotspot/user/profile/add', params: params);
+  }
+
+  /// Remove a hotspot user profile by id
+  Future<void> removeHotspotProfile(String id) async {
+    await sendCommand('/ip/hotspot/user/profile/remove', params: {'.id': id});
+  }
+
+  /// Edit an existing hotspot user profile
+  Future<void> editHotspotProfile(
+    String id, {
+    String? rateLimit,
+    String? sessionTimeout,
+    String? sharedUsers,
+  }) async {
+    final params = <String, String>{'.id': id};
+    if (rateLimit != null) params['rate-limit'] = rateLimit;
+    if (sessionTimeout != null) params['session-timeout'] = sessionTimeout;
+    if (sharedUsers != null) params['shared-users'] = sharedUsers;
+    await sendCommand('/ip/hotspot/user/profile/set', params: params);
+  }
 }

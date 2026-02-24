@@ -47,6 +47,7 @@ class MikroTikState {
   final List<MikroTikPPPActive> pppActive;
   final List<MikroTikIpAddress> ipAddresses;
   final List<MikroTikDhcpLease> dhcpLeases;
+  final List<MikroTikHotspotProfile> hotspotProfiles;
   final bool isLoading;
 
   const MikroTikState({
@@ -61,6 +62,7 @@ class MikroTikState {
     this.pppActive = const [],
     this.ipAddresses = const [],
     this.dhcpLeases = const [],
+    this.hotspotProfiles = const [],
     this.isLoading = false,
   });
 
@@ -78,6 +80,7 @@ class MikroTikState {
     List<MikroTikPPPActive>? pppActive,
     List<MikroTikIpAddress>? ipAddresses,
     List<MikroTikDhcpLease>? dhcpLeases,
+    List<MikroTikHotspotProfile>? hotspotProfiles,
     bool? isLoading,
   }) {
     return MikroTikState(
@@ -92,6 +95,7 @@ class MikroTikState {
       pppActive: pppActive ?? this.pppActive,
       ipAddresses: ipAddresses ?? this.ipAddresses,
       dhcpLeases: dhcpLeases ?? this.dhcpLeases,
+      hotspotProfiles: hotspotProfiles ?? this.hotspotProfiles,
       isLoading: isLoading ?? this.isLoading,
     );
   }
@@ -375,6 +379,85 @@ class MikroTikIpAddress {
       dynamic: map['dynamic'] == 'true',
     );
   }
+}
+
+// ── Hotspot Profile ───────────────────────────────────────────────────────────
+class MikroTikHotspotProfile {
+  final String id;
+  final String name;
+  final String rateLimit;
+  final String sessionTimeout;
+  final String keepaliveTimeout;
+  final String sharedUsers;
+  final String addressPool;
+  final int userCount; // computed from hotspot users list
+
+  const MikroTikHotspotProfile({
+    this.id = '',
+    this.name = '',
+    this.rateLimit = '',
+    this.sessionTimeout = '',
+    this.keepaliveTimeout = '',
+    this.sharedUsers = '',
+    this.addressPool = '',
+    this.userCount = 0,
+  });
+
+  factory MikroTikHotspotProfile.fromMap(Map<String, String> map,
+      {int userCount = 0}) {
+    return MikroTikHotspotProfile(
+      id: map['.id'] ?? '',
+      name: map['name'] ?? '',
+      rateLimit: map['rate-limit'] ?? '',
+      sessionTimeout: map['session-timeout'] ?? '',
+      keepaliveTimeout: map['keepalive-timeout'] ?? '',
+      sharedUsers: map['shared-users'] ?? '1',
+      addressPool: map['address-pool'] ?? '',
+      userCount: userCount,
+    );
+  }
+
+  MikroTikHotspotProfile withUserCount(int count) {
+    return MikroTikHotspotProfile(
+      id: id,
+      name: name,
+      rateLimit: rateLimit,
+      sessionTimeout: sessionTimeout,
+      keepaliveTimeout: keepaliveTimeout,
+      sharedUsers: sharedUsers,
+      addressPool: addressPool,
+      userCount: count,
+    );
+  }
+
+  /// Parse rate limit string like "5M/10M" into readable form
+  String get rateLimitDisplay {
+    if (rateLimit.isEmpty) return 'Unlimited';
+    final parts = rateLimit.split('/');
+    if (parts.length == 2) {
+      return '↑ ${parts[0]}  ↓ ${parts[1]}';
+    }
+    return rateLimit;
+  }
+}
+
+// ── Bulk Voucher Generation Result ────────────────────────────────────────────
+class VoucherGenerationResult {
+  final int total;
+  final int succeeded;
+  final int failed;
+  final List<String> generatedCodes;
+  final List<String> errors;
+  final String batchId;
+
+  const VoucherGenerationResult({
+    required this.total,
+    required this.succeeded,
+    required this.failed,
+    required this.generatedCodes,
+    required this.errors,
+    required this.batchId,
+  });
 }
 
 // ── DHCP Lease ────────────────────────────────────────────────────────────────
