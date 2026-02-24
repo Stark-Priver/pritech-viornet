@@ -13,11 +13,16 @@ class MikroTikHotspotTab extends ConsumerStatefulWidget {
 class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
     with SingleTickerProviderStateMixin {
   late final TabController _subTab;
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _subTab = TabController(length: 2, vsync: this);
+    _searchCtrl.addListener(() {
+      setState(() => _searchQuery = _searchCtrl.text.toLowerCase().trim());
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(mikrotikProvider.notifier).loadHotspot();
     });
@@ -26,6 +31,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
   @override
   void dispose() {
     _subTab.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -33,6 +39,15 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
   Widget build(BuildContext context) {
     final mkState = ref.watch(mikrotikProvider);
     final colorScheme = Theme.of(context).colorScheme;
+
+    final filteredUsers = _searchQuery.isEmpty
+        ? mkState.hotspotUsers
+        : mkState.hotspotUsers
+            .where((u) =>
+                u.name.toLowerCase().contains(_searchQuery) ||
+                u.profile.toLowerCase().contains(_searchQuery) ||
+                u.comment.toLowerCase().contains(_searchQuery))
+            .toList();
 
     return Column(
       children: [
@@ -68,7 +83,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
             child: TabBarView(
               controller: _subTab,
               children: [
-                _buildUsersList(context, colorScheme, mkState),
+                _buildUsersList(context, colorScheme, mkState, filteredUsers),
                 _buildActiveList(context, colorScheme, mkState),
               ],
             ),
@@ -82,28 +97,73 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
     BuildContext context,
     ColorScheme colorScheme,
     MikroTikState mkState,
+    List<MikroTikHotspotUser> filteredUsers,
   ) {
     return Scaffold(
-      body: mkState.isLoading && mkState.hotspotUsers.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : mkState.hotspotUsers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.people_outline,
-                          size: 60, color: colorScheme.outline),
-                      const SizedBox(height: 12),
-                      const Text('No hotspot users'),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
-                  itemCount: mkState.hotspotUsers.length,
-                  itemBuilder: (context, i) => _buildUserTile(
-                      context, colorScheme, mkState.hotspotUsers[i]),
+      body: Column(
+        children: [
+          // ── Search bar ────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Search users by name, profile, comment…',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => _searchCtrl.clear(),
+                      )
+                    : null,
+                isDense: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                filled: true,
+                fillColor: colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ),
+          if (_searchQuery.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${filteredUsers.length} of ${mkState.hotspotUsers.length} users',
+                  style: TextStyle(
+                      fontSize: 11, color: colorScheme.onSurfaceVariant),
+                ),
+              ),
+            ),
+          // ── List ─────────────────────────────────────────────────────────
+          Expanded(
+            child: mkState.isLoading && mkState.hotspotUsers.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : filteredUsers.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.people_outline,
+                                size: 60, color: colorScheme.outline),
+                            const SizedBox(height: 12),
+                            Text(_searchQuery.isNotEmpty
+                                ? 'No users match "$_searchQuery"'
+                                : 'No hotspot users'),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+                        itemCount: filteredUsers.length,
+                        itemBuilder: (context, i) => _buildUserTile(
+                            context, colorScheme, filteredUsers[i]),
+                      ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.person_add),
         label: const Text('Add User'),
@@ -161,7 +221,9 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) async {
-            if (value == 'toggle') {
+            if (value == 'edit') {
+              await _showEditUserDialog(context, user);
+            } else if (value == 'toggle') {
               await ref
                   .read(mikrotikProvider.notifier)
                   .toggleHotspotUser(user.id, !user.disabled);
@@ -183,6 +245,16 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
             }
           },
           itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined),
+                  SizedBox(width: 8),
+                  Text('Edit / Update'),
+                ],
+              ),
+            ),
             PopupMenuItem(
               value: 'toggle',
               child: Row(
@@ -279,6 +351,167 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
         ),
       ),
     );
+  }
+
+  Future<void> _showEditUserDialog(
+      BuildContext context, MikroTikHotspotUser user) async {
+    final passCtrl = TextEditingController();
+    final profileCtrl = TextEditingController(text: user.profile);
+    final commentCtrl = TextEditingController(text: user.comment);
+    final uptimeCtrl = TextEditingController(text: user.limitUptime);
+    final bytesCtrl = TextEditingController(text: user.limitBytesTotal);
+
+    final profiles = ref.read(mikrotikProvider).hotspotProfiles;
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.edit_outlined, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Update "${user.name}"',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 360,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Read-only username
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.person),
+                    isDense: true,
+                  ),
+                  child: Text(user.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const Divider(height: 20),
+                // New password (leave blank to keep existing)
+                TextField(
+                  controller: passCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'New Password',
+                    hintText: 'Leave blank to keep current',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Profile — dropdown if profiles loaded, else text field
+                profiles.isNotEmpty
+                    ? DropdownButtonFormField<String>(
+                        value: profiles.any((p) => p.name == profileCtrl.text)
+                            ? profileCtrl.text
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Profile',
+                          prefixIcon: Icon(Icons.speed_outlined),
+                          isDense: true,
+                        ),
+                        items: profiles
+                            .map((p) => DropdownMenuItem(
+                                  value: p.name,
+                                  child: Text(p.name),
+                                ))
+                            .toList(),
+                        onChanged: (v) {
+                          if (v != null) profileCtrl.text = v;
+                        },
+                      )
+                    : TextField(
+                        controller: profileCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Profile',
+                          prefixIcon: Icon(Icons.speed_outlined),
+                        ),
+                      ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: commentCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Comment',
+                    prefixIcon: Icon(Icons.comment_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: uptimeCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Limit Uptime',
+                    hintText: 'e.g. 01:00:00',
+                    prefixIcon: Icon(Icons.timer_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: bytesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Limit Bytes Total',
+                    hintText: 'e.g. 100000000',
+                    prefixIcon: Icon(Icons.data_usage),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.save_outlined, size: 16),
+            label: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+
+    if (submitted == true) {
+      final messenger = ScaffoldMessenger.of(context);
+      final errorColor = Theme.of(context).colorScheme.error;
+      try {
+        await ref.read(mikrotikProvider.notifier).updateHotspotUser(
+              user.id,
+              password: passCtrl.text.isNotEmpty ? passCtrl.text : null,
+              profile: profileCtrl.text.trim().isNotEmpty
+                  ? profileCtrl.text.trim()
+                  : null,
+              comment: commentCtrl.text.trim(),
+              limitUptime: uptimeCtrl.text.trim(),
+              limitBytesTotal: bytesCtrl.text.trim(),
+            );
+        if (!context.mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('User "${user.name}" updated on MikroTik'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      } catch (e) {
+        if (!context.mounted) return;
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _showAddUserDialog(BuildContext context) async {

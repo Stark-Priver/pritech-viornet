@@ -260,7 +260,7 @@ class _VoucherManagementScreenState
                           child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _addLbl('Price (KSh)'),
+                          _addLbl('Price (TSh)'),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: priceCtrl,
@@ -1513,7 +1513,7 @@ extension _VoucherListItemEdit on _VoucherListItem {
                           child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _edLbl('Price (KSh)'),
+                          _edLbl('Price (TSh)'),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: priceCtrl,

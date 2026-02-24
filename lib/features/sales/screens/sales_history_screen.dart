@@ -732,7 +732,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _lbl('Amount (KSh) *'),
+                            _lbl('Amount (TSh) *'),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: amountCtrl,
@@ -753,7 +753,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _lbl('Commission (KSh)'),
+                            _lbl('Commission (TSh)'),
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: commCtrl,

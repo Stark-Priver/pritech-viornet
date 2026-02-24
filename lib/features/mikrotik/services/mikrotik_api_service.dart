@@ -350,6 +350,25 @@ class MikroTikApiService {
     });
   }
 
+  /// Edit hotspot user (password, profile, comment)
+  Future<void> editHotspotUser(
+    String id, {
+    String? password,
+    String? profile,
+    String? comment,
+    String? limitUptime,
+    String? limitBytesTotal,
+  }) async {
+    await sendCommand('/ip/hotspot/user/set', params: {
+      '.id': id,
+      if (password != null && password.isNotEmpty) 'password': password,
+      if (profile != null && profile.isNotEmpty) 'profile': profile,
+      if (comment != null) 'comment': comment,
+      if (limitUptime != null) 'limit-uptime': limitUptime,
+      if (limitBytesTotal != null) 'limit-bytes-total': limitBytesTotal,
+    });
+  }
+
   /// List PPP secrets
   Future<MikroTikReply> getPPPSecrets() async {
     return sendCommand('/ppp/secret/print');

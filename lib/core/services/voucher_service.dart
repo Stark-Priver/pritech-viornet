@@ -137,8 +137,6 @@ class VoucherService {
     String? speed,
     String? qrCodeData,
     String? batchId,
-    String? username,
-    String? password,
   }) =>
       _service.createVoucher({
         'code': code,
@@ -149,8 +147,6 @@ class VoucherService {
         'speed': speed,
         'qr_code_data': qrCodeData,
         if (batchId != null) 'batch_id': batchId,
-        if (username != null) 'username': username,
-        if (password != null) 'password': password,
       });
 
   Future<Voucher?> getVoucherByCode(String code) =>

@@ -183,6 +183,30 @@ class MikroTikNotifier extends StateNotifier<MikroTikState> {
     }
   }
 
+  Future<void> updateHotspotUser(
+    String id, {
+    String? password,
+    String? profile,
+    String? comment,
+    String? limitUptime,
+    String? limitBytesTotal,
+  }) async {
+    try {
+      await _api.editHotspotUser(
+        id,
+        password: password,
+        profile: profile,
+        comment: comment,
+        limitUptime: limitUptime,
+        limitBytesTotal: limitBytesTotal,
+      );
+      await loadHotspot();
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
   // ── Hotspot Profiles ───────────────────────────────────────────────────────
   Future<void> loadProfiles() async {
     state = state.copyWith(isLoading: true);
@@ -319,8 +343,6 @@ class MikroTikNotifier extends StateNotifier<MikroTikState> {
           speed: speed,
           qrCodeData: code,
           batchId: batchId,
-          username: code,
-          password: code,
         );
         succeeded.add(code);
       } catch (e) {
