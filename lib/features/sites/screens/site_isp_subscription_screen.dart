@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/services/supabase_data_service.dart';
 import '../../../core/services/isp_subscription_service.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class SiteIspSubscriptionScreen extends ConsumerStatefulWidget {
   final Site site;
@@ -149,6 +150,7 @@ class _SiteIspSubscriptionScreenState
                           builder: (context) => AddEditIspSubscriptionScreen(
                             siteId: widget.site.id,
                             service: _service,
+                            createdBy: ref.read(authProvider).user?.id ?? 1,
                           ),
                         ),
                       ).then((_) => setState(() {}));
@@ -441,6 +443,7 @@ class _SiteIspSubscriptionScreenState
                   siteId: widget.site.id,
                   service: _service,
                   existing: sub,
+                  createdBy: ref.read(authProvider).user?.id ?? 1,
                 ),
               ),
             ).then((_) => setState(() {}));
@@ -573,6 +576,7 @@ class _SiteIspSubscriptionScreenState
                               siteId: widget.site.id,
                               service: _service,
                               existing: sub,
+                              createdBy: ref.read(authProvider).user?.id ?? 1,
                             ),
                           ),
                         ).then((_) => setState(() {}));
@@ -674,12 +678,14 @@ class AddEditIspSubscriptionScreen extends StatefulWidget {
   final int siteId;
   final IspSubscriptionService service;
   final IspSubscription? existing;
+  final int createdBy;
 
   const AddEditIspSubscriptionScreen({
     super.key,
     required this.siteId,
     required this.service,
     this.existing,
+    required this.createdBy,
   });
 
   @override
@@ -783,9 +789,12 @@ class _AddEditIspSubscriptionScreenState
               expenseFields['notes'] =
                   'Auto-recorded from ISP subscription. $notesVal';
             }
+            expenseFields['created_by'] = widget.createdBy;
             await SupabaseDataService().createExpense(expenseFields);
-          } catch (_) {
-            // Never block ISP save on expense side-effect failure
+          } catch (e) {
+            // Never block ISP save on expense side-effect failure,
+            // but log so we can diagnose issues.
+            debugPrint('[ISP→Expense] Failed to auto-record expense: $e');
           }
         }
 
