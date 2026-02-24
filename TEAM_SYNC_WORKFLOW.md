@@ -4,13 +4,7 @@
 
 Your Viornet app now uses a **SHARED team database** model. This means:
 - ✅ All team members sync the SAME database
-- ✅ When User A adds data and uploads → User B can download and see it
-- ✅ Perfect for collaborative work
-- ⚠️ Last upload overwrites (conflict potential)
-
----
-
-## 👥 How Team Sync Works
+- ✅ When User A adds data and uploads → User B can 
 
 ### Architecture
 ```
