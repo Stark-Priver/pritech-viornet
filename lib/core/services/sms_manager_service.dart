@@ -130,7 +130,8 @@ class SmsManagerService {
   // SEND  (routes through SmsService which handles logging)
   // =========================================================================
 
-  /// Send SMS using the default SIM (delegates to SmsService).
+  /// Send SMS — if a [simCard] is given its subscriptionId is forwarded to
+  /// the native layer so the message goes out on that specific SIM.
   Future<bool> sendSms({
     required String phoneNumber,
     required String message,
@@ -143,18 +144,20 @@ class SmsManagerService {
       return false;
     }
 
-    _logger.i(
-        'Sending SMS  $phoneNumber via ${simCard?.displayName ?? 'default SIM'}');
+    final simLabel = simCard?.displayName ?? 'default SIM';
+    final subId = simCard?.subscriptionId ?? -1;
+    _logger.i('Sending SMS → $phoneNumber via $simLabel (subId=$subId)');
 
     return SmsService().sendSms(
       phone: phoneNumber,
       message: message,
       clientId: clientId,
       sentByUserId: sentByUserId,
+      subscriptionId: subId,
     );
   }
 
-  /// Send bulk SMS to multiple recipients.
+  /// Send bulk SMS to multiple recipients via the specified SIM card.
   Future<Map<String, dynamic>> sendBulkSms({
     required List<String> phoneNumbers,
     required String message,
@@ -172,11 +175,16 @@ class SmsManagerService {
       };
     }
 
+    final subId = simCard?.subscriptionId ?? -1;
+    _logger.i('Bulk SMS → ${phoneNumbers.length} numbers via '
+        '${simCard?.displayName ?? 'default SIM'} (subId=$subId)');
+
     return SmsService().sendBulkSms(
       phoneNumbers: phoneNumbers,
       message: message,
       type: type,
       sentByUserId: sentByUserId,
+      subscriptionId: subId,
     );
   }
 

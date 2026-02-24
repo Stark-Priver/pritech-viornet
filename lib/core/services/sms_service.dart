@@ -93,39 +93,41 @@ class SmsService {
   // =========================================================================
 
   /// Send a single SMS via the device's SIM card.
+  /// [subscriptionId] targets a specific SIM (-1 = system default).
   static Future<bool> _sendViaNativeAndroid({
     required String phoneNumber,
     required String message,
+    int subscriptionId = -1,
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       debugPrint('  Native SMS is Android-only');
       return false;
     }
     try {
-      debugPrint(' Native Android SMS  $phoneNumber');
+      debugPrint(' Native SMS → $phoneNumber (subId=$subscriptionId)');
       final result = await _platform.invokeMethod<bool>('sendSms', {
         'phoneNumber': phoneNumber,
         'message': message,
+        'subscriptionId': subscriptionId,
       });
-      if (result == true) {
-        debugPrint(' Native SMS sent  $phoneNumber');
-        return true;
-      }
-      debugPrint(' Native SMS failed  $phoneNumber');
-      return false;
+      final ok = result == true;
+      debugPrint(ok ? ' Sent ✓ $phoneNumber' : ' Failed ✗ $phoneNumber');
+      return ok;
     } on PlatformException catch (e) {
-      debugPrint(' Platform error: ${e.message}');
+      debugPrint(' Platform error [${e.code}]: ${e.message}');
       return false;
     } catch (e) {
-      debugPrint(' sendViaNativeAndroid error: $e');
+      debugPrint(' _sendViaNativeAndroid error: $e');
       return false;
     }
   }
 
-  /// Send bulk SMS via native Android bulk method channel.
+  /// Send bulk SMS via native Android — routes all messages through the
+  /// same SIM (subscriptionId). Uses -1 for the system default SIM.
   static Future<Map<String, dynamic>> _sendBulkViaNativeAndroid({
     required List<String> phoneNumbers,
     required String message,
+    int subscriptionId = -1,
   }) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       debugPrint('  Native Bulk SMS is Android-only');
@@ -136,21 +138,27 @@ class SmsService {
       };
     }
     try {
+      debugPrint(
+          ' Bulk native SMS → ${phoneNumbers.length} numbers (subId=$subscriptionId)');
       final result =
           await _platform.invokeMethod<Map<dynamic, dynamic>>('sendBulkSms', {
         'phoneNumbers': phoneNumbers,
         'message': message,
+        'subscriptionId': subscriptionId,
       });
       if (result != null) {
+        final success = result['successCount'] as int? ?? 0;
+        final failed =
+            List<String>.from(result['failedNumbers'] as List? ?? []);
+        debugPrint(' Bulk done — sent: $success, failed: ${failed.length}');
         return {
-          'successCount': result['successCount'] as int? ?? 0,
-          'failedNumbers':
-              List<String>.from(result['failedNumbers'] as List? ?? []),
+          'successCount': success,
+          'failedNumbers': failed,
           'totalRequested': phoneNumbers.length,
         };
       }
     } on PlatformException catch (e) {
-      debugPrint(' Bulk native SMS platform error: ${e.message}');
+      debugPrint(' Bulk platform error [${e.code}]: ${e.message}');
     } catch (e) {
       debugPrint(' _sendBulkViaNativeAndroid error: $e');
     }
@@ -213,13 +221,15 @@ class SmsService {
   // =========================================================================
 
   /// Send a single SMS using the currently configured channel.
-  /// Logs every attempt (pending  sent/failed) to Supabase sms_logs.
+  /// [subscriptionId] pins the send to a specific SIM card (-1 = default).
+  /// Logs every attempt (pending → sent/failed) to Supabase sms_logs.
   Future<bool> sendSms({
     required String phone,
     required String message,
     String type = 'NOTIFICATION',
     int? clientId,
     int? sentByUserId,
+    int subscriptionId = -1,
   }) async {
     final formatted = formatPhoneNumber(phone);
 
@@ -251,6 +261,7 @@ class SmsService {
       success = await _sendViaNativeAndroid(
         phoneNumber: formatted,
         message: message,
+        subscriptionId: subscriptionId,
       );
     }
 
@@ -278,6 +289,7 @@ class SmsService {
     required String message,
     String type = 'MARKETING',
     int? sentByUserId,
+    int subscriptionId = -1,
   }) async {
     final channel = await getSelectedChannel();
     debugPrint(' Bulk SMS via $channel to ${phoneNumbers.length} recipients');
@@ -291,6 +303,7 @@ class SmsService {
       final result = await _sendBulkViaNativeAndroid(
         phoneNumbers: formatted,
         message: message,
+        subscriptionId: subscriptionId,
       );
       successCount = result['successCount'] as int;
       failedNumbers.addAll(result['failedNumbers'] as List<String>);

@@ -536,21 +536,23 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
           ElevatedButton(
             onPressed: () async {
               if (messageController.text.isNotEmpty) {
-                final database = ref.read(databaseProvider);
                 final messenger = ScaffoldMessenger.of(context);
-                await database.createSmsLog({
-                  'recipient': contact.phone,
-                  'message': messageController.text,
-                  'status': 'PENDING',
-                  'type': 'MANUAL',
-                  'client_id': contact.id,
-                });
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
+                Navigator.of(dialogContext).pop();
+                final smsManager = SmsManagerService();
+                final success = await smsManager.sendSms(
+                  phoneNumber: contact.phone,
+                  message: messageController.text,
+                  clientId: contact.id,
+                );
+                if (messenger.mounted) {
                   messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('SMS queued for sending'),
-                      backgroundColor: Colors.green,
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'SMS sent to ${contact.name}'
+                            : 'Failed to send SMS to ${contact.name}',
+                      ),
+                      backgroundColor: success ? Colors.green : Colors.red,
                     ),
                   );
                 }
@@ -584,25 +586,25 @@ class _SmsScreenState extends ConsumerState<SmsScreen>
           ElevatedButton(
             onPressed: () async {
               if (messageController.text.isNotEmpty) {
-                final database = ref.read(databaseProvider);
                 final messenger = ScaffoldMessenger.of(context);
-                for (final contact in contacts) {
-                  await database.createSmsLog({
-                    'recipient': contact.phone,
-                    'message': messageController.text,
-                    'status': 'PENDING',
-                    'type': 'MARKETING',
-                    'client_id': contact.id,
-                  });
-                }
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
-                  setState(() {});
+                Navigator.of(dialogContext).pop();
+                setState(() {});
+                final smsManager = SmsManagerService();
+                final result = await smsManager.sendBulkSms(
+                  phoneNumbers: contacts.map((c) => c.phone).toList(),
+                  message: messageController.text,
+                  type: 'MARKETING',
+                );
+                if (messenger.mounted) {
+                  final successCount = result['success'] as int? ?? 0;
+                  final failedCount = result['failed'] as int? ?? 0;
                   messenger.showSnackBar(
                     SnackBar(
-                      content:
-                          Text('${contacts.length} SMS queued for sending'),
-                      backgroundColor: Colors.green,
+                      content: Text(
+                        'Sent: $successCount, Failed: $failedCount',
+                      ),
+                      backgroundColor:
+                          failedCount == 0 ? Colors.green : Colors.orange,
                     ),
                   );
                 }
@@ -1640,18 +1642,22 @@ class _SendSmsScreenState extends ConsumerState<SendSmsScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final database = ref.read(databaseProvider);
-      await database.createSmsLog({
-        'recipient': phone,
-        'message': _messageController.text.trim(),
-        'status': 'PENDING',
-        'type': _sendMode == 'manual' ? 'MANUAL' : 'NOTIFICATION',
-        if (clientId != null) 'client_id': clientId,
-      });
+      final smsManager = SmsManagerService();
+      final success = await smsManager.sendSms(
+        phoneNumber: phone,
+        message: _messageController.text.trim(),
+        simCard: _selectedSimCard,
+        clientId: clientId,
+      );
 
       if (mounted) {
-        _showSuccess('SMS queued for sending successfully!');
-        _clearForm();
+        if (success) {
+          _showSuccess('SMS sent successfully!');
+          _clearForm();
+        } else {
+          _showError(
+              'Failed to send SMS. Check that SMS permissions are granted and try again.');
+        }
       }
     } catch (e) {
       if (mounted) {
