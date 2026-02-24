@@ -1541,3 +1541,101 @@ class Investor {
   /// Calculates investor return amount for a given net profit.
   double calculateReturn(double netProfit) => netProfit * (roiPercentage / 100);
 }
+
+// ---------------------------------------------------------------------------
+// VoucherQuotaSetting
+// ---------------------------------------------------------------------------
+class VoucherQuotaSetting {
+  final int id;
+  final int? siteId; // null = global (all sites)
+  final int? packageId; // null = all packages for this site
+  final int quotaLimit;
+  final bool isEnabled;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const VoucherQuotaSetting({
+    required this.id,
+    this.siteId,
+    this.packageId,
+    required this.quotaLimit,
+    required this.isEnabled,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory VoucherQuotaSetting.fromJson(Map<String, dynamic> j) =>
+      VoucherQuotaSetting(
+        id: j['id'] as int,
+        siteId: j['site_id'] as int?,
+        packageId: j['package_id'] as int?,
+        quotaLimit: j['quota_limit'] as int? ?? 10,
+        isEnabled: j['is_enabled'] as bool? ?? false,
+        createdAt: DateTime.parse(j['created_at'] as String),
+        updatedAt: DateTime.parse(j['updated_at'] as String),
+      );
+
+  VoucherQuotaSetting copyWith({
+    int? quotaLimit,
+    bool? isEnabled,
+  }) =>
+      VoucherQuotaSetting(
+        id: id,
+        siteId: siteId,
+        packageId: packageId,
+        quotaLimit: quotaLimit ?? this.quotaLimit,
+        isEnabled: isEnabled ?? this.isEnabled,
+        createdAt: createdAt,
+        updatedAt: DateTime.now(),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// SalesRemittance
+// ---------------------------------------------------------------------------
+class SalesRemittance {
+  final int id;
+  final String serverId;
+  final int agentId;
+  final int? siteId;
+  final double amount;
+  final String? notes;
+  final String status; // PENDING | CONFIRMED | REJECTED
+  final DateTime submittedAt;
+  final int? reviewedBy;
+  final DateTime? reviewedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const SalesRemittance({
+    required this.id,
+    required this.serverId,
+    required this.agentId,
+    this.siteId,
+    required this.amount,
+    this.notes,
+    required this.status,
+    required this.submittedAt,
+    this.reviewedBy,
+    this.reviewedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SalesRemittance.fromJson(Map<String, dynamic> j) => SalesRemittance(
+        id: j['id'] as int,
+        serverId: j['server_id'] as String? ?? '',
+        agentId: j['agent_id'] as int,
+        siteId: j['site_id'] as int?,
+        amount: (j['amount'] as num).toDouble(),
+        notes: j['notes'] as String?,
+        status: j['status'] as String? ?? 'PENDING',
+        submittedAt: DateTime.parse(j['submitted_at'] as String),
+        reviewedBy: j['reviewed_by'] as int?,
+        reviewedAt: j['reviewed_at'] != null
+            ? DateTime.parse(j['reviewed_at'] as String)
+            : null,
+        createdAt: DateTime.parse(j['created_at'] as String),
+        updatedAt: DateTime.parse(j['updated_at'] as String),
+      );
+}

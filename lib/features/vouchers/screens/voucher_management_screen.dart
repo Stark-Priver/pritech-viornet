@@ -34,7 +34,10 @@ class _VoucherManagementScreenState
   int? _siteFilter;
   String? _batchFilter;
   int _rebuildKey = 0;
+  int _quotaRebuildKey = 0;
 
+  // cached agent quota status (refreshed with _rebuildKey)
+  Future<_AgentQuotaStatus>? _agentQuotaFuture;
   // multi-select
   bool _selectionMode = false;
   final Set<int> _selectedIds = {};
@@ -45,7 +48,15 @@ class _VoucherManagementScreenState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    final authState = ref.read(authProvider);
+    final roles = <String>{
+      if (authState.user?.role != null) authState.user!.role,
+      ...authState.userRoles,
+    }.toList();
+    _tabController =
+        TabController(length: _canViewSummary(roles) ? 2 : 1, vsync: this);
+    // Load quota status for agent on open
+    _agentQuotaFuture = _loadAgentQuotaStatus();
   }
 
   @override
@@ -57,8 +68,10 @@ class _VoucherManagementScreenState
   void _refresh() {
     setState(() {
       _rebuildKey++;
+      _quotaRebuildKey++;
       _selectedIds.clear();
       _selectionMode = false;
+      _agentQuotaFuture = _loadAgentQuotaStatus();
     });
   }
 
@@ -137,7 +150,7 @@ class _VoucherManagementScreenState
     final authNotifier = ref.read(authProvider.notifier);
     final canAccessAll = authNotifier.canAccessAllSites;
     final userSites = authNotifier.currentUserSites;
-
+    final db = ref.read(supabaseDataServiceProvider);
     final voucherService = ref.read(voucherServiceProvider);
 
     // Determine effective site restriction
@@ -145,25 +158,235 @@ class _VoucherManagementScreenState
     List<int>? effectiveSiteIds;
 
     if (!canAccessAll) {
-      if (userSites.isEmpty) return []; // not assigned to any site
+      if (userSites.isEmpty) return [];
       if (_siteFilter != null && userSites.contains(_siteFilter)) {
-        // user filtered to a specific site within their allowed list
         effectiveSiteId = _siteFilter;
       } else {
-        // restrict to all their assigned sites
         effectiveSiteIds = userSites;
       }
     } else {
-      // Admin / Finance / Super-Admin: respect manual site filter
       effectiveSiteId = _siteFilter;
     }
 
-    return voucherService.watchVouchers(
+    var vouchers = await voucherService.watchVouchers(
       status: _statusFilter == 'ALL' ? null : _statusFilter,
       packageId: _packageFilter,
       siteId: effectiveSiteId,
       siteIds: effectiveSiteIds,
       batchId: _batchFilter,
+    );
+
+    // ── Quota enforcement for agents ──────────────────────────────────────
+    if (!canAccessAll) {
+      final agentId = authNotifier.currentUser?.id;
+      if (agentId != null) {
+        // Determine quota setting (use first assigned site or global)
+        final siteForQuota =
+            effectiveSiteId ?? (userSites.isNotEmpty ? userSites.first : null);
+        final quota = await db.getVoucherQuotaSetting(siteForQuota);
+
+        if (quota != null && quota.isEnabled) {
+          final outstanding = await db.countOutstandingSoldVouchers(agentId);
+          final pending = await db.getPendingRemittance(agentId);
+
+          if (outstanding > 0 || pending != null) {
+            // Agent has outstanding money – hide all AVAILABLE vouchers
+            vouchers = vouchers.where((v) => v.status != 'AVAILABLE').toList();
+          } else {
+            // Cap AVAILABLE vouchers at quota_limit
+            final available =
+                vouchers.where((v) => v.status == 'AVAILABLE').toList();
+            final others =
+                vouchers.where((v) => v.status != 'AVAILABLE').toList();
+            final capped = available.length > quota.quotaLimit
+                ? available.sublist(0, quota.quotaLimit)
+                : available;
+            vouchers = [...capped, ...others];
+          }
+        }
+      }
+    }
+
+    return vouchers;
+  }
+
+  // ── Agent quota status helper ──────────────────────────────────────────────
+
+  Future<_AgentQuotaStatus> _loadAgentQuotaStatus() async {
+    final authNotifier = ref.read(authProvider.notifier);
+    if (authNotifier.canAccessAllSites) {
+      return const _AgentQuotaStatus(isEnabled: false);
+    }
+    final agentId = authNotifier.currentUser?.id;
+    if (agentId == null) return const _AgentQuotaStatus(isEnabled: false);
+
+    final db = ref.read(supabaseDataServiceProvider);
+    final userSites = authNotifier.currentUserSites;
+    final siteForQuota =
+        _siteFilter ?? (userSites.isNotEmpty ? userSites.first : null);
+    final quota = await db.getVoucherQuotaSetting(siteForQuota);
+
+    if (quota == null || !quota.isEnabled) {
+      return const _AgentQuotaStatus(isEnabled: false);
+    }
+
+    final outstanding = await db.countOutstandingSoldVouchers(agentId);
+    final pending = await db.getPendingRemittance(agentId);
+
+    return _AgentQuotaStatus(
+      isEnabled: true,
+      quotaLimit: quota.quotaLimit,
+      outstandingCount: outstanding,
+      pendingRemittance: pending,
+      siteId: siteForQuota,
+    );
+  }
+
+  // ── Submit collection dialog (agents) ─────────────────────────────────────
+
+  Future<void> _showSubmitCollectionDialog(_AgentQuotaStatus status) async {
+    final authNotifier = ref.read(authProvider.notifier);
+    final agentId = authNotifier.currentUser?.id;
+    if (agentId == null) return;
+
+    final amountCtrl = TextEditingController();
+    final notesCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) {
+        final bottom = MediaQuery.of(sheetCtx).viewInsets.bottom;
+        bool saving = false;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+          child: StatefulBuilder(builder: (_, setSt) {
+            return Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Theme.of(sheetCtx)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Submit Collection',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'You have ${status.outstandingCount} sold voucher(s) with outstanding money.',
+                    style: TextStyle(
+                        color: Theme.of(sheetCtx).colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: amountCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Amount Submitted (TSh) *',
+                      prefixIcon: Icon(Icons.payments_rounded),
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Enter amount';
+                      if (double.tryParse(v.trim()) == null) {
+                        return 'Enter a valid number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: notesCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Reference / Notes',
+                      prefixIcon: Icon(Icons.note_outlined),
+                      border: OutlineInputBorder(),
+                      hintText: 'e.g. M-Pesa ref: XXXX',
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              if (!formKey.currentState!.validate()) return;
+                              setSt(() => saving = true);
+                              try {
+                                final db =
+                                    ref.read(supabaseDataServiceProvider);
+                                await db.createRemittance(
+                                  agentId: agentId,
+                                  siteId: status.siteId,
+                                  amount: double.parse(amountCtrl.text.trim()),
+                                  notes: notesCtrl.text.trim().isNotEmpty
+                                      ? notesCtrl.text.trim()
+                                      : null,
+                                );
+                                if (sheetCtx.mounted) {
+                                  Navigator.of(sheetCtx).pop();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context)
+                                        .showSnackBar(const SnackBar(
+                                      content: Text(
+                                          'Collection submitted – awaiting confirmation'),
+                                      backgroundColor: Colors.orange,
+                                    ));
+                                    _refresh();
+                                  }
+                                }
+                              } catch (e) {
+                                setSt(() => saving = false);
+                                if (sheetCtx.mounted) {
+                                  ScaffoldMessenger.of(sheetCtx)
+                                      .showSnackBar(SnackBar(
+                                    content: Text('Error: $e'),
+                                    backgroundColor: Colors.red,
+                                  ));
+                                }
+                              }
+                            },
+                      icon: saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.send_rounded),
+                      label: Text(saving ? 'Submitting…' : 'Submit Collection'),
+                      style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 
@@ -811,7 +1034,50 @@ class _VoucherManagementScreenState
                 _SummaryTab(rebuildKey: _rebuildKey),
               ],
             )
-          : vouchersTab,
+          : Column(
+              children: [
+                // ── Agent quota banner ──────────────────────────────────
+                FutureBuilder<_AgentQuotaStatus>(
+                  key: ValueKey('quota_banner_$_quotaRebuildKey'),
+                  future: _agentQuotaFuture,
+                  builder: (_, snap) {
+                    final status = snap.data;
+                    if (status == null || !status.isEnabled) {
+                      return const SizedBox.shrink();
+                    }
+                    if (status.pendingRemittance != null) {
+                      return _QuotaBanner(
+                        color: Colors.orange,
+                        icon: Icons.hourglass_top_rounded,
+                        message:
+                            'Collection of TSh ${CurrencyFormatter.format(status.pendingRemittance!.amount)} is under review',
+                        actionLabel: null,
+                        onAction: null,
+                      );
+                    }
+                    if (status.outstandingCount > 0) {
+                      return _QuotaBanner(
+                        color: Colors.red,
+                        icon: Icons.lock_rounded,
+                        message:
+                            '${status.outstandingCount} sold voucher(s) – submit your collection to unlock more',
+                        actionLabel: 'Submit Now',
+                        onAction: () => _showSubmitCollectionDialog(status),
+                      );
+                    }
+                    return _QuotaBanner(
+                      color: Colors.green,
+                      icon: Icons.check_circle_outline_rounded,
+                      message:
+                          'Showing up to ${status.quotaLimit} available vouchers',
+                      actionLabel: null,
+                      onAction: null,
+                    );
+                  },
+                ),
+                Expanded(child: vouchersTab),
+              ],
+            ),
       floatingActionButton: _selectionMode
           ? null
           : (canCreate
@@ -1682,6 +1948,75 @@ class _DetailRow extends StatelessWidget {
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 13))),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
+    );
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// Agent Quota Status (data class)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AgentQuotaStatus {
+  final bool isEnabled;
+  final int quotaLimit;
+  final int outstandingCount;
+  final SalesRemittance? pendingRemittance;
+  final int? siteId;
+
+  const _AgentQuotaStatus({
+    required this.isEnabled,
+    this.quotaLimit = 10,
+    this.outstandingCount = 0,
+    this.pendingRemittance,
+    this.siteId,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Agent Quota Banner
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _QuotaBanner extends StatelessWidget {
+  const _QuotaBanner({
+    required this.color,
+    required this.icon,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: color.withValues(alpha: 0.12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: color.computeLuminance() > 0.4
+                        ? color.withValues(alpha: 0.85)
+                        : color,
+                    fontWeight: FontWeight.w500)),
+          ),
+          if (actionLabel != null && onAction != null)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(foregroundColor: color),
+              child: Text(actionLabel!, style: const TextStyle(fontSize: 12)),
+            ),
         ],
       ),
     );

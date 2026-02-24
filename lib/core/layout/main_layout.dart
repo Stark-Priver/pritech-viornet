@@ -46,6 +46,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (item.route == '/commission-demands') {
         return checker.hasAnyRole(['SUPER_ADMIN', 'ADMIN', 'FINANCE']);
       }
+      // Voucher Quota — admin / finance / super-admin only
+      if (item.route == '/voucher-quota') {
+        return checker.hasAnyRole(['SUPER_ADMIN', 'ADMIN', 'FINANCE']);
+      }
       // My Commissions — agent-level roles (not pure admin/finance)
       if (item.route == '/my-commissions') {
         return !checker.hasAnyRole(['SUPER_ADMIN', 'FINANCE']);
@@ -120,6 +124,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       icon: Icons.pending_actions,
       label: 'Commission Demands',
       route: '/commission-demands',
+    ),
+    NavigationItem(
+      icon: Icons.tune_rounded,
+      label: 'Voucher Quota',
+      route: '/voucher-quota',
     ),
     NavigationItem(icon: Icons.sms, label: 'SMS', route: '/sms'),
     NavigationItem(

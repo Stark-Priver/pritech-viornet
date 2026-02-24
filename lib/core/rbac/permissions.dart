@@ -309,6 +309,12 @@ class PermissionChecker {
       '/finance': [Permissions.viewFinance],
       '/expenses': [Permissions.manageExpenses],
       '/investors': [Permissions.manageInvestors],
+      '/commission-demands': [
+        Permissions.manageExpenses
+      ], // finance-level; MainLayout also gates by role
+      '/voucher-quota': [
+        Permissions.manageExpenses
+      ], // finance/admin/super_admin only (MainLayout gates)
       '/sms': [Permissions.viewSms],
       '/packages': [Permissions.viewPackages],
       '/users': [Permissions.viewUsers],

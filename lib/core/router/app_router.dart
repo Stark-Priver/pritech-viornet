@@ -32,6 +32,7 @@ import '../../features/investors/screens/investors_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_connect_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_dashboard_screen.dart';
 import '../../features/mikrotik/screens/mikrotik_sites_screen.dart';
+import '../../features/vouchers/screens/voucher_quota_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
 // Wraps auth state as a ChangeNotifier so GoRouter can use it as a
@@ -214,6 +215,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/commission-demands',
             name: 'commission-demands-top',
             builder: (context, state) => const CommissionDemandsScreen(),
+          ),
+          GoRoute(
+            path: '/voucher-quota',
+            name: 'voucher-quota',
+            builder: (context, state) => const VoucherQuotaScreen(),
           ),
           GoRoute(
             path: '/settings',

@@ -1352,6 +1352,180 @@ class SupabaseDataService {
       recentSales: recentSales,
     );
   }
+
+  // =========================================================================
+  // VOUCHER QUOTA SETTINGS
+  // =========================================================================
+
+  /// Returns the quota setting for [siteId], falling back to the global row
+  /// (site_id IS NULL). Returns null if no row exists at all.
+  /// Looks up the most specific quota setting for [siteId] + [packageId].
+  /// Hierarchy: (site+package) → (site only) → (package only) → global.
+  Future<VoucherQuotaSetting?> getVoucherQuotaSetting(
+    int? siteId, {
+    int? packageId,
+  }) async {
+    // 1. Try (site, package) exact match
+    if (siteId != null && packageId != null) {
+      final row = await _client
+          .from('voucher_quota_settings')
+          .select()
+          .eq('site_id', siteId)
+          .eq('package_id', packageId)
+          .maybeSingle();
+      if (row != null) return VoucherQuotaSetting.fromJson(row);
+    }
+    // 2. Try site-specific with no package restriction
+    if (siteId != null) {
+      final row = await _client
+          .from('voucher_quota_settings')
+          .select()
+          .eq('site_id', siteId)
+          .isFilter('package_id', null)
+          .maybeSingle();
+      if (row != null) return VoucherQuotaSetting.fromJson(row);
+    }
+    // 3. Try package-specific with no site restriction
+    if (packageId != null) {
+      final row = await _client
+          .from('voucher_quota_settings')
+          .select()
+          .isFilter('site_id', null)
+          .eq('package_id', packageId)
+          .maybeSingle();
+      if (row != null) return VoucherQuotaSetting.fromJson(row);
+    }
+    // 4. Fall back to global (no site, no package)
+    final global = await _client
+        .from('voucher_quota_settings')
+        .select()
+        .isFilter('site_id', null)
+        .isFilter('package_id', null)
+        .maybeSingle();
+    return global != null ? VoucherQuotaSetting.fromJson(global) : null;
+  }
+
+  /// Returns ALL quota settings for admin display (global + per-site + per-package combos).
+  Future<List<VoucherQuotaSetting>> getAllVoucherQuotaSettings() async {
+    final data = await _client
+        .from('voucher_quota_settings')
+        .select()
+        .order('site_id', nullsFirst: true)
+        .order('package_id', nullsFirst: true);
+    return (data as List).map((e) => VoucherQuotaSetting.fromJson(e)).toList();
+  }
+
+  /// Upsert a quota setting. Matches on (siteId, packageId) — both may be null (global).
+  Future<void> saveVoucherQuotaSetting({
+    int? siteId,
+    int? packageId,
+    required int quotaLimit,
+    required bool isEnabled,
+  }) async {
+    // Because PostgreSQL ON CONFLICT with nullable columns requires
+    // NULLS NOT DISTINCT (migration 012), we can use upsert directly.
+    await _client.from('voucher_quota_settings').upsert(
+      {
+        'site_id': siteId,
+        'package_id': packageId,
+        'quota_limit': quotaLimit,
+        'is_enabled': isEnabled,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      onConflict: 'site_id,package_id',
+      ignoreDuplicates: false,
+    );
+  }
+
+  // =========================================================================
+  // SALES REMITTANCES
+  // =========================================================================
+
+  /// Counts SOLD vouchers by [agentId] that were sold AFTER the agent's last
+  /// CONFIRMED remittance (i.e., money still outstanding).
+  Future<int> countOutstandingSoldVouchers(int agentId) async {
+    // Get last confirmed remittance date
+    final lastConfirmedRow = await _client
+        .from('sales_remittances')
+        .select('reviewed_at')
+        .eq('agent_id', agentId)
+        .eq('status', 'CONFIRMED')
+        .order('reviewed_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    dynamic query = _client
+        .from('vouchers')
+        .select('id')
+        .eq('sold_by_user_id', agentId)
+        .eq('status', 'SOLD');
+
+    if (lastConfirmedRow != null && lastConfirmedRow['reviewed_at'] != null) {
+      query = query.gt('sold_at', lastConfirmedRow['reviewed_at'] as String);
+    }
+
+    final data = await query;
+    return (data as List).length;
+  }
+
+  /// Returns the pending (PENDING status) remittance for [agentId], if any.
+  Future<SalesRemittance?> getPendingRemittance(int agentId) async {
+    final row = await _client
+        .from('sales_remittances')
+        .select()
+        .eq('agent_id', agentId)
+        .eq('status', 'PENDING')
+        .order('submitted_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row != null ? SalesRemittance.fromJson(row) : null;
+  }
+
+  /// Agent submits their collection.
+  Future<SalesRemittance> createRemittance({
+    required int agentId,
+    int? siteId,
+    required double amount,
+    String? notes,
+  }) async {
+    final data = await _client
+        .from('sales_remittances')
+        .insert({
+          'agent_id': agentId,
+          'site_id': siteId,
+          'amount': amount,
+          'notes': notes,
+          'status': 'PENDING',
+          'submitted_at': DateTime.now().toIso8601String(),
+        })
+        .select()
+        .single();
+    return SalesRemittance.fromJson(data);
+  }
+
+  /// Returns ALL remittances, newest first (for admin/finance view).
+  Future<List<SalesRemittance>> getAllRemittances({String? status}) async {
+    // Filters (.eq) must come BEFORE transform methods (.order/.limit)
+    dynamic q = _client.from('sales_remittances').select();
+    if (status != null) q = q.eq('status', status);
+    q = q.order('submitted_at', ascending: false);
+    final data = await q;
+    return (data as List).map((e) => SalesRemittance.fromJson(e)).toList();
+  }
+
+  /// Admin/Finance confirms or rejects a remittance.
+  Future<void> reviewRemittance({
+    required int id,
+    required String status, // 'CONFIRMED' or 'REJECTED'
+    required int reviewedBy,
+  }) async {
+    await _client.from('sales_remittances').update({
+      'status': status,
+      'reviewed_by': reviewedBy,
+      'reviewed_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', id);
+  }
 }
 
 // ---------------------------------------------------------------------------
