@@ -103,6 +103,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       route: '/finance',
     ),
     NavigationItem(
+      icon: Icons.receipt_outlined,
+      label: 'Expenses',
+      route: '/expenses',
+    ),
+    NavigationItem(
       icon: Icons.pending_actions,
       label: 'Commission Demands',
       route: '/commission-demands',
