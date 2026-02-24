@@ -181,7 +181,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: user.disabled
-          ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
+          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
           : colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -225,7 +225,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
             // we push a new route (showDialog). Without this the navigator is
             // still locked and throws '!_debugLocked'.
             await Future.delayed(Duration.zero);
-            if (!mounted) return;
+            if (!context.mounted) return;
             if (value == 'edit') {
               await _showEditUserDialog(context, user);
             } else if (value == 'toggle') {
@@ -327,7 +327,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.15),
+          backgroundColor: Colors.green.withValues(alpha: 0.15),
           child: const Icon(Icons.wifi, color: Colors.green, size: 20),
         ),
         title: Text(
@@ -414,9 +414,10 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
                 // Profile — dropdown if profiles loaded, else text field
                 profiles.isNotEmpty
                     ? DropdownButtonFormField<String>(
-                        value: profiles.any((p) => p.name == profileCtrl.text)
-                            ? profileCtrl.text
-                            : null,
+                        initialValue:
+                            profiles.any((p) => p.name == profileCtrl.text)
+                                ? profileCtrl.text
+                                : null,
                         decoration: const InputDecoration(
                           labelText: 'Profile',
                           prefixIcon: Icon(Icons.speed_outlined),
@@ -485,6 +486,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
     );
 
     if (submitted == true) {
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       final errorColor = Theme.of(context).colorScheme.error;
       try {
@@ -581,6 +583,7 @@ class _MikroTikHotspotTabState extends ConsumerState<MikroTikHotspotTab>
     );
 
     if (submitted == true && nameCtrl.text.trim().isNotEmpty) {
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       final errorColor = Theme.of(context).colorScheme.error;
       try {

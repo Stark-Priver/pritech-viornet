@@ -162,7 +162,7 @@ class _MikroTikPppTabState extends ConsumerState<MikroTikPppTab>
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: secret.disabled
-          ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
+          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
           : colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -267,7 +267,7 @@ class _MikroTikPppTabState extends ConsumerState<MikroTikPppTab>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.15),
+          backgroundColor: Colors.green.withValues(alpha: 0.15),
           child: const Icon(Icons.link, color: Colors.green, size: 20),
         ),
         title: Text(
@@ -375,6 +375,7 @@ class _MikroTikPppTabState extends ConsumerState<MikroTikPppTab>
     );
 
     if (submitted == true && nameCtrl.text.trim().isNotEmpty) {
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       final errorColor = Theme.of(context).colorScheme.error;
       try {

@@ -752,7 +752,7 @@ class _GenerateVouchersSheetState
               const LinearProgressIndicator()
             else
               DropdownButtonFormField<Site>(
-                value: _selectedSite,
+                initialValue: _selectedSite,
                 decoration: const InputDecoration(
                   labelText: 'Site (optional)',
                   border: OutlineInputBorder(),
@@ -800,7 +800,7 @@ class _GenerateVouchersSheetState
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<int>(
-                    value: _codeLength,
+                    initialValue: _codeLength,
                     decoration: const InputDecoration(
                       labelText: 'Code Length',
                       border: OutlineInputBorder(),

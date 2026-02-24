@@ -121,7 +121,7 @@ class MikroTikDashboardTab extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.15),
+                color: colorScheme.primary.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.router, color: colorScheme.primary, size: 28),
@@ -142,7 +142,8 @@ class MikroTikDashboardTab extends ConsumerWidget {
                   Text(
                     '${info.board}  •  RouterOS ${info.version}',
                     style: TextStyle(
-                      color: colorScheme.onPrimaryContainer.withOpacity(0.8),
+                      color:
+                          colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
                       fontSize: 13,
                     ),
                   ),
@@ -153,16 +154,16 @@ class MikroTikDashboardTab extends ConsumerWidget {
                         Icon(
                           Icons.timer_outlined,
                           size: 13,
-                          color:
-                              colorScheme.onPrimaryContainer.withOpacity(0.7),
+                          color: colorScheme.onPrimaryContainer
+                              .withValues(alpha: 0.7),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           'Uptime: ${info.uptime}',
                           style: TextStyle(
                             fontSize: 12,
-                            color:
-                                colorScheme.onPrimaryContainer.withOpacity(0.7),
+                            color: colorScheme.onPrimaryContainer
+                                .withValues(alpha: 0.7),
                           ),
                         ),
                       ],
@@ -211,7 +212,7 @@ class MikroTikDashboardTab extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: ratio,
-                backgroundColor: color.withOpacity(0.15),
+                backgroundColor: color.withValues(alpha: 0.15),
                 valueColor: AlwaysStoppedAnimation<Color>(color),
                 minHeight: 5,
               ),

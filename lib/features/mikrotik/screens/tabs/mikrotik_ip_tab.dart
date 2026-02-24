@@ -121,7 +121,7 @@ class _MikroTikIpTabState extends ConsumerState<MikroTikIpTab>
       elevation: 0,
       margin: const EdgeInsets.symmetric(vertical: 4),
       color: ip.disabled
-          ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
+          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
           : colorScheme.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -213,8 +213,8 @@ class _MikroTikIpTabState extends ConsumerState<MikroTikIpTab>
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isBound
-              ? Colors.green.withOpacity(0.15)
-              : Colors.grey.withOpacity(0.15),
+              ? Colors.green.withValues(alpha: 0.15)
+              : Colors.grey.withValues(alpha: 0.15),
           child: Icon(
             Icons.devices,
             color: isBound ? Colors.green : Colors.grey,
@@ -271,14 +271,14 @@ class _MikroTikIpTabState extends ConsumerState<MikroTikIpTab>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 10,
-          color: color.withOpacity(0.9),
+          color: color.withValues(alpha: 0.9),
           fontWeight: FontWeight.bold,
         ),
       ),

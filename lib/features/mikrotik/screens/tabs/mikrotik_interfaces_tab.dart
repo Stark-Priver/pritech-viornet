@@ -80,7 +80,7 @@ class _MikroTikInterfacesTabState extends ConsumerState<MikroTikInterfacesTab> {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: CircleAvatar(
-          backgroundColor: statusColor.withOpacity(0.15),
+          backgroundColor: statusColor.withValues(alpha: 0.15),
           child: Icon(
             _iconForType(iface.type),
             color: statusColor,
@@ -123,7 +123,7 @@ class _MikroTikInterfacesTabState extends ConsumerState<MikroTikInterfacesTab> {
               value: !iface.disabled,
               onChanged: (_) =>
                   ref.read(mikrotikProvider.notifier).toggleInterface(iface),
-              activeColor: Colors.green,
+              activeThumbColor: Colors.green,
             ),
           ],
         ),
@@ -136,14 +136,14 @@ class _MikroTikInterfacesTabState extends ConsumerState<MikroTikInterfacesTab> {
       margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 10,
-          color: color.withOpacity(0.9),
+          color: color.withValues(alpha: 0.9),
           fontWeight: FontWeight.w600,
         ),
       ),
