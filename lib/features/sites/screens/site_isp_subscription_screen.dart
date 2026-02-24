@@ -384,9 +384,10 @@ class _SiteIspSubscriptionScreenState
   Widget _buildEmptyStateCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!, width: 1),
+        border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant, width: 1),
       ),
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -418,10 +419,12 @@ class _SiteIspSubscriptionScreenState
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isExpired ? Colors.red[200]! : Colors.grey[200]!,
+          color: isExpired
+              ? Colors.red[200]!
+              : Theme.of(context).colorScheme.outlineVariant,
           width: 1,
         ),
         boxShadow: [

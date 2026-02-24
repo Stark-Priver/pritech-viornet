@@ -114,7 +114,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
     final canManage = _canManageExpenses(authState.userRoles);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFF2563EB),
@@ -172,14 +171,17 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
                     child: FilterChip(
                       label: Text(c,
                           style: TextStyle(
-                            color: sel ? Colors.white : const Color(0xFF374151),
+                            color: sel
+                                ? Colors.white
+                                : Theme.of(context).colorScheme.onSurface,
                             fontWeight:
                                 sel ? FontWeight.w600 : FontWeight.normal,
                             fontSize: 12,
                           )),
                       selected: sel,
                       selectedColor: const Color(0xFF2563EB),
-                      backgroundColor: const Color(0xFFF3F4F6),
+                      backgroundColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       showCheckmark: false,
                       avatar: c != 'All'
                           ? Icon(_catIcon(c),
@@ -691,19 +693,28 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 14),
                             decoration: BoxDecoration(
-                              border:
-                                  Border.all(color: const Color(0xFFD1D5DB)),
+                              border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline),
                               borderRadius: BorderRadius.circular(12),
-                              color: const Color(0xFFF9FAFB),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
                             ),
                             child: Row(children: [
-                              const Icon(Icons.calendar_today_rounded,
-                                  size: 18, color: Color(0xFF6B7280)),
+                              Icon(Icons.calendar_today_rounded,
+                                  size: 18,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.6)),
                               const SizedBox(width: 10),
                               Text(
                                 DateFormat('MMM dd, yyyy').format(expDate),
-                                style: const TextStyle(
-                                    fontSize: 15, color: Color(0xFF1F2937)),
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface),
                               ),
                             ]),
                           ),
@@ -733,11 +744,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(20)),
-                    border:
-                        const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+                    border: Border(
+                        top: BorderSide(color: Theme.of(context).dividerColor)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -818,21 +829,25 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen>
 
   // â”€â”€ Dialog helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _dlgLabel(String t) => Text(t,
-      style: const TextStyle(
-          fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF374151)));
+      style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: Theme.of(context).colorScheme.onSurface));
 
   InputDecoration _dlgInput(String hint) => InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+        hintStyle: TextStyle(
+            color:
+                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
         filled: true,
-        fillColor: const Color(0xFFF9FAFB),
+        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+          borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

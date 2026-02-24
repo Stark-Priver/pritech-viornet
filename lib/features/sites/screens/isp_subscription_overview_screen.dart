@@ -130,10 +130,10 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.grey[200]!,
+              color: Theme.of(context).colorScheme.outlineVariant,
               width: 1,
             ),
             boxShadow: [
@@ -209,7 +209,10 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                                     Icon(
                                       Icons.map,
                                       size: 14,
-                                      color: Colors.grey[600],
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
                                     ),
                                     const SizedBox(width: 4),
                                     Expanded(
@@ -217,7 +220,10 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                                         site.location!,
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.6),
                                         ),
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -522,21 +528,30 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
                             if (site.contactPerson != null) ...[
                               Icon(Icons.person,
-                                  size: 16, color: Colors.grey[600]),
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.6)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   site.contactPerson!,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[700],
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),
@@ -544,14 +559,21 @@ class IspSubscriptionOverviewScreen extends ConsumerWidget {
                             ],
                             if (site.contactPhone != null) ...[
                               Icon(Icons.phone,
-                                  size: 16, color: Colors.grey[600]),
+                                  size: 16,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.6)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   site.contactPhone!,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[700],
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
                                   ),
                                 ),
                               ),

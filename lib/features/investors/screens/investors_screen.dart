@@ -449,7 +449,6 @@ class _InvestorsScreenState extends ConsumerState<InvestorsScreen> {
         userRoles.any((r) => ['ADMIN', 'SUPER_ADMIN', 'FINANCE'].contains(r));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Investors'),
         backgroundColor: const Color(0xFF2563EB),
@@ -467,7 +466,6 @@ class _InvestorsScreenState extends ConsumerState<InvestorsScreen> {
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Investor'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
                   foregroundColor: const Color(0xFF2563EB),
                 ),
                 onPressed: () => _openDialog(),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../models/app_models.dart';
 import '../rbac/permissions.dart';
+import '../theme/theme_provider.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -236,6 +237,27 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 : const Icon(Icons.cloud_upload),
             onPressed: _isSyncing ? null : _handleSyncToCloud,
             tooltip: 'Sync to Cloud',
+          ),
+          // Theme Toggle
+          Consumer(
+            builder: (context, ref, _) {
+              final mode = ref.watch(themeProvider);
+              return IconButton(
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, anim) => RotationTransition(
+                    turns: anim,
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: Icon(
+                    ThemeNotifier.iconFor(mode),
+                    key: ValueKey(mode),
+                  ),
+                ),
+                tooltip: '${ThemeNotifier.labelFor(mode)} theme',
+                onPressed: () => ref.read(themeProvider.notifier).toggle(),
+              );
+            },
           ),
           // Notifications
           IconButton(

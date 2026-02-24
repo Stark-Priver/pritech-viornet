@@ -78,7 +78,6 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     final canManage = _canManageSales(authState.userRoles);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF2563EB),
         foregroundColor: Colors.white,
@@ -166,8 +165,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                   _startDate = null;
                   _endDate = null;
                 }),
-                backgroundColor: const Color(0xFFEFF6FF),
-                side: const BorderSide(color: Color(0xFF3B82F6)),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                side: BorderSide(color: Theme.of(context).colorScheme.primary),
               ),
             ),
           //  List

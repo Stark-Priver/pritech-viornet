@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/rbac/permissions.dart';
+import '../../../core/theme/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -56,6 +57,41 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── System ─────────────────────────────────────────────────────
           if (isAdminLevel) ..._systemSection(context),
+
+          // ── Appearance ─────────────────────────────────────────────────
+          _sectionHeader('Appearance'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Consumer(
+              builder: (context, ref, _) {
+                final mode = ref.watch(themeProvider);
+                return SegmentedButton<ThemeMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: ThemeMode.light,
+                      label: Text('Light'),
+                      icon: Icon(Icons.light_mode_rounded),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.system,
+                      label: Text('System'),
+                      icon: Icon(Icons.brightness_auto_rounded),
+                    ),
+                    ButtonSegment(
+                      value: ThemeMode.dark,
+                      label: Text('Dark'),
+                      icon: Icon(Icons.dark_mode_rounded),
+                    ),
+                  ],
+                  selected: {mode},
+                  onSelectionChanged: (selection) => ref
+                      .read(themeProvider.notifier)
+                      .setThemeMode(selection.first),
+                );
+              },
+            ),
+          ),
+          const Divider(),
 
           // ── General ────────────────────────────────────────────────────
           _sectionHeader('General'),
