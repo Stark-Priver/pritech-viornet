@@ -168,135 +168,233 @@ class _VoucherManagementScreenState
   }
 
   Future<void> _showAddVoucherDialog() async {
-    final codeController = TextEditingController();
-    final priceController = TextEditingController();
-    final validityController = TextEditingController();
-    final speedController = TextEditingController();
+    final codeCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+    final validityCtrl = TextEditingController();
+    final speedCtrl = TextEditingController();
     int? selectedPackageId;
     int? selectedSiteId;
 
     final packages = await SupabaseDataService().getAllPackages();
-
     final sites = await SupabaseDataService().getAllSites();
-
     if (!mounted) return;
 
-    await showDialog(
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Voucher'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Voucher Code',
-                  hintText: 'e.g., 645827',
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF10B981), Color(0xFF059669)],
                 ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                decoration:
-                    const InputDecoration(labelText: 'Package (Optional)'),
-                items: packages
-                    .map((pkg) => DropdownMenuItem(
-                          value: pkg.id,
-                          child: Text(pkg.name),
-                        ))
-                    .toList(),
-                onChanged: (value) => selectedPackageId = value,
+              child: Row(children: [
+                const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                const SizedBox(width: 10),
+                const Text('Add Voucher',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx, false)),
+              ]),
+            ),
+            // Body
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: StatefulBuilder(builder: (ctx2, setDlg) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _addLbl('Voucher Code *'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: codeCtrl,
+                      decoration: _addInp('e.g. 645827'),
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                    const SizedBox(height: 14),
+                    _addLbl('Package (Optional)'),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      decoration: _addInp('Select package'),
+                      items: packages
+                          .map((pkg) => DropdownMenuItem(
+                                value: pkg.id,
+                                child: Text(pkg.name),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setDlg(() => selectedPackageId = v),
+                    ),
+                    const SizedBox(height: 14),
+                    _addLbl('Site (Optional)'),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<int>(
+                      decoration: _addInp('Select site'),
+                      items: sites
+                          .map((site) => DropdownMenuItem(
+                                value: site.id,
+                                child: Text(site.name),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setDlg(() => selectedSiteId = v),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(
+                          child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _addLbl('Price (KSh)'),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: priceCtrl,
+                            decoration: _addInp('0.00'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                          ),
+                        ],
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _addLbl('Speed'),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: speedCtrl,
+                            decoration: _addInp('e.g. 5Mbps'),
+                          ),
+                        ],
+                      )),
+                    ]),
+                    const SizedBox(height: 14),
+                    _addLbl('Validity'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: validityCtrl,
+                      decoration: _addInp('e.g. 12Hours, 1Day'),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            // Actions
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF9FAFB),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(20)),
+                border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                decoration: const InputDecoration(labelText: 'Site (Optional)'),
-                items: sites
-                    .map((site) => DropdownMenuItem(
-                          value: site.id,
-                          child: Text(site.name),
-                        ))
-                    .toList(),
-                onChanged: (value) => selectedSiteId = value,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child:
+                          const Text('Cancel', style: TextStyle(fontSize: 15))),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Add Voucher',
+                        style: TextStyle(fontSize: 15)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 14),
+                    ),
+                    onPressed: () async {
+                      if (codeCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                            content: Text('Voucher code is required.'),
+                            backgroundColor: Color(0xFFEF4444)));
+                        return;
+                      }
+                      final nav = Navigator.of(ctx);
+                      final sm = ScaffoldMessenger.of(context);
+                      try {
+                        final voucherService = ref.read(voucherServiceProvider);
+                        await voucherService.addVoucher(
+                          code: codeCtrl.text.trim(),
+                          packageId: selectedPackageId,
+                          siteId: selectedSiteId,
+                          price: double.tryParse(priceCtrl.text.trim()),
+                          validity: validityCtrl.text.trim().isNotEmpty
+                              ? validityCtrl.text.trim()
+                              : null,
+                          speed: speedCtrl.text.trim().isNotEmpty
+                              ? speedCtrl.text.trim()
+                              : null,
+                        );
+                        nav.pop(true);
+                        sm.showSnackBar(const SnackBar(
+                          content: Text('Voucher added successfully'),
+                          backgroundColor: Color(0xFF10B981),
+                        ));
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: const Color(0xFFEF4444),
+                          ));
+                        }
+                      }
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Price (Optional)',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: validityController,
-                decoration: const InputDecoration(
-                  labelText: 'Validity (Optional)',
-                  hintText: 'e.g., 12Hours, 1Day',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: speedController,
-                decoration: const InputDecoration(
-                  labelText: 'Speed (Optional)',
-                  hintText: 'e.g., 5Mbps',
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (codeController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter voucher code')),
-                );
-                return;
-              }
-
-              final voucherService = ref.read(voucherServiceProvider);
-
-              try {
-                await voucherService.addVoucher(
-                  code: codeController.text,
-                  packageId: selectedPackageId,
-                  siteId: selectedSiteId,
-                  price: double.tryParse(priceController.text),
-                  validity: validityController.text.isNotEmpty
-                      ? validityController.text
-                      : null,
-                  speed: speedController.text.isNotEmpty
-                      ? speedController.text
-                      : null,
-                );
-
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Voucher added successfully')),
-                  );
-                  _refresh();
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}')),
-                  );
-                }
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
       ),
     );
+
+    if (result == true && mounted) _refresh();
   }
+
+  // Dialog style helpers for _showAddVoucherDialog
+  static Widget _addLbl(String text) => Text(text,
+      style: const TextStyle(
+          fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)));
+
+  static InputDecoration _addInp(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF10B981), width: 2),
+        ),
+      );
 
   Future<void> _showBulkUploadDialog() async {
     int? selectedPackageId;
@@ -600,6 +698,7 @@ class _VoucherManagementScreenState
       selectionMode: _selectionMode,
       selectedIds: _selectedIds,
       canDelete: canDelete,
+      canEdit: canDelete, // same roles: ADMIN, SUPER_ADMIN, FINANCE
       onRefresh: _refresh,
       onEnterSelection: (int id) => setState(() {
         _selectionMode = true;
@@ -750,6 +849,7 @@ class _VouchersTab extends StatelessWidget {
   final bool selectionMode;
   final Set<int> selectedIds;
   final bool canDelete;
+  final bool canEdit;
   final VoidCallback onRefresh;
   final void Function(int id) onEnterSelection;
   final void Function(int id) onToggleSelect;
@@ -761,6 +861,7 @@ class _VouchersTab extends StatelessWidget {
     required this.selectionMode,
     required this.selectedIds,
     required this.canDelete,
+    required this.canEdit,
     required this.onRefresh,
     required this.onEnterSelection,
     required this.onToggleSelect,
@@ -876,7 +977,8 @@ class _VouchersTab extends StatelessWidget {
                     selectionMode: selectionMode,
                     isSelected: selectedIds.contains(v.id),
                     canDelete: canDelete,
-                    onLongPress: onEnterSelection, // void Function(int id)
+                    canEdit: canEdit,
+                    onLongPress: onEnterSelection,
                     onToggleSelect: () => onToggleSelect(v.id),
                     onRefresh: onRefresh,
                   );
@@ -1154,6 +1256,7 @@ class _VoucherListItem extends ConsumerWidget {
   final bool selectionMode;
   final bool isSelected;
   final bool canDelete;
+  final bool canEdit;
   final void Function(int id) onLongPress;
   final VoidCallback onToggleSelect;
   final VoidCallback onRefresh;
@@ -1163,6 +1266,7 @@ class _VoucherListItem extends ConsumerWidget {
     required this.selectionMode,
     required this.isSelected,
     required this.canDelete,
+    required this.canEdit,
     required this.onLongPress,
     required this.onToggleSelect,
     required this.onRefresh,
@@ -1256,6 +1360,15 @@ class _VoucherListItem extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (canEdit)
+            TextButton.icon(
+              icon: const Icon(Icons.edit_rounded, size: 18),
+              label: const Text('Edit'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showEditDialog(context, ref);
+              },
+            ),
           if (canDelete && voucher.status == 'AVAILABLE')
             TextButton(
               style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -1299,6 +1412,256 @@ class _VoucherListItem extends ConsumerWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers added to _VoucherListItem via extension (avoids widget size growth)
+// ─────────────────────────────────────────────────────────────────────────────
+
+extension _VoucherListItemEdit on _VoucherListItem {
+  Future<void> _showEditDialog(BuildContext context, WidgetRef ref) async {
+    const statuses = ['AVAILABLE', 'SOLD', 'USED', 'EXPIRED'];
+    final codeCtrl = TextEditingController(text: voucher.code);
+    final priceCtrl = TextEditingController(
+        text: voucher.price != null ? voucher.price!.toStringAsFixed(0) : '');
+    final validityCtrl = TextEditingController(text: voucher.validity ?? '');
+    final speedCtrl = TextEditingController(text: voucher.speed ?? '');
+    String status = voucher.status;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.edit_rounded, color: Colors.white, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Edit Voucher: ${voucher.code}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx, false)),
+              ]),
+            ),
+            // Body
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: StatefulBuilder(builder: (ctx2, setDlg) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _edLbl('Voucher Code *'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: codeCtrl,
+                      decoration: _edInp('e.g. 123456'),
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                      textCapitalization: TextCapitalization.characters,
+                    ),
+                    const SizedBox(height: 14),
+                    _edLbl('Status *'),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      // ignore: deprecated_member_use
+                      value: status,
+                      decoration: _edInp('Select status'),
+                      items: statuses
+                          .map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Row(children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    margin: const EdgeInsets.only(right: 8),
+                                    decoration: BoxDecoration(
+                                      color: _stColor(s),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  Text(s),
+                                ]),
+                              ))
+                          .toList(),
+                      onChanged: (v) => setDlg(() => status = v ?? status),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(children: [
+                      Expanded(
+                          child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _edLbl('Price (KSh)'),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: priceCtrl,
+                            decoration: _edInp('0.00'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                          ),
+                        ],
+                      )),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _edLbl('Speed'),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: speedCtrl,
+                            decoration: _edInp('e.g. 5Mbps'),
+                          ),
+                        ],
+                      )),
+                    ]),
+                    const SizedBox(height: 14),
+                    _edLbl('Validity'),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: validityCtrl,
+                      decoration: _edInp('e.g. 12Hours, 1Day'),
+                    ),
+                  ],
+                );
+              }),
+            ),
+            // Actions
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF9FAFB),
+                borderRadius:
+                    BorderRadius.vertical(bottom: Radius.circular(20)),
+                border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child:
+                          const Text('Cancel', style: TextStyle(fontSize: 15))),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.save_rounded, size: 18),
+                    label: const Text('Save Changes',
+                        style: TextStyle(fontSize: 15)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 14),
+                    ),
+                    onPressed: () async {
+                      if (codeCtrl.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                            content: Text('Voucher code is required.'),
+                            backgroundColor: Color(0xFFEF4444)));
+                        return;
+                      }
+                      final nav = Navigator.of(ctx);
+                      final sm = ScaffoldMessenger.of(context);
+                      try {
+                        final fields = <String, dynamic>{
+                          'code': codeCtrl.text.trim(),
+                          'status': status,
+                          if (priceCtrl.text.trim().isNotEmpty)
+                            'price': double.tryParse(priceCtrl.text.trim()),
+                          if (validityCtrl.text.trim().isNotEmpty)
+                            'validity': validityCtrl.text.trim(),
+                          if (speedCtrl.text.trim().isNotEmpty)
+                            'speed': speedCtrl.text.trim(),
+                        };
+                        await ref
+                            .read(databaseProvider)
+                            .updateVoucher(voucher.id, fields);
+                        nav.pop(true);
+                        sm.showSnackBar(const SnackBar(
+                          content: Text('Voucher updated'),
+                          backgroundColor: Color(0xFF10B981),
+                        ));
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: const Color(0xFFEF4444),
+                          ));
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) onRefresh();
+  }
+
+  static Color _stColor(String s) {
+    switch (s) {
+      case 'AVAILABLE':
+        return const Color(0xFF10B981);
+      case 'SOLD':
+        return const Color(0xFFF59E0B);
+      case 'USED':
+        return const Color(0xFF8B5CF6);
+      case 'EXPIRED':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  static Widget _edLbl(String text) => Text(text,
+      style: const TextStyle(
+          fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)));
+
+  static InputDecoration _edInp(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFF9CA3AF)),
+        filled: true,
+        fillColor: const Color(0xFFF9FAFB),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2),
+        ),
+      );
 }
 
 class _DetailRow extends StatelessWidget {

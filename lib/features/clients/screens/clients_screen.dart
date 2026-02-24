@@ -22,6 +22,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   @override
   Widget build(BuildContext context) {
     final database = ref.watch(databaseProvider);
+    final authState = ref.watch(authProvider);
+    final canManage = authState.userRoles
+        .any((r) => r == 'ADMIN' || r == 'SUPER_ADMIN' || r == 'FINANCE');
 
     return Scaffold(
       body: Column(
@@ -111,7 +114,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     itemCount: clients.length,
                     itemBuilder: (context, index) {
                       final client = clients[index];
-                      return _buildClientCard(client);
+                      return _buildClientCard(client, database, canManage);
                     },
                   ),
                 );
@@ -120,24 +123,108 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AddEditClientScreen(),
+      floatingActionButton: canManage
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddEditClientScreen(),
+                  ),
+                );
+                if (result == true) {
+                  setState(() {
+                    _rebuildKey++;
+                  });
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Client'),
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            )
+          : null,
+    );
+  }
+
+  Future<void> _confirmDeleteClient(
+      SupabaseDataService db, Client client) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE2E2),
+              borderRadius: BorderRadius.circular(8),
             ),
-          );
-          if (result == true) {
-            setState(() {
-              _rebuildKey++;
-            });
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Client'),
+            child: const Icon(Icons.delete_outline_rounded,
+                color: Color(0xFFEF4444)),
+          ),
+          const SizedBox(width: 12),
+          const Text('Delete Client',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+                'Are you sure you want to permanently delete this client?'),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(client.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(client.phone),
+                  if (client.email != null) Text(client.email!),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text('This action cannot be undone.',
+                style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_rounded),
+            label: const Text('Delete'),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444)),
+          ),
+        ],
       ),
     );
+
+    if (ok != true || !mounted) return;
+    try {
+      await db.deleteClient(client.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Client deleted'), backgroundColor: Color(0xFF10B981)));
+      setState(() => _rebuildKey++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: const Color(0xFFEF4444)));
+    }
   }
 
   Widget _buildFilterChip(String label) {
@@ -157,7 +244,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     );
   }
 
-  Widget _buildClientCard(Client client) {
+  Widget _buildClientCard(
+      Client client, SupabaseDataService database, bool canManage) {
     final isActive = client.isActive &&
         (client.expiryDate?.isAfter(DateTime.now()) ?? false);
     final daysUntilExpiry = client.expiryDate != null
@@ -254,6 +342,49 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               if (client.email != null) ...[
                 const SizedBox(height: 8),
                 _buildInfoItem(Icons.email, client.email!),
+              ],
+              if (canManage) ...[
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AddEditClientScreen(client: client),
+                          ),
+                        );
+                        if (result == true) setState(() => _rebuildKey++);
+                      },
+                      icon: const Icon(Icons.edit_rounded, size: 16),
+                      label: const Text('Edit'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF3B82F6),
+                        side: const BorderSide(color: Color(0xFF3B82F6)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _confirmDeleteClient(database, client),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                      label: const Text('Delete'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFEF4444),
+                        side: const BorderSide(color: Color(0xFFEF4444)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),

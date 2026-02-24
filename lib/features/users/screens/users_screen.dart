@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../../../core/models/app_models.dart';
 import '../../../core/services/supabase_data_service.dart';
 import '../../../core/providers/providers.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
@@ -20,6 +21,9 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   @override
   Widget build(BuildContext context) {
     final database = ref.watch(databaseProvider);
+    final authState = ref.watch(authProvider);
+    final canDelete =
+        authState.userRoles.any((r) => r == 'ADMIN' || r == 'SUPER_ADMIN');
 
     return Scaffold(
       appBar: AppBar(
@@ -67,7 +71,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
             padding: const EdgeInsets.all(16),
             itemCount: users.length,
             itemBuilder: (context, index) {
-              return _buildUserCard(context, users[index], database);
+              return _buildUserCard(context, users[index], database,
+                  canDelete: canDelete);
             },
           );
         },
@@ -87,7 +92,8 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 
   Widget _buildUserCard(
-      BuildContext context, AppUser user, SupabaseDataService database) {
+      BuildContext context, AppUser user, SupabaseDataService database,
+      {bool canDelete = false}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -204,6 +210,18 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                 ],
               ),
             ),
+            if (canDelete)
+              const PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline_rounded,
+                        size: 20, color: Color(0xFFEF4444)),
+                    SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+                  ],
+                ),
+              ),
           ],
           onSelected: (value) {
             if (value == 'edit') {
@@ -212,12 +230,93 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
               _toggleUserStatus(user, database);
             } else if (value == 'password') {
               _showResetPasswordDialog(context, user, database);
+            } else if (value == 'delete') {
+              _confirmDeleteUser(database, user);
             }
           },
         ),
         isThreeLine: true,
       ),
     );
+  }
+
+  Future<void> _confirmDeleteUser(SupabaseDataService db, AppUser user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE2E2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.delete_outline_rounded,
+                color: Color(0xFFEF4444)),
+          ),
+          const SizedBox(width: 12),
+          const Text('Delete User',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+                'Permanently delete this user? They will lose all access.'),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(user.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(user.email),
+                  Text('Role: ${user.role}'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text('This action cannot be undone.',
+                style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.delete_rounded),
+            label: const Text('Delete'),
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+    try {
+      await db.deleteUser(user.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('User deleted'), backgroundColor: Color(0xFF10B981)));
+      setState(() => _rebuildKey++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: const Color(0xFFEF4444)));
+    }
   }
 
   Color _getRoleColor(String role) {
