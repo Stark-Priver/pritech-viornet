@@ -62,6 +62,10 @@ class Permissions {
   static const manageInvestors =
       Permission('manage_investors', 'Manage Investors');
 
+  // MikroTik
+  static const manageMikrotik =
+      Permission('manage_mikrotik', 'Manage MikroTik Devices');
+
   // Settings
   static const viewSettings = Permission('view_settings', 'View Settings');
   static const manageSettings =
@@ -116,6 +120,7 @@ class Roles {
       Permissions.viewSettings,
       Permissions.manageSettings,
       Permissions.manageInvestors,
+      Permissions.manageMikrotik,
     ],
   );
 
@@ -170,6 +175,7 @@ class Roles {
       Permissions.viewMaintenance,
       Permissions.manageMaintenance,
       Permissions.viewSettings,
+      Permissions.manageMikrotik,
     ],
   );
 
@@ -236,6 +242,7 @@ class Roles {
       Permissions.viewSettings,
       Permissions.manageSettings,
       Permissions.manageInvestors,
+      Permissions.manageMikrotik,
     ],
   );
 
@@ -306,6 +313,8 @@ class PermissionChecker {
       '/packages': [Permissions.viewPackages],
       '/users': [Permissions.viewUsers],
       '/settings': [Permissions.viewSettings],
+      '/mikrotik': [Permissions.manageMikrotik],
+      '/mikrotik/dashboard': [Permissions.manageMikrotik],
     };
 
     return permissionMap[routePath] ?? [];

@@ -29,6 +29,8 @@ import '../../features/settings/screens/commission_demands_screen.dart';
 import '../../features/settings/screens/my_commissions_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 import '../../features/investors/screens/investors_screen.dart';
+import '../../features/mikrotik/screens/mikrotik_connect_screen.dart';
+import '../../features/mikrotik/screens/mikrotik_dashboard_screen.dart';
 
 // ── Router notifier ──────────────────────────────────────────────────────────
 // Wraps auth state as a ChangeNotifier so GoRouter can use it as a
@@ -233,6 +235,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/isp-subscription',
             name: 'isp-subscription',
             builder: (context, state) => const IspSubscriptionOverviewScreen(),
+          ),
+          GoRoute(
+            path: '/mikrotik',
+            name: 'mikrotik',
+            builder: (context, state) => const MikroTikConnectScreen(),
+          ),
+          GoRoute(
+            path: '/mikrotik/dashboard',
+            name: 'mikrotik-dashboard',
+            builder: (context, state) => const MikroTikDashboardScreen(),
           ),
           GoRoute(
             path: '/isp-subscription/:siteId',

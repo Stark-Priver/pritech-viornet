@@ -50,6 +50,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       if (item.route == '/my-commissions') {
         return !checker.hasAnyRole(['SUPER_ADMIN', 'FINANCE']);
       }
+      // MikroTik — TECHNICAL, ADMIN, SUPER_ADMIN only
+      if (item.route == '/mikrotik') {
+        return checker.hasAnyRole(['SUPER_ADMIN', 'ADMIN', 'TECHNICAL']);
+      }
       return checker.canAccessRoute(item.route);
     }).toList();
 
@@ -118,6 +122,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       route: '/commission-demands',
     ),
     NavigationItem(icon: Icons.sms, label: 'SMS', route: '/sms'),
+    NavigationItem(
+      icon: Icons.router,
+      label: 'MikroTik',
+      route: '/mikrotik',
+    ),
     NavigationItem(icon: Icons.settings, label: 'Settings', route: '/settings'),
   ];
 
